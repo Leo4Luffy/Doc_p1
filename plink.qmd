@@ -1,0 +1,338 @@
+---
+output: 
+  html_document:
+    includes:
+      in_header: arch1.html
+execute:
+    warning: false
+    message: false
+bibliography: references.bib
+---
+
+## Análisis de control de calidad de los datos genéticos {.unnumbered}
+
+En el análisis de datos genéticos es importante realizar control de calidad para evitar asociaciones espurias debidas a fuentes potenciales de confusión (por ejemplo, estratificación étnica).
+
+::: {.aclaracion}
+Asociación espuria hace referencia a la relación entre dos o más caracteres que no están relacionados causalmente entre sí. Es decir, la asociación entre caracteres es el resultado de un fenómeno estadístico en lugar de una verdadera relación biológica.
+:::
+
+Dicho procedimiento de control de calidad se realiza comúnmente mediante el uso de PLINK [@cite:3].
+
+::: {.aclaracion}
+Aunque se podría usar `R` para realizar control de calidad de datos genéticos, es mucho más conveniente usar un programa dedicado al análisis de este tipo de datos como PLINK.
+:::
+
+## Formato de los datos
+
+PLINK puede leer archivos con formato de texto o binarios. Los datos PLINK de texto constan de dos archivos: uno contiene información sobre los individuos y sus genotipos (.ped), y el otro contiene información sobre los marcadores genéticos (.map).
+
+.ped
+
+| FID | IID | PID | MID | Sex | P | rs1 | rs2 |
+|-----|-----|-----|-----|-----|---|-----|-----|
+| 1   | 1   |   0 | 0   |  2  | 1 | CT  | AG  |
+| 2   | 2   |   0 | 0   |  1  | 0 | CC  | AA  |
+
+.map
+
+| Chr | SNP | GD | BPP |
+|-----|-----|-----|-----|
+| 1   | rs1 |  0 | 870000   |
+| 1   | rs2 |  0 | 870000   |
+
+Por el contrario, los datos PLINK binarios constan de tres archivos, un archivo binario que contiene identificadores individuales y genotipos (.bed), y dos archivos de texto que contienen información sobre los individuos (.fam) y sobre los marcadores genéticos (.bim).
+
+.fam
+
+| FID | IID | PID | MID | Sex | P |
+|-----|-----|-----|-----|-----|---|
+| 1   | 1   |   0 | 0   |  2  | 1 |
+| 2   | 2   |   0 | 0   |  1  | 0 |
+
+<aside><small>
+El archivo .bed:
+
+> Contiene la versión binaria de la información de genotipos (SNP) del archivo .ped (es un formato [no legible]{.circle} para humanos).
+</small></aside>
+
+.bim
+
+| Chr | SNP | GD | BPP | Alelo 1 | Alelo 2 |
+|-----|-----|----|-----|-----|-----|
+| 1   | rs1 |  0 | 870000 | C | T |
+| 1   | rs2 |  0 | 870000 | A | G |
+
+A continución puede observar el significado de las abreviaturas anteriores:
+
+::: {.grid}
+
+::: {.g-col-6}
+FID &#8594;	ID familia<br>
+IID &#8594;	ID individuo<br>
+PID &#8594;	ID padre<br>
+MID &#8594;	ID madre<br>
+Sex &#8594;	Sexo del individuo<br>
+P &#8594; Fenotipo
+:::
+  
+::: {.g-col-6}
+rs{x} &#8594; Alelos por individuo por SNP<br>
+Chr &#8594; Cromosoma<br>
+SNP &#8594; Nombre del SNP <br>
+GD &#8594; Distancia genética (en morgans) <br>
+BPP &#8594; Posición en pares de bases <br>
+:::
+
+:::
+
+::: {.aclaracion}
+Debido a que la lectura de archivos de texto grandes puede llevar mucho tiempo, se recomienda utilizar archivos binarios.
+:::
+
+## Uso básico de PLINK
+
+PLINK es un programa de línea de comandos. Por lo tanto, su uso requiere de un shell [^plink-1] en espera de comandos.
+
+[^plink-1]: __shell__ se refiere a un intérprete de órdenes o de comando. Es decir, un programa informático que provee una interfaz de usuario para acceder a los servicios del sistema operativo.
+
+El uso de PLINK se indica escribiendo la palabra `plink`. Si PLINK no está instalado en el directorio actual, la ruta al directorio donde está instalado PLINK debe escribirse delante del comando (por ejemplo, /usr/local/bin/plink).
+
+Después de la palabra clave `plink`, seguirán otras opciones que controlan el flujo de trabajo de PLINK, separadas por espacios. Todas estas opciones inician con dos guiones (- -).
+
+Una de las primeras opciones consiste en proporcionar el formato y el nombre de los archivos de datos. Por ejemplo, se puede usar [- -file nombre]{.highlight} para archivos de texto, y [- -bfile nombre]{.highlight} para archivos binarios. Después de esto, se pueden agregar las demás opciones requeridas. Una opción útil, y a veces obligatoria, es [- -out nombre]{.highlight}, que propociona un nombre a los archivos de salida.
+
+::: {.aclaracion}
+Se puede combinar múltiples opciones [^plink-2] en una sola línea de comandos. Dentro de PLINK, se implementa un orden predeterminado que funciona independientemente del orden de los comandos dentro de la línea de comandos.
+:::
+
+ [^plink-2]: Para ver el conjunto completo de opciones, consulte http://zzz.bwh.harvard.edu/plink/.
+
+## Descripción general de los pasos del control de calidad
+
+La tabla a continuación proporciona una descripción general de algunos de los pasos de control de calidad que deben realizarse.
+
+| Paso | Comando de plink | Función |
+|-----|-----|----|
+| 1: SNP faltantes | - -geno | Excluye los SNP faltantes. En este paso, se eliminan los SNP con bajo genotipo asignado (genotypes calls)[^plink-3]. |
+| 2: Individuos faltantes | - -mind | Excluye individuos que tienen altas tasas de ausencia de genotipos. |
+| 3: Frecuencia del alelo menor (MAF) | - -maf | Incluye solo SNP por encima del umbral MAF establecido[^plink-4]. |
+| 4: Equilibrio de Hardy-Weinberg (HWE) | - -hwe | Excluye marcadores que se desvían del HWE[^plink-5]. |
+
+[^plink-3]:  __Genotype call__ hace referencia a genotipo asignado, mientras que __genotype call rate__ es el ratio de genotipado correcto (es decir, la proporción de genotipos correctamente identificados).
+
+[^plink-4]: Los SNP con un MAF bajo son raros, por lo que se carece de potencia para detectar asociaciones entre SNP y fenotipo. Estos SNP también son más propensos a errores de genotipado. El umbral MAF debe depender del tamaño de su muestra, las muestras más grandes pueden usar umbrales MAF más bajos. Respectivamente, para muestras grandes ( n = 100000) frente a muestras moderadas ( n = 10000), 0.01 y 0.05 se utilizan comúnmente como umbral MAF.
+
+[^plink-5]: Este es un indicador común de error de genotipado. También puede indicar selección evolutiva.
+
+## Uso de PLINK dentro del ambiente `R`
+
+Es posible usar PLINK dentro del ambiente `R`[^plink-6]. La función que se observa a continuación permite cargar el software PLINK dentro de dicho ambiente.
+
+[^plink-6]: En youtube, en el canal de __Genomics Boot Camp__ (https://www.youtube.com/watch?v=Fw-oBZSajrI) enseñan como hacer esto de manera muy clara.
+
+```{r}
+#| echo: true
+#| eval: false
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+plink() # Si al correr esta línea de código aparecen las opciones de PLINK, la 
+        # versión, entre otros, indica que si se cargo bien este software den-
+        # tro del ambiente R.
+```
+
+::: {.aclaracion}
+El directorio actual es una noción central para el uso de PLINK, debido a que de forma predeterminada, PLINK cargará archivos de datos y guardará archivos de resultados en dicho directorio. En el código anterior, ./plink indica la ruta donde se encuentra el ejecutable de PLINK; esto es, dentro de la carpeta __Datos__ cuya dirección se especifica dentro de la función `setwd()`.
+:::
+
+## Empecemos: uso de PLINK en el trabajo de grado
+
+Los datos con los que inicialmente se contó fueron datos PLINK de texto. Sin embargo, estos eran distintos a la estructura inicialmente mostrada aquí: el archivo .ped, por ejemplo, solo contenía la identificación de los individuos y los alelos por individuo por SNP. Por consiguiente, como primer paso del control de calidad, se realizó una recodificación para que dicho archivo tuviera el formato FID | IID | PID | MID | Sex | P. La línea de código de PLINK usada para esto fue la siguiente.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--no-fid --no-parents --no-sex --no-pheno --cow --allow-extra-chr --file datQC/ANI_2917_feb2023_ARS_UCD12 --make-bed --recode --out datQC/Paso_1')
+```
+
+::: {.codigo}
+Las opciones de PLINK que se usan significan lo siguiente: 
+
++ --no-fid: indica que no hay identificadores de familia en el archivo de entrada.
++ --no-parents: indica que no hay información de los padres de los individuos en el archivo de entrada.
++ --no-sex: indica que no hay información de sexo de los individuos en el archivo de entrada.
++ --no-pheno: indica que no hay información fenotípica de los individuos en el archivo de entrada.
++ --cow: indica que se está trabajando con datos de ganado bovino.
++ --allow-extra-chr: indica que se permiten cromosomas adicionales a los comunes (1-29, X, Y, MT).
++ --make-bed: indica que se creará un nuevo archivo PLINK en formato binario.
++ --recode: indica que se re-codificarán los alelos en el archivo de salida (esto puede ser útil para la posterior imputación de datos perdidos). --recode generará las etiquetas de los alelos tal como aparecen en el original; además, se conserva el código del genotipo faltante si este es diferente de 0.
+:::
+
+Luego, con base en los datos PLINK (ahora en formato binario) que resultaron del paso anterior (denominados como Paso_1.bed, _.bim y _.fam), se actualizaron los códigos parentales (padre y madre). Para esto, la línea de código de PLINK usada fue la siguiente.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_1 --update-parents datQC/ID_ind.txt --make-bed --recode --out datQC/Paso_2')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ --update-parents: indica que se actualizará la información de los parentales y se especifica el archivo que contiene la información de actualización (datQC/ID_plink.txt).
+:::
+
+Para la recodificación del archivo .ped, se actualizó también el sexo de los individuos con base en la línea de código de PLINK a continuación.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_2 --update-sex datQC/ID_sex.txt --make-bed --recode --out datQC/Paso_3')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ -update-sex: indica que se actualizará la información de sexo del archivo ID_sex.txt para actualizar la información de sexo en el archivo de entrada ubicado en la carpeta datQC.
+:::
+
+Por último, se actualiza también la ID de los individuos. Para ello, se creó inicialmente un conjunto de datos con cuatro columnas que indicaban la ID de la familia antigua y nueva, y la ID del individuo antiguo y nuevo. Luego, se actualizó la identificación de los individuos con el comando de PLINK --update-ids.
+
+```{r}
+#| echo: true
+#| eval: false
+
+library(tidyverse)
+
+ID_edic <- tribble(
+  ~'ID_fam_antiguo', ~'ID_ind_antiguo', ~'ID_fam_nuevo', ~'ID_ind_nuevo',
+  'ES010803809895', 'ES010803809895', 'ES090803807171', 'ES090803807171',
+  'ES090808495320', 'ES090808495320', 'ES000808495310', 'ES000808495310'
+  )
+
+write_delim(x = ID_edic, file = 'datQC/ID_edic.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_3 --update-ids datQC/ID_edic.txt --make-bed --recode --out datQC/Paso_4')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ -update-ids: indica que se actualizará la ID de los individuos a partir del archivo ID_edic.txt.
+:::
+
+Al observar el archivo .bim que resultó del proceso de recodificación anterior (denominado como Paso_4.bim), en la primera columna (que corresponde al identificador de los cromosomas), no solo estaban los cromosomas somáticos o autosomas. Por consiguiente, como siguiente paso del control de calidad, se quitaron los cromosomas sexuales (X y Y), los mitocondriales (MT) y los NW. Esto a partir de la línea de código PLINK a continuación.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_4 --chr 1-29 --make-bed --recode --out datQC/Paso_5')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ --chr: indica que se utilizará la opción --chr, junto con un rango de cromosomas (en este caso, del 1 al 29), con el fin de extraer los datos de todos los SNPs de dichos cromosomas.
+:::
+
+A continuación, se creó un conjunto de datos con la identificación de algunos individuos que debían ser eliminados. Esto debido a dos razones: 1. Se encontró que había ocho individuos con genotipos duplicados, es decir, los genotipos de cuatro individuos era el mismo al de los otros cuatro; 2. Previamente, mediante análisis de paternidad con microsatélites, se identificaron diez individuos cuyos genotipos no coincidían con este análisis, por lo que al parecer hubo un error en la recogida de las muestras.
+
+```{r}
+#| echo: true
+#| eval: false
+
+indDup <- tibble(
+    x = c('ES070812979748', 'ES010812979753', 'ES001004446825', 'ES081004446845', 'ES031004446873', 'ES001007312302', 'ES081007110951', 'ES090809843886', 'ES010812178034', 'ES020812178035', 'ES031007551057', 'ES081008454201', 'ES051008454731', 'ES001008431831', 'ES021008431833', 'ES021008564851', 'ES001008431820', 'ES000809983015')
+    ) %>%
+    mutate(y = x) # Se crea una segunda columna, ya que con solo el identificador de los individuos no es posible removerlos con la opción de PLINK --remove a continuación. Para solucionar esto, se crea el objeto indDup con dos columnas, donde la primera columna es igual a la segunda columna. 
+
+write_delim(x = indDup, file = 'datQC/indDup.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_5 --remove datQC/indDup.txt --make-bed --recode --out datQC/Paso_6')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ --remove: indica los elementos que se desean eliminar.
+:::
+
+Luego, se observó si habían marcadores duplicados por posición mediante el código de `R` descrito a continuación.
+
+```{r}
+#| echo: true
+#| eval: false
+
+snpDupPos <- read_table(file = 'datQC/Paso_4.map', col_names = FALSE)
+
+snpDupPos_1 <- snpDupPos %>%
+  unite(
+    col = 'Posicion',
+    c(X1, X4) # Aquí se unen estas dos columnas para observar los marcadores duplicados por posición (siendo la columna "X1" el cromosoma y la columna "X4" la posición en pares de bases).
+    ) %>%
+  group_by(Posicion) %>%
+  filter(n() > 1) %>%
+  ungroup() # Estos son una lista de marcadores duplicados por posición.
+
+# Se crea un objeto con solo uno de los dos marcadores duplicados por posición, para a continuaicón quitarlos con los marcadores multialélicos o raros.
+
+snpDupPos_2 <- snpDupPos_1 %>%
+  distinct(Posicion, .keep_all = TRUE) %>%
+  select(X2) %>%
+  rename(x = X2)
+```
+
+En análisis previos a este, se identificaron marcadores multialélicos o raros. Estos, al igual que los marcadores duplicados por posición observados anteriormente, debieron ser eliminados. Para ello, incialmente se creo e importo un conjunto de datos de SNPs raros y dupicados. Luego, este se uso para excluir estos marcadores. Todo esto a partir del código (de `R` y PLINK) observado a continuación.
+
+```{r}
+#| echo: true
+#| eval: false
+
+snpMult <- tibble(
+    x = c('Affx-289861652', 'Affx-115876439', 'Affx-289861642', 'Affx-289861661', 'Affx-289861663', 'Affx-478768777', 'Affx-289861654', 'Affx-115870013')
+    ) %>%
+    bind_rows(snpDupPos_2)
+
+write_delim(x = snpMult, file = 'datQC/snpMult.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_6 --exclude datQC/snpMult.txt --make-bed --recode --out datQC/Paso_7')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ --exclude: indica que se excluirán los marcadores que se encuentran en el archivo snpMult.txt que se encuentra en la carpeta datQC.
+:::
+
+::: {.aclaracion}
+Cuando se habla de marcadores raros o multialélicos en genética, se refiere a variantes genéticas que son poco frecuentes en una población y/o tienen más de dos alelos. En otras palabras, son marcadores que tienen una frecuencia alélica baja y/o una alta diversidad alélica.
+:::
+
+Finalmente, como último paso del control de calidad, se estableció a continuación las opciones de PLINK descritas en la tabla anterior de descripción general de los pasos del control de calidad.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_7 --mind 0.10 --geno 0.10 --hwe 0.00001 --maf 0.01 --make-bed --recode --out datQC/Paso_8')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita anteriormente) que se usan significan lo siguiente:
+
++ --mind: especifica el umbral mínimo para el porcentaje de datos faltantes en un individuo, en este caso se estableció en 0.10, lo que significa que los individuos con más del 10% de sus datos faltantes se eliminan.
+
++ --geno: especifica el umbral mínimo para el porcentaje de datos faltantes en un marcador, en este caso se estableció en 0.10, lo que significa que los marcadores con más del 10% de sus datos faltantes se eliminan.
+
++ --hwe: especifica el umbral máximo para el valor de p del test de Hardy-Weinberg Equilibrium (HWE) para cada marcador, en este caso se estableció en 0.00001, lo que significa que los marcadores cuyo valor de p del test de HWE es menor a 0.00001 se eliminan.
+
++ --maf: especifica el umbral mínimo para la frecuencia alélica mínima de un marcador, en este caso se estableció en 0.01, lo que significa que los marcadores cuya frecuencia alélica mínima es menor a 0.01 se eliminan.
+:::
+
+## Referencias bibliográficas

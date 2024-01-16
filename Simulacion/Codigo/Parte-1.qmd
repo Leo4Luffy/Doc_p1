@@ -1,0 +1,1428 @@
+---
+title: "Parte 1: Generación de archivos de genotipos y mapas por cromosomas, y correción del ID en datos de genealogía, en los datos productivos y en los archivos de genotipos generados"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, pedantics, conflicted) # El paquete conflicted permite dar prioridad a algunas funciones en caso de que se genere conflictos entre funciones con un mismo nombre en distintos paquetes. Estos conflictos, si se generan, se pueden ver con la función conflict_scout().
+conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
+# Error:
+# ! [conflicted] filter found in 2 packages.
+# Either pick the one you want with `::`:
+# dplyr::filter
+# stats::filter
+conflicts_prefer(dplyr::select)
+```
+
+<!--
+NOTA: A continuación, se generan los datos de genotipos (marcadores) en cada cromosoma, de acuerdo a como lo requiere el programa de simulación de Varona et al. (según la salida del programa FImpute).
+-->
+
+```{r}
+#| label: Generación de datos de genotipos
+
+# Se importa los datos con genotipos imputados en alta densidad usando Beagle v. 5.4 ----
+
+datos_vcf <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+# Se importa el archivo *.fam para obtener la ID de los individuos ----
+
+datos_fam <- read_table(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_2.fam', col_names = FALSE) %>%
+    select(X2)
+
+# Se crea una función que permitirá clasificar los habplotipos como lo requiere el programa de simulación ----
+
+cod_haplo <- function(columna) { # Esta función permite cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute (0: A1A1 | 1: heterocigoto con fase desconocida | 2: A2A2 | 3: A1A2 | 4:A2A1... el primer alelo es el paterno y el segundo es el materno).
+  columna <- case_when(
+    columna == '0|0' ~ '0',
+    columna == '0|1' ~ '3',
+    columna == '1|0' ~ '4',
+    columna == '1|1' ~ '2'
+    )
+  return(columna)
+  }
+
+#############
+# Cromosoma 1
+#############
+
+# Se obtienen los marcadores del cromosoma 1 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_1.a <- datos_vcf %>%
+  filter(`#CHROM` == 1) %>% # En total hay 38964 marcadores en el cromosoma 1.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_1.b <- Cromo_1.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_1.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+        ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes1', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 2
+#############
+
+# Se obtienen los marcadores del cromosoma 2 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_2.a <- datos_vcf %>%
+  filter(`#CHROM` == 2) %>% # En total hay 33230 marcadores en el cromosoma 2.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_2.b <- Cromo_2.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_2.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes2', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 3
+#############
+
+# Se obtienen los marcadores del cromosoma 3 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_3.a <- datos_vcf %>%
+  filter(`#CHROM` == 3) %>% # En total hay 29867 marcadores en el cromosoma 3.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_3.b <- Cromo_3.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_3.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes3', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 4
+#############
+
+# Se obtienen los marcadores del cromosoma 4 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_4.a <- datos_vcf %>%
+  filter(`#CHROM` == 4) %>% # En total hay 29843 marcadores en el cromosoma 4.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_4.b <- Cromo_4.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_4.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes4', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 5
+#############
+
+# Se obtienen los marcadores del cromosoma 5 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_5.a <- datos_vcf %>%
+  filter(`#CHROM` == 5) %>% # En total hay 29031 marcadores en el cromosoma 5.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_5.b <- Cromo_5.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_5.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes5', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 6
+#############
+
+# Se obtienen los marcadores del cromosoma 6 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_6.a <- datos_vcf %>%
+  filter(`#CHROM` == 6) %>% # En total hay 30514 marcadores en el cromosoma 6.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_6.b <- Cromo_6.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_6.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes6', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 7
+#############
+
+# Se obtienen los marcadores del cromosoma 7 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_7.a <- datos_vcf %>%
+  filter(`#CHROM` == 7) %>% # En total hay 27830 marcadores en el cromosoma 7.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_7.b <- Cromo_7.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_7.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes7', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 8
+#############
+
+# Se obtienen los marcadores del cromosoma 8 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_8.a <- datos_vcf %>%
+  filter(`#CHROM` == 8) %>% # En total hay 23734 marcadores en el cromosoma 8.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_8.b <- Cromo_8.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_8.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes8', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 9
+#############
+
+# Se obtienen los marcadores del cromosoma 9 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_9.a <- datos_vcf %>%
+  filter(`#CHROM` == 9) %>% # En total hay 26159 marcadores en el cromosoma 9.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_9.b <- Cromo_9.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_9.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes9', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 10
+##############
+
+# Se obtienen los marcadores del cromosoma 10 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_10.a <- datos_vcf %>%
+  filter(`#CHROM` == 10) %>% # En total hay 26525 marcadores en el cromosoma 10.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_10.b <- Cromo_10.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_10.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes10', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 11
+##############
+
+# Se obtienen los marcadores del cromosoma 11 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_11.a <- datos_vcf %>%
+  filter(`#CHROM` == 11) %>% # En total hay  marcadores en el cromosoma 11.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_11.b <- Cromo_11.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_11.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+        ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes11', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 12
+##############
+
+# Se obtienen los marcadores del cromosoma 12 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_12.a <- datos_vcf %>%
+  filter(`#CHROM` == 12) %>% # En total hay 21960 marcadores en el cromosoma 12.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_12.b <- Cromo_12.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_12.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes12', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 13
+##############
+
+# Se obtienen los marcadores del cromosoma 13 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_13.a <- datos_vcf %>%
+  filter(`#CHROM` == 13) %>% # En total hay  marcadores en el cromosoma 13.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_13.b <- Cromo_13.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_13.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes13', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 14
+##############
+
+# Se obtienen los marcadores del cromosoma 14 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_14.a <- datos_vcf %>%
+  filter(`#CHROM` == 14) %>% # En total hay 18554 marcadores en el cromosoma 14.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_14.b <- Cromo_14.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_14.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes14', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 15
+##############
+
+# Se obtienen los marcadores del cromosoma 15 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_15.a <- datos_vcf %>%
+  filter(`#CHROM` == 15) %>% # En total hay 21313 marcadores en el cromosoma 15.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_15.b <- Cromo_15.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_15.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes15', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 16
+##############
+
+# Se obtienen los marcadores del cromosoma 16 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_16.a <- datos_vcf %>%
+  filter(`#CHROM` == 16) %>% # En total hay 20510 marcadores en el cromosoma 16.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_16.b <- Cromo_16.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_16.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes16', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 17
+##############
+
+# Se obtienen los marcadores del cromosoma 17 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_17.a <- datos_vcf %>%
+  filter(`#CHROM` == 17) %>% # En total hay 19503 marcadores en el cromosoma 17.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_17.b <- Cromo_17.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_17.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes17', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 18
+##############
+
+# Se obtienen los marcadores del cromosoma 18 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_18.a <- datos_vcf %>%
+  filter(`#CHROM` == 18) %>% # En total hay 17194 marcadores en el cromosoma 18.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_18.b <- Cromo_18.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_18.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes18', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 19
+##############
+
+# Se obtienen los marcadores del cromosoma 19 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_19.a <- datos_vcf %>%
+  filter(`#CHROM` == 19) %>% # En total hay 16418 marcadores en el cromosoma 19.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_19.b <- Cromo_19.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_19.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes19', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 20
+##############
+
+# Se obtienen los marcadores del cromosoma 20 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_20.a <- datos_vcf %>%
+  filter(`#CHROM` == 20) %>% # En total hay 19068 marcadores en el cromosoma 20.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_20.b <- Cromo_20.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_20.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes20', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 21
+##############
+
+# Se obtienen los marcadores del cromosoma 21 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_21.a <- datos_vcf %>%
+  filter(`#CHROM` == 21) %>% # En total hay 17979 marcadores en el cromosoma 21.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_21.b <- Cromo_21.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_21.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes21', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 22
+##############
+
+# Se obtienen los marcadores del cromosoma 22 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_22.a <- datos_vcf %>%
+  filter(`#CHROM` == 22) %>% # En total hay 16290 marcadores en el cromosoma 22.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_22.b <- Cromo_22.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_22.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes22', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 23
+##############
+
+# Se obtienen los marcadores del cromosoma 23 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_23.a <- datos_vcf %>%
+  filter(`#CHROM` == 23) %>% # En total hay 13381 marcadores en el cromosoma 23.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_23.b <- Cromo_23.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_23.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes23', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 24
+##############
+
+# Se obtienen los marcadores del cromosoma 24 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_24.a <- datos_vcf %>%
+  filter(`#CHROM` == 24) %>% # En total hay 15690 marcadores en el cromosoma 24.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_24.b <- Cromo_24.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_24.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes24', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 25
+##############
+
+# Se obtienen los marcadores del cromosoma 25 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_25.a <- datos_vcf %>%
+  filter(`#CHROM` == 25) %>% # En total hay 11561 marcadores en el cromosoma 25.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_25.b <- Cromo_25.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_25.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes25', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 26
+##############
+
+# Se obtienen los marcadores del cromosoma 26 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_26.a <- datos_vcf %>%
+  filter(`#CHROM` == 26) %>% # En total hay 13699 marcadores en el cromosoma 26.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_26.b <- Cromo_26.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_26.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes26', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 27
+##############
+
+# Se obtienen los marcadores del cromosoma 27 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_27.a <- datos_vcf %>%
+  filter(`#CHROM` == 27) %>% # En total hay 11698 marcadores en el cromosoma 27.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_27.b <- Cromo_27.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_27.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes27', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 28
+##############
+
+# Se obtienen los marcadores del cromosoma 28 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_28.a <- datos_vcf %>%
+  filter(`#CHROM` == 28) %>% # En total hay 11663 marcadores en el cromosoma 28.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_28.b <- Cromo_28.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_28.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes28', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 29
+##############
+
+# Se obtienen los marcadores del cromosoma 29 y se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. ----
+
+Cromo_29.a <- datos_vcf %>%
+  filter(`#CHROM` == 29) %>% # En total hay 13075 marcadores en el cromosoma 29.
+  select(-c(1:9)) %>%
+  as.matrix() %>%
+  t() %>% # Transpongo la matriz para que los marcadores queden como columnas.
+  as_tibble()
+
+Cromo_29.b <- Cromo_29.a %>%
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+bind_cols(datos_fam, Cromo_29.b) %>%
+  mutate(Chip = 1) %>%
+  relocate(
+    Chip,
+    .after = X2
+    ) %>%
+  unite('Calls...', starts_with('V'), sep = '') %>%
+  rename(ID = X2) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes29', col_names = TRUE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación se generan los datos de mapa para cada marcador en cada cromosoma.
+-->
+
+```{r}
+#| label: Generación de datos de mapa de genotipos
+
+# Se importa los datos con genotipos imputados en alta densidad usando Beagle v. 5.4 ----
+
+datos_vcf <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+map <- function(datos, cromosoma) { # Esta función toma como entrada los datos y el número de cromosoma, y realiza las operaciones necesarias para filtrar, seleccionar y guardar los datos en un archivo correspondiente.
+  datos %>%
+    filter(`#CHROM` == cromosoma) %>%
+    dplyr::select(Chr = `#CHROM`, Pos = POS, SNP_ID = ID) %>%
+    mutate(Chip1 = row_number()) %>%
+    relocate(
+      SNP_ID,
+      .before = Chr
+      ) %>%
+    write_delim(file = paste0('Simulacion/Datos/map_chr', str_pad(cromosoma, 2, pad = '0'), '.txt'),
+                col_names = TRUE, delim = ' ')
+  }
+
+for (cromosoma in 1:29) { # Se utiliza un bucle for para procesar cada uno de los cromosomas.
+  map(datos_vcf, cromosoma)
+  }
+```
+
+<!--
+NOTA: A continuación, se renumera la ID de los individuos, padres y madres, con el fin de que queden como enteros.
+-->
+
+```{r}
+#| label: Renumeración del pedigrí
+
+# Se importa el conjunto de datos de genealogía ----
+
+Ped <- read_delim(file = 'Simulacion/Datos/datPuros/GenealoDstt_fict_todas.txt', col_names = FALSE, delim = ' ') %>%
+  rename(
+    id = X1,
+    sire = X2,
+    dam = X3
+    ) %>%
+  relocate(
+    dam,
+    .before = sire
+    ) %>% # Se cambia la posición de estas columnas, ya que así lo requiere el paquete pedantics.
+  mutate(
+    sire = replace(sire, sire == 0, NA),
+    dam = replace(dam, dam == 0, NA)
+    ) # Se cambian los valores de 0 a NA, ya que así lo requiere el paquete pedantics.
+
+# Se usa la función fixPedigree() del paquete pedantics para reordenar los datos del pedigrí ----
+
+Ped_2 <- fixPedigree(Ped) %>% # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "Ped") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas. NOTA: al parecer, tanto padres como madres aparecian también como hijos o hijas, ya que el número de filas es igual a "Ped".
+  mutate(id_renum = row_number()) %>% # Se crea una columna denominada "Animal", que corresponde a una nueva numeración de acuerdo al orden generado con la función fixPedigree().
+  dplyr::select(id, id_renum) # Se elogen estas dos columnas con el id original y el id renumerado (id_renum).
+
+# Se unen ambos conjuntos de datos (Ped y Ped_2) para obtener un conjunto de datos con individuos renumerados ----
+
+ID_Ped <- left_join(x = Ped, y = Ped_2, by = 'id') %>%
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+# Se unen distintos conjuntos de datos para obtener un conjunto de datos con padres y madres renumerados ----
+
+ID_Mad <- Ped_2 %>%
+  rename(
+    dam = id,
+    dam_renum = id_renum
+    ) %>%
+  right_join(y = ID_Ped, by = 'dam')
+
+ID_Mad %>% filter(id == '1B-10A') # Se comprueba y se observa que este individuo, al igual que en la genealogía opriginal, no tiene información de la madre renumerada.
+
+ID_Pad <- Ped_2 %>%
+  rename(
+    sire = id,
+    sire_renum = id_renum
+    ) %>%
+  right_join(y = ID_Mad, by = 'sire') %>%
+  relocate(
+    id,
+    .before = sire
+    ) %>%
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+ID_Pad %>% filter(id == 'AB-83002') # Se comprueba y se observa que este individuo, al igual que en la genealogía opriginal, tiene tanto información del padre como de la madre, y se observa también la renumeración.
+
+# Se exporta el conjunto de datos con la genealogía renumerada ----
+
+ID_Pad %>%
+  dplyr::select(id_renum, sire_renum, dam_renum) %>%
+  arrange(id_renum) %>%
+  mutate_all(~replace(., is.na(.), 0)) %>% # Se reemplazan los valores en NA a 0.
+  relocate(
+    id_renum,
+    .after = dam_renum
+    ) %>% # Se cambian l@s hij@s a la última columna, ya que el programa de simulación requiere la genealogía ordenada donde el padre y la madre queden antes que l@s hij@s.
+  write_delim(file = 'Simulacion/Datos/PedDstt.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación, se renumera la ID de los individuos que estan en los datos de producción para que queden con la misma ID entera de la genealogía.
+-->
+
+```{r}
+#| label: Renumeración de los datos productivos
+
+# Se importa el conjunto de datos de producción y se corrige la ID de los individuos genotipados ----
+
+datProd <- read_delim(file = 'Simulacion/Datos/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') 
+
+datProd %>%
+  rename(id = X6) %>%
+  left_join(y = ID_Pad, by = 'id') %>%
+  rename(
+    Pdtte = X1,
+    Edad = X2,
+    Sexo = X3,
+    Edad_madre = X4,
+    Grup_com = X5
+    ) %>%
+  dplyr::select(Edad, Sexo, Edad_madre, Grup_com, id_renum, Pdtte) %>% # El archivo de datos debe tener como orden primero los efectos fijos y después los aleatorios (animal y permanente si los tuviera). 
+  write_delim(file = 'Simulacion/Datos/ProdDstt.txt', col_names = FALSE, delim = ' ')
+
+# Se cuenta el número de niveles de cada columna ----
+
+datProd %>%
+  summarise_all(~n_distinct(.)) # Se cuenta el número de niveles de cada columnas: La columna X1 (que indica las medidas del peso al destete) tiene 418 niveles. La columna X2 (que indica la edad en que el individuo se desteto) tiene 113 niveles. La columna X3 (que indica el sexo de los individuos) tiene 2 niveles. La columna X4 (que indica la edad de la madre al nacimiento de su hij@ clasificado en categorías) tiene 6 niveles. La columna X5 (que indica los grupos de comparación) tiene 5286 niveles.
+```
+
+<!--
+NOTA:  A continuación, se renumera la ID de los individuos que estan en los datos de genotipo para que queden con la misma ID entera de la genealogía y de los datos de producción.
+-->
+
+```{r}
+#| label: Renumeración de los datos de genotipo
+
+# Se importa el conjunto de datos que indica las equivalencias entre el ID en el conjunto de datos de genotipos (genotipados a 50k) y el ID de la genealogía ----
+
+equivalencias_50k <- read_delim(file = 'Simulacion/Datos/datPuros/Conversion2917_GenealoDst.txt', col_names = FALSE, delim = ' ') %>%
+  mutate(X1 = str_replace_all(X1, '(?i)\\.cel$', '')) %>% # Se elimina la palabra ".cel" al final del ID de los individuos. Aquí, se usa mutate y str_remove de los paquetes dplyr y stringr, respectivamente. En str_remove, el argumento \\.cel$ especifica la cadena que se desea eliminar. El punto (.) se debe escapar con una barra invertida (\\) ya que es un carácter especial en expresiones regulares. El signo de dolar ($) indica que la cadena buscada debe estar al final del valor en la columna. (?i) es un modificador de expresión regular que indica que la coincidencia de patrón debe ser insensible a mayúsculas y minúsculas (ya que también hay finalización con mayúscula ".CEL").
+  rename(
+    id_gen = X1, # Esta identificación corresponde a la identificación de los individuos de acuerdo al conjunto de datos de genotipos.
+    id = X2 # Esta identificación corresponde a la identificación de los individuos de acuerdo al libro genealogico.
+    ) %>%
+  left_join(y = ID_Pad, by = 'id') %>%
+  dplyr::select(id_gen, id_renum) %>%
+  rename(ID = id_gen)
+
+equivalencias_50k %>% filter(ID == 'ES000802524910') # Se observa aquí como quedaria este individuo según su identificación renumerada (id_renum): id_renum = 28935.
+
+# Se importa el conjunto de datos que indica las equivalencias entre el ID en el conjunto de datos de genotipos (genotipados a HD) y el ID de la genealogía ----
+
+equivalencias_HD <- read_delim(file = 'Simulacion/Datos/datPuros/AnimalesHD.txt', col_names = TRUE, delim = ' ') %>%
+  rename(
+    id_gen = V2.x, # Esta identificación corresponde a la identificación de los individuos de acuerdo al conjunto de datos de genotipos.
+    id = Animal # Esta identificación corresponde a la identificación de los individuos de acuerdo al libro genealogico.
+    ) %>%
+  left_join(y = ID_Pad, by = 'id') %>%
+  dplyr::select(id_gen, id_renum) %>%
+  rename(ID = id_gen)
+
+equivalencias_HD %>% filter(ID == 'ES000802524910') # Se observa aquí como que el individuo ES000802524910 presenta la misma identificación renumerada (id_renum) que en el objeto "equivalencias_50k": id_renum = 28935.
+
+# Se unen las "equivalencia_50k" y "equivalencias_HD" ----
+
+equivalencias <- full_join(x = equivalencias_50k, y = equivalencias_HD, by = c('ID', 'id_renum'))
+
+# A continuación, se cambia la identificación de los individuos a la identificación renumerada en los datos de genotipo en cada cromosoma ----
+
+#############
+# Cromosoma 1
+#############
+
+Cromo_1 <- read_delim(file = 'Simulacion/Datos/genotypes1', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  summarize(na_n = sum(is.na(id_renum))) # Hay 31 individuos con identificación renumerada (id_renum) como NA. Esto debido a que no aparecen en la genealogía del destete, aun cuando fueron genotipados.
+
+read_delim(file = 'Simulacion/Datos/genotypes1', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>% # Se quitan los individuos con identificación renumerada (id_renum) NA.
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes1b', col_names = TRUE, delim = ' ')
+
+# NOTA: si bien con el codigo anterior pude obtener la codificación como lo requiere el programa de simulación, mediante la terminal de linux tuve que colocar para cada archivo de genotipos lo siguiente: awk 'BEGIN{OFS="\t"} {printf "%-26s%-10s%-26s\n", $1, $2, $3}' genotypes1b > genotypes1c. Esto para que la posición o espacio en el que comenzará los datos de genotipo fuera en la posición 36, ya que así lo requiere el programa de simulación.
+
+#############
+# Cromosoma 2
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes2', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes2b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 3
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes3', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes3b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 4
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes4', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes4b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 5
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes5', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes5b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 6
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes6', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes6b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 7
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes7', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes7b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 8
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes8', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes8b', col_names = TRUE, delim = ' ')
+
+#############
+# Cromosoma 9
+#############
+
+read_delim(file = 'Simulacion/Datos/genotypes9', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes9b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 10
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes10', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes10b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 11
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes11', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes11b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 12
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes12', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes12b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 13
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes13', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes13b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 14
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes14', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes14b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 15
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes15', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes15b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 16
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes16', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes16b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 17
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes17', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes17b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 18
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes18', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes18b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 19
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes19', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes19b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 20
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes20', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes20b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 21
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes21', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes21b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 22
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes22', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes22b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 23
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes23', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes23b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 24
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes24', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes24b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 25
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes25', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes25b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 26
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes26', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes26b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 27
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes27', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes27b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 28
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes28', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes28b', col_names = TRUE, delim = ' ')
+
+##############
+# Cromosoma 29
+##############
+
+read_delim(file = 'Simulacion/Datos/genotypes29', col_names = TRUE, delim = ' ') %>%
+  left_join(y = equivalencias, by = 'ID') %>%
+  relocate(
+    id_renum,
+    .after = ID
+    ) %>%
+  filter(!is.na(id_renum)) %>%
+  dplyr::select(!ID) %>%
+  rename(ID = id_renum) %>%
+  write_delim(file = 'Simulacion/Datos/genotypes29b', col_names = TRUE, delim = ' ')
+```

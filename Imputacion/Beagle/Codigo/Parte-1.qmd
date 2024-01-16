@@ -1,0 +1,71 @@
+---
+title: "Parte 1: paso de formato PLINK a formato variant call (VCF)"
+format: html
+---
+
+```{r}
+#| label: Directorio de trabajo
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+```
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se pasa de formato PLINK a formato variant call (VCF). Las opciones de PLINK que se usan significan lo siguiente:
+
++ --recode vcf: Esta opción indica que deseas convertir los datos a formato VCF (Variant Call Format). VCF es un formato ampliamente utilizado para almacenar información de variantes genéticas.
+
++ --alleleACGT: Esta opción solicita a PLINK que codifique los alelos utilizando las letras A, C, G y T en lugar del código numérico de 1, 2, 3 y 4. Esto hace que el archivo VCF resultante sea más legible.
+
++ --const-fid: Esta opción asegura que todos los individuos tengan el mismo identificador de familia (Family ID). Esto es útil para ciertos análisis genéticos que requieren un identificador de familia constante.
+-->
+
+```{r}
+#| label: Paso 4
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_8 --recode vcf --alleleACGT --out ../../Imputacion/Beagle/Datos/Paso_1 --const-fid')
+```
+
+<!--
+NOTA: Se exporta el archivo de pedigrí para usar en la imputación.
+-->
+
+```{r}
+#| label: Generación y exportación del archivo de pedigrí
+
+datPed <- read_delim(file = 'datQC/Paso_8.fam', delim = ' ', col_select = c(1:4), col_names = FALSE)
+
+write_delim(x = datPed, file = '../../Imputacion/Beagle/Datos/datPed.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Al pasar a formato VCF, las ID de los individuos se colocan junto con la ID familiar, separados por "_". Por ejemplo, ES000702712752_ES000702712752. Esto no permite especificar duos y trios al realizar la imputación con Beagle v 4.0. Por esta razón, se usa el codigo a continuación para que los ID de los individuos en el archivo de pedigrí coincidieran exactamente con los ID de los individuos en el archivo VCF. 
+-->
+
+```{r}
+#| label: Paso 5
+
+system("sed 's/_ES[0-9]\\{12\\}//g' '../../Imputacion/Beagle/Datos/Paso_1.vcf' > '../../Imputacion/Beagle/Datos/Paso_2.vcf'")
+```

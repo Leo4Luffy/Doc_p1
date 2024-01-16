@@ -1,0 +1,259 @@
+---
+title: "Parte 3: evaluación de la precisión de la imputación con datos 50k imputados - Parte 1"
+format: html
+---
+
+```{r}
+#| label: Directorio de trabajo
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+```
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se crean las distintas carpetas donde se guardaran los resultados de la imputación para los 4 grupos de validación.
+-->
+
+```{r}
+#| label: Subcarpetas de validación
+
+# 1. Se indica la ruta base de la carpeta donde deseas crear las subcarpetas:
+ruta_base <- '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/'
+
+# 2. Se utiliza un bucle for para crear las 4 carpetas:
+for (i in 1:4) {
+  # Se genera el nombre de la carpeta
+  nombre_carpeta <- paste0('Prec_', i)
+  
+  # Se crean la carpetas
+  dir.create(paste0(ruta_base, nombre_carpeta))
+  } # La función paste0() se utiliza para concatenar el nombre de la carpeta con la ruta base. El bucle for recorre los valores de 1 a 4 y en cada iteración crea una nueva carpeta utilizando la función dir.create().
+```
+
+<!--
+NOTA: Se identifica a continuación los marcadores con genotipo completo en todos los 284 individuos. Para ello, se utiliza la opción --geno para filtrar los marcadores que tienen tasas de valores faltantes igual a cero.
+-->
+
+```{r}
+#| label: Identificación de marcadores completamente genotipados
+
+# Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_17 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 511165 marcadores en 284 individuos.
+
+# Se exporta el nombre de los marcadores con genotipo completos ----
+
+nomGen <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Paso_1.bim', col_names = FALSE) # Se importa el archivo anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
+
+nomGen %>%
+  select(X2) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/nomGen.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Usando el archivo Paso_17.fam dentro de la carpeta Imp_HD/Datos/datQC, se generan distintos archivos con el nombre de los individuos en cada uno de los 4 grupos de validación.
+-->
+
+```{r}
+#| label: Grupos de validación
+
+nomInd <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC/Paso_17.fam', col_names = FALSE)
+
+nomInd_2 <- nomInd %>%
+  select(X1:X2) %>% # Se dejan las comunas con ID familiar y del individuo.
+  unite(
+    col = IID,
+    X1:X2,
+    sep = '_'
+    ) # Se creo la columna IID uniendo ambas identificaciones (familiar e individuo), para que coincida con la identificación de los individuos en común en el archivo VCF que se imputará con Beagle v 5.4.
+
+# Se generan los 4 grupos de validación----
+
+set.seed(123)  # Para garantizar la reproducibilidad de los resultados.
+
+Grupos <- rep(x = 1:4, each = 71)  # Se crea un vector con los valores de 1 a 4 repetidos 71 veces.
+
+nomInd_2 <- nomInd_2 %>%
+  mutate(Grupos = sample(Grupos))  # Se asigna de forma aleatoria los grupos a la columna Grupos.
+
+table(nomInd_2$Grupos) # Se verifica la repetición de los identificadores de grupo.
+
+####################
+# Grupo validación 1
+####################
+
+nomInd_2 %>%
+  filter(Grupos == 1) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 2
+####################
+
+nomInd_2 %>%
+  filter(Grupos == 2) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 3
+####################
+
+nomInd_2 %>%
+  filter(Grupos == 3) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 4
+####################
+
+nomInd_2 %>%
+  filter(Grupos == 4) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Se modifica el archivo VCF que se uso inicialmente en la imputación (imp_HD_50k.vcf), para enmascarar los genotipos de los marcadores para cada uno de los grupos de validación, y luego se exportan en cada una de las subcarpetas.
+-->
+
+```{r}
+#| label: Genotipos enmascarados
+
+# Se indica la ruta del archivo vcf y del archivo donde estan los nombres de los marcadores ----
+
+vcf_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/imp_HD_50k.vcf"
+marcadores_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/nomGen.txt"
+
+# Se lee el archivo VCF ----
+
+vcf_data <- data.table::fread(vcf_file, sep = "\t", skip = "#CHROM", header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+#######################################
+# Precisión en el grupo de validación 1
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del primer grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_1/Grup1.txt"
+output_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_1/Grup1.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_1 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+vcf_data_1 %>% 
+  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
+  select(ESLE2012GB_ESLE2012GB, ES050807674818_ES050807674818, ES080806555393_ES080806555393, ES080808089043_ES080808089043) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_1, output_file, sep = "\t", quote = FALSE) # Se mira el numero de filas y de columnas mediante la terminal de linux: awk '{print NR}' Grup1.vcf | tail -n 1 && awk '{print NF; exit}' Grup1.vcf.
+
+#######################################
+# Precisión en el grupo de validación 2
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del segundo grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_2/Grup2.txt"
+output_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_2/Grup2.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_2 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_2, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 3
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del tercer grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_3/Grup3.txt"
+output_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_3/Grup3.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_3 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_3, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 4
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del cuarto grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_4/Grup4.txt"
+output_file <- "../../Imputacion/Imp_HD/Datos/Beagle/Precision_imputados/Prec_4/Grup4.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_4 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_4, output_file, sep = "\t", quote = FALSE)
+```

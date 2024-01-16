@@ -1,0 +1,36 @@
+project:
+    type: book
+    output-dir: docs
+
+book:
+    page-footer:
+        right: |
+            Este tutorial fue hecho con <a href="https://quarto.org/">Quarto</a>.
+    title: "GlobalR_WEL"
+    subtitle: "Estudio de simulación"
+    author:
+        - name: Jorge Leonardo López Martínez
+          orcid: 0000-0002-6973-2088
+        - name: María Jesús Carabaño Luengo
+          orcid: 0000-0002-3087-9170
+        - name: Cristina Meneses González
+          orcid: 0000-0001-5054-5365
+        - name: Clara Díaz Martín
+          orcid: 0000-0002-3087-9170
+    chapters:
+        - index.qmd
+        - plink.qmd
+        - seekparentf90.qmd
+        - imputacion.qmd
+
+format:
+  html:
+    theme: darkish.scss
+    css: bloques.css
+    highlight-style: "gruvbox"
+    mainfont: "math"
+    code-overflow: wrap
+    code-copy: true
+    toc: true
+
+lang: es

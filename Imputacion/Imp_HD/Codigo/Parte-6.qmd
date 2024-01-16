@@ -1,0 +1,302 @@
+---
+title: "Parte 6: Generación de archivos necesarios para la imputación a alta densidad mediante Beagle v 5.4, usando información de 50k sin imputar"
+format: html
+---
+
+```{r}
+#| label: Directorio de trabajo
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+```
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se crea un subconjunto de datos de PLINK donde el genotipado de densidad media (50k) sin imputar contenga los marcadores compartidos con los datos de alta densidad. Para ello, y a diferencia de lo hecho con los datos de 50k imputados, se usan los datos de media densidad anterior a la imputación. Los pasos son iguales a lo hecho anteriormente con los datos de 50k imputados y que puede encontrarse en el archivo Parte-1.qmd.
+-->
+
+```{r}
+#| label: Subconjunto de datos PLINK con marcadores compartidos en el genotipado de media densidad sin imputar
+
+plink('--cow --allow-extra-chr --vcf ../../Imputacion/Beagle/Datos/Paso_1.vcf --make-bed --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_1') # Usando PLINK, se pasan el archivo VCF a datos PLINK binarios (.bed, .fam y .bim).
+
+system2('plink2', args = paste0('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_1 --alt1-allele force ../../Imputacion/Beagle/Datos/Precision/Prec_1/aleloALT.txt --make-bed --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_2')) # Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo. Se utiliza plink2 ya que este tiene la opción --alt1-allele force.
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_2 --extract ../../Imputacion/Imp_HD/Datos/datQC/marc_comun.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_3')
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_3 -update-parents ../../Imputacion/Datos/ID_ind.txt --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4') # Se actualiza la información parental.
+```
+
+<!--
+NOTA: A continuación, se genera un archivo nomb_marc_comun.txt con el nombre de marcadores en común con ID antiguo y ID nuevo (este último corresponde al ID del marcador de los datos de media densidad). Esto para que los nombres de los marcadores en común de los datos de media y alta densidad queden igual.
+-->
+
+```{r}
+
+#| label: Nombre de marcadores coincidentes
+
+# Se crea una lista para almacenar los resultados de cada cromosoma:
+bim50k_list <- list()
+
+# Se recorre los cromosomas del 1 al 29:
+for (cromosoma in 1:29) {
+
+  # Se lee el archivo Paso_5.bim (que contiene el nombre y la posición de los marcadores de HD) y se filtra por cromosoma y marcadores en común
+  bimHD <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC/Paso_5.bim', col_names = FALSE) %>%
+    filter(X1 == cromosoma) %>%
+    select(X2, X4)
+
+  # Se lee el archivo Paso_8.bim (que contiene el nombre y la posición de los marcadores de 50k) y se filtra por cromosoma
+  bim50k <- read_table(file = 'datQC/Paso_8.bim', col_names = FALSE) %>%
+    filter(X1 == cromosoma) %>%
+    inner_join(y = bimHD, by = 'X4') %>%
+    rename(
+      nomb_Mar_50k = X2.x,
+      nomb_Mar_HD = X2.y
+      ) %>%
+    select(nomb_Mar_50k, nomb_Mar_HD)
+
+  # Se agrega el resultado a la lista
+  bim50k_list[[cromosoma]] <- bim50k
+  }
+
+# Se combinan los resultados en un único dataframe:
+bim50k <- bind_rows(bim50k_list) %>%
+  distinct(nomb_Mar_50k, .keep_all = TRUE) %>%
+  relocate(
+    nomb_Mar_50k,
+    .after = nomb_Mar_HD
+    ) # El archivo de texto que contiene las actualizaciones que desea realizar, debe tener el siguiente formato: nombre_antiguo | nombre_nuevo. 
+
+bim50k %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: Se actualizan los nombres de los marcadores en común entre los datos de media y alta densidad, solo que esta actualización se realiza solo en los datos de alta densidad. 
+-->
+
+```{r}
+#| label: Actualización de nombres de marcadores en común
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_5 --update-name ../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5')
+```
+
+<!--
+NOTA: A continuación, se verifica si hay marcadores duplicados por posición, y si es así, se elimina uno de ellos.
+-->
+
+```{r}
+#| label: Marcadores duplicados por posición
+
+snpDupPos <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5.map', col_names = FALSE)
+
+snpDupPos_2 <- snpDupPos %>%
+  unite(
+    col = 'Posicion',
+    c(X1, X4) # Aquí se unen estas dos columnas para observar los marcadores duplicados por posición (siendo la columna "X1" el cromosoma y la columna "X4" la posición en pares de bases).
+        ) %>%
+  group_by(Posicion) %>%
+  filter(n() > 1) %>%
+  ungroup() # Estos son una lista de marcadores duplicados por posición.
+
+tibble(
+  x = c(
+      'BovineHD4100000460', 'Hapmap35832-SCAFFOLD197372_885',
+      'BovineHD0200005511', 'Hapmap36382-SCAFFOLD210095_19074',
+      'Hapmap38688-BTA-66886', 'Hapmap52375-rs29010802',
+      'Hapmap58054-rs29014143', 'BovineHD0300027808',
+      'Hapmap38870-BTA-01737', 'Hapmap33892-BES6_Contig314_677',
+      'BovineHD0400001282', 'BovineHD4100003297',
+      'BovineHD0500012484', 'BovineHD0500027138',
+      'BovineHD0600018552', 'BovineHD0600026533',
+      'Hapmap44619-BTA-77481', 'Hapmap36218-SCAFFOLD41765_2717',
+      'BovineHD0700008019', 'UA-IFASA-2827',
+      'Hapmap58644-rs29010529', 'Hapmap36391-SCAFFOLD165033_11046',
+      'BovineHD0900001947', 'UA-IFASA-1922',
+      'BovineHD0900028014', 'UA-IFASA-2515',
+      'BovineHD4100008372', 'BovineHD1200014448',
+      'BovineHD4100009634', 'BovineHD4100009638',
+      'Hapmap36566-SCAFFOLD135238_3808', 'Hapmap36096-SCAFFOLD140080_30362',
+      'UA-IFASA-6750', 'Hapmap35881-SCAFFOLD20653_10639',
+      'Hapmap35077-BES9_Contig405_919', 'BovineHD1500008077',
+      'Hapmap34596-BES7_Contig444_1293', 'UA-IFASA-5162',
+      'BovineHD1600014498', 'Hapmap24163-BTA-160726',
+      'Hapmap57363-rs29014953', 'Hapmap34041-BES1_Contig298_838',
+      'Hapmap35417-SCAFFOLD255533_15525', 'Hapmap55319-rs29013532',
+      'BovineHD2400007677', 'Hapmap53362-rs29013727',
+      'Hapmap35000-BES9_Contig272_944', 'BovineHD2700010332',
+      'Hapmap36071-SCAFFOLD106623_11509', 'Hapmap36794-SCAFFOLD186736_5402',
+      'Hapmap36059-SCAFFOLD50303_4748'
+      ) # Se crea una lista con el nombre de los marcadores duplicados por posición para ser eliminado. Los dos últimos marcadores corresponden a marcadores trialélicos.
+    ) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/snpDup.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5 --list-duplicate-vars --out ../../Imputacion/Imp_HD/Datos/datQC_2/dup_HD') # Con PLINK también se pueden identificar los marcadores duplicados.
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5 --exclude ../../Imputacion/Imp_HD/Datos/datQC_2/snpDup.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_6') # Se quitan los marcadores duplicados por posición.
+```
+
+<!--
+NOTA: Se actualiza a continuación la ID de la familia, obteniendose con esto los datos de alta densidad deseados para la unión con los datos de densidad media.
+-->
+
+```{r}
+#| label: ID de la familia actualizado y generación de datos de alta densidad deseados
+
+datFam <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_6.fam', col_names = FALSE)
+
+datFam %>%
+  select(X2) %>%
+  mutate(
+    X1 = 0,
+    X3 = X2,
+    X4 = X2
+    ) %>% # El archivo para actualizar la ID de la familia de tener las columnas de ID familiar antiguo, ID del individuo antiguo, nueva identificación familiar y nueva identificación del individuo.
+  relocate(
+    X1,
+    .before = X2
+    ) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/ID_fam.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_6 --update-ids ../../Imputacion/Imp_HD/Datos/datQC_2/ID_fam.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_7') # Se actualiza la ID de la familia.
+```
+
+<!--
+NOTA: Más adelante se unirán los datos de genotipado de media y alta densidad, y con el conjunto de datos resultante de dicha unón se realizará la imputación a alta densidad. Al comparar los archivo *.bim (Paso_4.bim y Paso_7.bim, para el genotipado de media y alta densidad, respectivamente) se observa en las columnas 5 y 6 un cambio de orientación de alelos (por ejemplo, el marcador Affx-106521083 presenta en Paso_4.bim los alelos C-T, mientras que en Paso_7.bim los alelos G-A). Esto significa que los mismos alelos están siendo representados de manera diferente en los dos conjuntos de datos, lo que puede llevar a errores durante el proceso de unión. Por ello, a continuación se identifica que marcadores presentan este problema, y luego mediante el uso de la opción --flip de PLINK se corrige la orientación de los alelos en los datos de alta densidad antes de fusionarlos con el de media densidad. Esto asegurará que los alelos sean representados de la misma manera en ambos conjuntos de datos y evitará problemas de unión debido a diferencias en la orientación de los alelos.
+-->
+
+```{r}
+#| label: Identificación de marcadores con orientación de alelos diferentes y flipeado
+
+datbim_50k <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4.bim', col_names = FALSE) %>%
+  select(2, 4:6) %>%
+  unite(
+    col = 'Orientacion_50k',
+    X5:X6,
+    sep = '_'
+    )
+
+datbim_HD <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_7.bim', col_names = FALSE) %>%
+  select(2, 4:6) %>%
+  unite(
+    col = 'Orientacion_HD',
+    X5:X6,
+    sep = '_'
+    )
+
+datbim <- inner_join(
+  x = datbim_HD,
+  y = datbim_50k,
+  by = c('X2', 'X4')
+    ) %>%
+  mutate(
+  Orientacion = case_when(
+    (Orientacion_HD == 'G_A' & Orientacion_50k == 'C_T') |
+    (Orientacion_HD == 'A_G' & Orientacion_50k == 'C_T') |
+    (Orientacion_HD == 'C_T' & Orientacion_50k == 'G_A') |
+    (Orientacion_HD == 'T_C' & Orientacion_50k == 'G_A') |
+    (Orientacion_HD == 'C_T' & Orientacion_50k == 'A_G') |
+    (Orientacion_HD == 'T_C' & Orientacion_50k == 'A_G') |
+    (Orientacion_HD == 'A_G' & Orientacion_50k == 'T_C') |
+    (Orientacion_HD == 'G_A' & Orientacion_50k == 'T_C') |
+    (Orientacion_HD == 'A_C' & Orientacion_50k == 'T_G') |
+    (Orientacion_HD == 'A_C' & Orientacion_50k == 'G_T') |
+    (Orientacion_HD == 'A_C' & Orientacion_50k == 'T_C') |
+    (Orientacion_HD == 'A_C' & Orientacion_50k == 'C_T') |
+    (Orientacion_HD == 'C_A' & Orientacion_50k == 'T_G') |
+    (Orientacion_HD == 'C_A' & Orientacion_50k == 'G_T') |
+    (Orientacion_HD == 'C_A' & Orientacion_50k == 'T_C') |
+    (Orientacion_HD == 'C_A' & Orientacion_50k == 'C_T') |
+    (Orientacion_HD == 'T_G' & Orientacion_50k == 'T_C') |
+    (Orientacion_HD == 'G_A' & Orientacion_50k == 'C_A') ~ 'Diferente',
+    TRUE ~ 'Igual'
+    )
+  ) %>%
+  filter(Orientacion != 'Igual') # Se dejan solo los marcadores cuya orientación sea diferente.
+  
+datbim %>%
+  select(X2) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/flip_HD.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_7 --flip ../../Imputacion/Imp_HD/Datos/datQC_2/flip_HD.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_8')
+```
+
+<!--
+NOTA: A continuación, se unen los datos de media y alta densidad, siendo este último el flipeado.
+-->
+
+```{r}
+#| label: Unión de datos de media y alta densidad 1
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4 --bmerge ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_8.bed ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_8.bim ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_8.fam --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_9 --list-duplicate-vars') # En caso de que se genere un problema debido a marcadores multialelicos, en el archivo *.missnp (en este caso, Paso_9.missnp) se genera una lista de esos marcadores. La opción --list-duplicate-vars permite identificar variantes que tienen una orientación diferente en los dos conjuntos de datos que se estan intentando unir. Esta opción generará un archivo de salida que mostrará las variantes que tienen alelos diferentes entre los dos conjuntos de datos.
+```
+
+<!--
+NOTA: A continuación se eliminan los dos marcadores restantes luego de la identificación de alelos con orientación diferente y flipeado. Esto dos marcadores, a diferencia del resto, no tienen problemas de orientación de alelos, sino que se tratan de dos marcadores trialélicos (repesentados en el archivo Paso_16.missnp). Luego, se intenta unir nuevamente ambos conjuntos de datos de media y alta densidad.
+-->
+
+```{r}
+#| label: Unión de datos de media y alta densidad 2
+
+tibble(
+  x = c(
+    'Affx-106543991', 'Affx-478777195'
+    ) # Se crea una lista con el nombre de los dos marcadores trialélicos.
+  ) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/snpMult.txt', col_names = FALSE)
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_8 --exclude ../../Imputacion/Imp_HD/Datos/datQC_2/snpMult.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10') # Se quitan los marcadores trialélicos.
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4 --bmerge ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.bed ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.bim ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.fam --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_11 --list-duplicate-vars')
+```
+
+<!--
+NOTA: Se dejan solo los 284 individuos de los datos de alta densidad a continuación.
+-->
+
+```{r}
+#| label: Datos de densidades combinadas
+
+ID_HD <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC/Paso_10.fam', col_names = FALSE) %>%
+  select(X2) %>%
+  mutate(ID_fam = X2) %>% # Este corresponderia al ID familiar, que en el caso de los datos de alta densidad es igual a 0 para todos los individuos.
+  relocate(
+    ID_fam,
+    .before = X2
+    ) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/ID_HD.txt', col_names = FALSE, delim = '\t')
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_11 --keep ../../Imputacion/Imp_HD/Datos/datQC_2/ID_HD.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12')
+```
+
+<!--
+NOTA: Una vez se unen los datos de media y alta densidad se convierte los datos en formato PLINK a formato VCF, y se guarda en la carpeta Imp_HD/Datos/Beagle con el nombre de "imp_HD_50k".
+-->
+
+```{r}
+#| label: Paso a formato VCF
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12 --recode vcf --alleleACGT --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k --const-fid')
+```

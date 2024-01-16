@@ -1,0 +1,676 @@
+---
+title: "Parte 17: cálculo de IQS para evaluar la precisión de la imputación"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: A continuación, se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores y grupos de validación, y posteriormente se cálcula la puntuación de calidad de la imputación (IQS).
+-->
+
+```{r}
+#| label: Tabla de clasificación cruzada marginal para el cálculo de IQS y cálculo de IQS
+
+#######################
+# Grupo 1 de validación
+#######################
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+Prec_imput_1.1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_1.1.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_1.1 <- Prec_imput_1.1 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1.1 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_') # Se crea una nueva columna llamada "Combinacion", que contiene la concatenación de las columnas "Genotipos imputados" y "Genotipos reales" separadas por un guion bajo "_". Esto permitirá obtener una etiqueta única para cada combinación de genotipos.
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>% # Se cuenta el número de indiviudos segun la combinación de "Genotipos imputados" y "Genotipos reales". Para verificar que este bien, en total, para cada marcador, debe dar una suma de 362 individuos.
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_1.1 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS),
+        Desvio = sd(IQS)
+        ) # El resultado fue igual a 0.262 ± 0.0820.
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+Prec_imput_2.1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_2.1.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_2.1 <- Prec_imput_2.1 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2.1 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_2.1 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+        ) # El resultado fue igual a 0.778 ± 0.162.
+
+########################
+# c. Imputación conjunta
+########################
+
+Prec_imput_3.1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_3.1.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_3.1 <- Prec_imput_3.1 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3.1 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_3.1 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+        ) # El resultado fue igual a 0.815 ± 0.148.
+
+#######################
+# Grupo 2 de validación
+#######################
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+Prec_imput_1.2 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_1.2.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_1.2 <- Prec_imput_1.2 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1.2 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_1.2 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS),
+        Desvio = sd(IQS)
+        ) # El resultado fue igual a 0.281 ± 0.0753.
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+Prec_imput_2.2 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_2.2.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_2.2 <- Prec_imput_2.2 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2.2 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_2.2 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+        ) # El resultado fue igual a 0.781 ± 0.161.
+
+########################
+# c. Imputación conjunta
+########################
+
+Prec_imput_3.2 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_3.2.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_3.2 <- Prec_imput_3.2 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3.2 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_3.2 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+        ) # El resultado fue igual a 0.806 ± 0.152.
+
+#######################
+# Grupo 3 de validación
+#######################
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+Prec_imput_1.3 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_1.3.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_1.3 <- Prec_imput_1.3 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1.3 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_1.3 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS),
+        Desvio = sd(IQS)
+        ) # El resultado fue igual a 0.260 ± 0.0854.
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+Prec_imput_2.3 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_2.3.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_2.3 <- Prec_imput_2.3 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2.3 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_2.3 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.779 ± 0.160.
+
+########################
+# c. Imputación conjunta
+########################
+
+Prec_imput_3.3 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_3.3.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_3.3 <- Prec_imput_3.3 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3.3 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_3.3 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.817 ± 0.145.
+
+#######################
+# Grupo 4 de validación
+#######################
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+Prec_imput_1.4 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_1.4.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_1.4 <- Prec_imput_1.4 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1.4 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_1.4 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS),
+        Desvio = sd(IQS)
+        ) # El resultado fue igual a 0.262 ± 0.0847.
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+Prec_imput_2.4 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_2.4.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_2.4 <- Prec_imput_2.4 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2.4 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_2.4 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.781 ± 0.161.
+
+########################
+# c. Imputación conjunta
+########################
+
+Prec_imput_3.4 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_3.4.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_3.4 <- Prec_imput_3.4 %>%
+    mutate(
+        `Genotipos reales` = case_when(
+            `Genotipos reales` == 0 ~ 'AA',
+            `Genotipos reales` == 1 ~ 'AB',
+            `Genotipos reales` == 2 ~ 'BB'
+            ),
+        `Genotipos imputados` = case_when(
+            `Genotipos imputados` == 0 ~ 'AA',
+            `Genotipos imputados` == 1 ~ 'AB',
+            `Genotipos imputados` == 2 ~ 'BB'
+            )
+        )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3.4 %>%
+    unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+    summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+    arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_0 = sum(Cantidad) / 71, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+    filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+    summarise(P_c = sum(Cantidad * Cantidad) / 71^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+    summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+# Se obtienen la media y el desvió estándar de IQS ----
+
+IQS_imput_3.4 <- IQS %>%
+    summarise(
+        Promedio = mean(IQS, na.rm = TRUE),
+        Desvio = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.810 ± 0.150.
+```
+
+<!--
+NOTA: A continuación, se obtine la media y el desvió estándar de IQS de acuerdo al tipo de imputación (basado en el pedigrí, basado en la población o imputación conjunta), para cada grupo de validación.
+-->
+
+```{r}
+#| label: IQS de acuerdo al tipo de imputación
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+IQS_ped <- ls(pattern = '^IQS_imput_1\\.') # Se busca todos los objetos cuyos nombres empiecen con "IQS_imput_1." (la expresión regular "^IQS_imput_1\\." asegura que solo coincida con nombres que comiencen con "IQS_imput_1.").
+
+IQS_ped <- mget(IQS_ped) # Con mget() se obtienen los objetos anteriores en una lista.
+
+IQS_ped <- bind_rows(IQS_ped) # Usando bind_rows(), se combinan todos los objetos en la lista en un único objeto llamado "IQS_ped".
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+IQS_pob <- ls(pattern = '^IQS_imput_2\\.')
+
+IQS_pob <- mget(IQS_pob)
+
+IQS_pob <- bind_rows(IQS_pob)
+
+########################
+# c. Imputación conjunta
+########################
+
+IQS_con <- ls(pattern = '^IQS_imput_3\\.')
+
+IQS_con <- mget(IQS_con)
+
+IQS_con <- bind_rows(IQS_con)
+```

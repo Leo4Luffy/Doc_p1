@@ -1,0 +1,92 @@
+---
+title: "Parte 1: generación de archivos de genotipos y de pedigrí necesarios para usar AlphaImpute2"
+format: html
+---
+
+<!--
+ NOTA IMPORTANTE: en el articulo del dr Enrico (Genomic Prediction in Local Breeds: The Rendena Cattle as a Case Study - https://pubmed.ncbi.nlm.nih.gov/34207091/) mencionan que "para evitar una demanda computacional excesiva, se imputo un cromosoma cada vez mediante AlphaImpute2". Por lo tanto, es posible hacer esto en futuros análisis en caso de que no se tenga suficiente capacidad computacional. Esto se podria hacer mediante el paquete del R Siccuracy, en el sentido de que con este paquete es posible pasar de formato PLINK binario a archivo con formato SNP, indicando extraer los SNPs de cada cromosoma.
+-->
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(Siccuracy, tidyverse)
+```
+
+<!--
+NOTA: el conjunto de datos (Paso_1.bed, .bim y .fam en la ruta Imputacion/AlphaImpute2/Datos) comprende 2896 individuos (entre machos, hembras y sexo ambiguo). En total, hay 43798 variantes (o SNPs) almacenados en el conjunto de datos de PLINK binario (Paso_1.bed).
+
+A continuación, se usa el paquete Siccuracy para obtener un archivo con formato SNP y con extensión .txt.
+-->
+
+```{r}
+#| label: Generación de archivos de genotipos
+
+datGen <- convert_plink('Imputacion/AlphaImpute2/Datos/Paso_1', outfn = 'Imputacion/AlphaImpute2/Datos/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Por eficiencia, con el argumento method = 'lowmem' se podria dividir el archivo de entrada en fragmentos más pequeños (por ejemplo, por cromosomas), evitando así cargar todo el archivo en memoria a la vez, y luego se puede indicar extraer los SNPs de un determinado cromosoma (en "extract_chr"). Por ejemplo, con method = 'lowmem' y extract_chr = '2', se indica extraer los SNPs del cromosoma 2. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
+
+sum(datGen$extract) # En total, se extrajeron los 43798 SNPs en todos los cromosomas.
+
+head(datGen$newID) # En el archivo creado se indica el ID de la familia, el ID del individuo y también se asigna una nueva ID del individuo (newID).
+```
+
+<!--
+NOTA: Se exporta el archivo de pedigrí para usar en la imputación.
+-->
+
+```{r}
+#| label: Generación y exportación del archivo de pedigrí
+
+datPed <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Paso_1.fam', delim = ' ', col_select = c(2:4), col_names = FALSE)
+
+write_delim(x = datPed, file = 'Imputacion/AlphaImpute2/Datos/datPed.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Se importa el archivo de genotipos anteriormente generado y se edita para usar en la imputación.
+-->
+
+```{r}
+#| label: Generación de archivos de genotipos 2
+
+datGen_2 <- read_table(file = 'Imputacion/AlphaImpute2/Datos/datGen.txt', col_names = FALSE)
+
+datPed %>%
+    select(X2) %>%
+    rename(ID = X2) %>%
+    bind_cols(datGen_2) %>%
+    select(-X1) %>% # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
+    write_delim(file = 'Imputacion/AlphaImpute2/Datos/datGen.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación, se presenta como usando PLINK y los comandos de la terminal de linux, se puede convertir tambien un archivo PLINK binario a un archivo con formato SNP.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+```{r}
+#| label: Generación de archivos de genotipos con PLINK y comandos de la terminal de linux
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/AlphaImpute2/Datos/Paso_1  --recode A --out ../../Imputacion/AlphaImpute2/Datos/Paso_2')
+
+system("cut  -d ' ' -f 2 '../../Imputacion/AlphaImpute2/Datos/Paso_2.raw' > '../../Imputacion/AlphaImpute2/Datos/snp1'") # Aquí se extrae la segunda columna que indica el ID del individuo.
+
+system("cut  -d ' ' -f 7- '../../Imputacion/AlphaImpute2/Datos/Paso_2.raw' > '../../Imputacion/AlphaImpute2/Datos/snp2'") # Aquí se extraen las columnas 7 en adelante, que son las columnas con información de genotipos.
+
+system("paste -d ' ' '../../Imputacion/AlphaImpute2/Datos/snp1' '../../Imputacion/AlphaImpute2/Datos/snp2' | sed -e '1d' > '../../Imputacion/AlphaImpute2/Datos/snp3'") # Se utiliza el comando paste para combinar el contenido de los dos archivos anteriores ("snp1" y "snp2"), y se, separados por un espacio, y luego utiliza sed para eliminar la primera línea del resultado.
+
+system("sed -i 's/NA/9/g' '../../Imputacion/AlphaImpute2/Datos/snp3'") # Aquí se utiliza sed para reemplazar todas las ocurrencias de "NA" en el archivo "snp3" por "9".
+
+system("awk '{print NF}' '../../Imputacion/AlphaImpute2/Datos/snp3' | tail -n 1") # Aquí se cuentan el número de columnas, siendo este igual a 43799 (la primera que corresponde al ID del individuo y las 43798 columnas restantes que corresponden a los genotipos.)
+```

@@ -1,0 +1,218 @@
+---
+title: "Parte 1: Generación de archivos de caracteres y de pedigrí"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se importan los conjuntos de datos para todos los caracteres a considerar.
+-->
+
+```{r}
+#| label: Importación de conjuntos de datos
+
+# Se importa los datos de los caracteres peso y crecimiento a los 365 día de edad ----
+
+dat_pc305 <- read_delim(file = 'eva_genomica/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
+  rename(
+    P365 = X1,
+    C365 = X2,
+    Peso_ent = X3,
+    Dia_cebo = X4,
+    Edad_pc305 = X5,
+    GC_pc305 = X6,
+    ID = X7
+    ) # En este conjunto de datos, la primera columna representa el peso a los 305 días, la segunda columna al crecimiento a los 305 días, la tercera columna al peso de entrada, la cuarta columna a los días de cebo, la quinta columna al grupo de edad, la sexta columna al grupo de comparación y la sexta columna corresponde a la ID del animal.
+
+dat_pc305 %>%
+  summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
+
+# Se importa los datos del caracter peso al destete ----
+
+dat_pdtte <- read_delim(file = 'eva_genomica/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
+  rename(
+    Pdtte = X1,
+    Edad_pdtte = X2,
+    Sexo_pdtte = X3,
+    Edad_madre_pdtte = X4,
+    GC_pdtte = X5,
+    ID = X6
+    ) # En este conjunto de datos, la primera columna representa al peso al destete, la segunda columna a la edad al destete, la tercera columna el sexo del individuo, la cuarta a la edad de la madre, la quinta al grupo de comparación y la sexta corresponde a la ID del animal.
+
+dat_pdtte %>%
+  summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
+
+# Se importa los datos de los caracteres peso y rendimiento a la canal ----
+
+dat_prc <- read_delim(file = 'eva_genomica/datPuros/DatosPesoRendimiento_valora_PurosSep23.txt', col_names = FALSE, delim = ' ') |>
+  rename(
+    PC = X1,
+    RC = X2,
+    Sexo_prc = X3,
+    Edad_prc = X4,
+    GC_PC = X5,
+    GC_RC = X6,
+    ID = X7
+    ) # En este conjunto de datos, la primera columna representa al peso a la canal, la segunda columna al rendimiento a la canal, la tercera columna el sexo del individuo, la cuarta columna a la edad en la canal, la quinta columna el grupo de comparación para el peso a la canal, la sexta columna el grupo contemporaneo para el rendimiento a la canal y la séptima columna corresponde a la ID del animal.
+
+dat_prc %>%
+  summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
+
+# Se importa los datos de los caracteres edad al primer parto e intervalo entre partos ----
+
+dat_EPP_IEP <- read_delim(file = 'eva_genomica/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
+  rename(
+    EPP = X1,
+    IEP = X2, # Este es el IEP o IPP (intervalo primer parto)
+    Sexo_EPP = X3,
+    Edad_toro_EPP = X4,
+    GC_EPP = X5,
+    ID_toro_EPP = X6, # ¿Esta es la ID del padre?
+    Sexo_IEP = X7, # Este sexo es distinto a Sexo_EPP, ¿porque?
+    EPP_IEP = X8, # ¿Aquí la edad al primer parto se trataria como un efecto para el IEP?
+    Edad_toro_IEP = X9,
+    Raza_toro = X10,
+    GC_IEP = X11,
+    ID_toro_IEP = X12, # ¿Esta es la ID del padre?
+    ID = X13 # ¿Este sería el ID del individuo?
+    ) # En este conjunto de datos, la primera columna representa la edad al primer parto, la segunda al intervalo entre parto, la tercera al sexo para la edad al primer parto, la cuarta la edad del toro para la edad al primer parto, la quinta al grupo contemporaneo para la edad al primer parto, la sexta la ID del padre, la séptima al sexo para el intervalo entre parto, la octava a la edad al primer parto para el intervalo entre parto, la novena a la edad del toro para el intervalo entre parto, la decima a la raza del toro, la onceava al grupo comtemporaneo para el intervalo entre parto, la doceava a la ID del padre y la treceava a la ID del animal.
+
+# Se importa los datos donde se extraera la genealogía (pedigrí) ----
+
+datPed <- read_delim(file = 'eva_genomica/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
+  rename(
+    id = Animal,
+    sire = Padre,
+    dam = Madre,
+    Sexo = sexo
+    ) |>
+  relocate(
+    sire,
+    .after = dam
+    )
+```
+
+<!--
+NOTA: A continuación, usando el objeto anterior "datPed", se renumera la ID de los individuos, padres y madres, con el fin de que queden como enteros.
+-->
+
+```{r}
+#| label: Renumeración del pedigrí
+
+# Se importa el conjunto de datos de genealogía ----
+
+datPed_2 <- datPed |>
+  dplyr::select('id':'sire') |>
+  mutate(
+    sire = replace(sire, sire == 0, NA),
+    dam = replace(dam, dam == 0, NA)
+    ) # Se cambian los valores de 0 a NA, ya que así lo requiere el paquete pedantics.
+
+# Se usa la función fixPedigree() del paquete pedantics para reordenar los datos del pedigrí ----
+
+datPed_3 <- pedantics::fixPedigree(datPed_2) |> # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "datPed_2") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas.
+  mutate(id_renum = row_number()) |> # Se crea una columna denominada "Animal", que corresponde a una nueva numeración de acuerdo al orden generado con la función fixPedigree().
+  dplyr::select(id, id_renum) # Se elogen estas dos columnas con el id original y el id renumerado (id_renum).
+
+# Se unen ambos conjuntos de datos (datPed_2 y datPed_3) para obtener un conjunto de datos con individuos renumerados ----
+
+ID_Ped <- left_join(x = datPed_2, y = datPed_3, by = 'id') |>
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+# Se unen distintos conjuntos de datos para obtener un conjunto de datos con padres y madres renumerados ----
+
+ID_Mad <- datPed_3 |>
+  rename(
+    dam = id,
+    dam_renum = id_renum
+    ) |>
+  right_join(y = ID_Ped, by = 'dam')
+
+ID_Pad <- datPed_3 |>
+  rename(
+    sire = id,
+    sire_renum = id_renum
+    ) |>
+  right_join(y = ID_Mad, by = 'sire') |>
+  relocate(
+    id,
+    .before = sire
+    ) |>
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+# Se seleccionan las columnas que corresponden a la ID del individuos, del madre y del padre ----
+
+datPed_4 <- ID_Pad |>
+  dplyr::select(id_renum, dam_renum, sire_renum) # Este conjunto de datos se usara más adelante para "prunear" o podar y generar un pedigrí basado en individuos con fenotipos.
+```
+
+<!--
+NOTA: Se unen los conjuntos de datos de caracteres anteriormente importados.
+-->
+
+```{r}
+#| label: Unión de conjuntos de datos
+
+# Se unen los conjuntos de de todos los caracteres ----
+
+datProd <- full_join(x = dat_pc305, y = dat_pdtte, by = 'ID') |>
+  full_join(y = dat_prc, by = 'ID') |>
+  full_join(y = dat_EPP_IEP, by = 'ID')
+
+datProd |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+# Se une el objeto anterior (datProd) con el objeto con las identificaciones renumeradas (ID_Pad) para que quede el conjunto de datos de los caracetres con la identificación renumerada ----
+
+datProd_2 <- ID_Pad |>
+  dplyr::select(id, id_renum) |>
+  rename(ID = id) |>
+  inner_join(x = datProd, by = 'ID') |>
+  relocate(
+    ID,
+    .before = P365
+    ) |>
+  relocate(
+    id_renum,
+    .after = ID)
+
+datProd_2 |>
+  summarise(n = n(), .by = id_renum) |>
+  filter(n > 1) # Se comprueba y aquí la id_renum del individuo no se repite.
+```
+
+<!--
+NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
+-->
+
+```{r}
+#| label: Generación de pedigrí con base en información fenotípica
+
+# ----
+
+ped <- nadiv::prepPed(pedigree = datPed_4, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
+
+datPed_4 |> filter(sire_renum == 42507) # Al ver los primeros seis individuos en el objeto anterior (head(ped)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
+
+# ----
+
+pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$id_renum) # 
+
+pedPrune |> filter(sire_renum == 42507) # Se observa de nuevo el mismo individuo 42507 como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
+```

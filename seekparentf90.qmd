@@ -1,0 +1,71 @@
+---
+output: 
+  html_document:
+    includes:
+      in_header: arch1.html
+execute:
+    warning: false
+    message: false
+bibliography: references.bib
+---
+
+```{r}
+#| label: Paquetes de R
+#| echo: false
+#| eval: true
+
+pacman::p_load(tidyverse)
+```
+
+## Asignación de paternidad {.unnumbered}
+
+La pruebas de paternidad son una herramienta útil que sirve para recuperar información genealógica no registrada o incorrecta. Además, de acuerdo a @cite:1, los errores de pedigrí pueden afectar la tasa de ganancia genética en poblaciones bajo selección, debido a que reducen la correlación entre los valores genéticos reales y los predichos. La información correcta de los padres contribuye a la precisión de la evaluación.
+
+Dicho procedimiento de prueba de paternidad puede realizarse mediante el uso de SeekParentF90 [@cite:2].
+
+## Titulo
+
+Colocar aquí alguito sobre "conteos de conflictos mendelianos" que es la forma en como SeekParentF90 detecta incompatibilidades.
+
+## Empecemos: uso de SeekParentF90 en el trabajo de grado
+
+A partir de los datos de PLINK luego del control de calidad, mediante el uso de SeekParentF90 no se detectaron incompatibilidades entre padres e hijos en función de los conteos de conflictos mendelianos. A continuación se describen los pasos realizados para este análisis.
+
+Como paso inicial de este análisis, se realizó una conversión de los alelos de cada SNP a un formato de dos dígitos, en lugar de cuatro dígitos como se encuentra por defecto en PLINK. La línea de código de PLINK usada para hacer esto fue la siguiente.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_6 --recode 12 --out ../../Paternidad/Datos/QC_plink')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita en la sesión anterior) que se usan significan lo siguiente:
+
++ recode 12: indica que se recodificarán los alelos como 1 y 2 (y el genotipo faltante como 0).
+:::
+
+Como resultado de esta conversión, se obtuvo por ejemplo un archivo .ped (denominado como ***QC_plink.ped***) con la siguiente estructura:
+
+
+| FID | IID | PID | MID | Sex | P | rs1 | rs2 | rs3 | rs4 |
+|-----|-----|-----|-----|-----|---|-----|-----|-----|-----|
+| 1   | 1   |   0 | 0   |  2  | -9 | 0  |  0  | 1  |  1  |
+| 2   | 2   |   0 | 0   |  1  | -9 | 1  |  2  | 2  |  1  |
+
+Luego, el archivo .ped se reformateó nuevamente con el fin de que pudiera ser utilizado por otros programas que requieren un formato específico, como es el caso del SeekParentF90. Todo este análisis se realizó mediante el código `R` (en `Quarto`) que podrá descargar a continuación.
+
+<td>&#128046; <a href="/Paternidad/Codigo/Parte-1.qmd" class="export">código `R`</a></td><br>
+
+::: {.aclaracion}
+El formato utilizado por el SeekParentF90 (y en general, para todo el conjunto de programas del BLUPf90) es similar al formato PLINK, pero utiliza diferentes códigos para representar los genotipos. En lugar de 0, 1 y 2 para representar los genotipos homocigotos para el alelo 1, heterocigotos y homocigotos para el alelo 2 (que anteriormente fue recodificado con la opción --recode 12 de PLINK), respectivamente, BLUPF90 utiliza 0, 1 y 2 para los genotipos AA, AB y BB, respectivamente. Además, utiliza el 5 para representar datos faltantes o no disponibles.
+:::
+
+Finalmente, se obtienen los conjuntos de datos necesarios para utilizar el SeekParentF90: un conjunto de datos de Pedigrí (con tres columnas que indican el ID del individuo, el ID del padre y el ID de la madre) y un conjunto de datos de marcadores (con dos columnas que indican el ID del individuo y la información del marcador). Adicionalmente, se generan dos conjuntos de datos (lista de padres y de madres) que pueden usarse para buscar padres y madres que posiblemente puedan tener alguna relación con los individuos.
+
+Al usar el SeekParentF90 para asignar paternidades (cuyo código podra descargar a continuación), se declaró una no coincidencia si el número de conflictos mendelianos era mayor que un valor umbral (por defecto de 1%).
+
+<td>&#128046; <a href="/Paternidad/Codigo/Parte-2.sh" class="export">bash SeekParentF90</a></td><br>
+
+## Referencias bibliográficas

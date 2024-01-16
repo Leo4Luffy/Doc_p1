@@ -1,0 +1,327 @@
+---
+title: "Parte 9: archivos con probabilidad de genotipos"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R. Mirar el paquete vcfR (https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.12549), ya que parece ser un paquete que permite separar las columnas (GT, DS y GP) y así obtener la probabilidad de genotipos, que es lo que quise hacer con esta parte de código.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA:  A continuación, se generan los distintos conjuntos de datos con la probabilidad de genotipos, de acuerdo al grupo de validación.
+-->
+
+```{r}
+#| label: Archivos de probabilidad de genotipos para cada grupo de validación
+
+nomGen <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/nomGen.txt') # Se importa el nombre de los marcadores con genotipos completos.
+
+####################
+# Grupo validación 1
+####################
+
+
+
+####################
+# Grupo validación 2
+####################
+
+# Se importa el archivo VCF de genotipos imputados ----
+
+vcf4.0 <- data.table::fread('Imputacion/Beagle/Datos/Precision/Prec_2/Res_imputacion_v4.0.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+# Se importa el nombre de los individuos del segundo grupo de validación y se seleccionan y filtran los individuos y marcadores, respectivamente----
+
+Grup2 <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/Grup2.txt') # Se importa el nombre de los individuos del segundo grupo de validación.
+
+vcf4.0_grup2 <- vcf4.0 %>%
+  select(ID, one_of(Grup2)) %>%
+  filter(ID %in% nomGen)
+
+vcf4.0_grup2 %>% select(1:4) %>% head(4) # Se observa la estructura de los datos.
+
+# Se crea inicialmente una función que se utilizara posteriormente para generar un nuevo objeto (o data frame llamado "datos_separados"), donde se separarán las columnas (o individuos) en tres columnas distintas (GT, DS y GP) ----
+
+ID_Beagle <- function(columna) { # columna, es el argumento de entrada de la función, que representa una columna del data frame que contiene los valores a dividir.
+  columna %>%
+    str_split(':', simplify = TRUE) %>% # str_split() se utiliza para dividir los valores de la columna por el caracter ":". simplify = TRUE indica que se quiere los resultados como una matriz, para que los valores separados queden organizados en filas y columnas.
+      as.data.frame() %>% # Aquí se convierte la matriz resultante de str_split() en un data frame. Cada columna de este data frame representa una de las partes separadas de los valores (GT, DS, GP).
+      setNames(., c('GT', 'DS', 'GP')) # setNames() se usa para asignar nombres a las columnas del data frame resultante. Los nombres "GT", "DS" y "GP" representan las variables resultantes después de la separación de los valores.
+      } 
+
+datos_separados <- vcf4.0_grup2 %>%
+  rowwise() %>% # La función rowwise() indica que se quiere aplicar las operaciones a continuación de manera "fila por fila". Es decir, cuando se aplica mutate() a las columnas seleccionadas, se realizará la operación para cada fila del data frame en lugar de para todo el data frame.
+  mutate(across(all_of(Grup2), ~ID_Beagle(.))) # Aquí se aplica la función ID_Beagle() a todas las columnas especificadas en Grup2 (que son las columnas que contienen los valores que se quieren separar). El operador across() selecciona múltiples columnas y luego se aplica la función ID_Beagle() a cada una de ellas usando la notación ~ID_Beagle(.).
+
+datos_separados$ES000802191602[4, ] # Se puede acceder, por ejemplo, a la información del marcador 4 del individuo ES000802191602.
+
+str(datos_separados) # Al observar el objeto generado, se tienen las siguientes columnas en dicho objeto: 1) La columna "ID" que es de tipo caracter, 2) Las columnas "ES000801571776" y "ES000802191602" (y otras columnas similares) son de tipo data.frame, y cada data frame tiene 3 variables: a) La variable "GT", que contiene cadenas de texto que representan los valores de la primera columna (GT) separados por ":". Por ejemplo, "0|0", "0|0", etc. b) La variable "DS", que contiene cadenas de texto que representan los valores de la segunda columna (DS) separados por ":". Por ejemplo, "0", "0", etc. c) La variable "GP", que contiene cadenas de texto que representan los valores de la tercera columna (GP) separados por ":". Por ejemplo, "1,0,0", "1,0,0", etc.
+
+# ----
+
+genProb <- function(columna) {
+  columna %>%
+    mutate(GT = as.character(GT)) %>% # Aquí, se convierte la columna "GT" a caracteres para poder comparar sus valores.
+    mutate(
+      value = case_when( # Se utiliza la función case_when() para aplicar las condiciones y extraer los valores específicos de la columna "GP" según las condiciones dadas a continuación.
+        GT == '0|0' ~ str_split_fixed(GP, ',', n = 3)[, 1],
+        GT == '0|1' | GT == '1|0' ~ str_split_fixed(GP, ',', n = 3)[, 2],
+        GT == '1|1' ~ str_split_fixed(GP, ',', n = 3)[, 3],
+        TRUE ~ NA_character_
+        ) # Se usa la funcón str_split_fixed() para dividir la columna "GP" por las comas (,), y se seleccionan los valores deseados dependiendo del valor de "GT". Se renombra también la columna resultante como "GT" para sobreescribir los valores anteriores.
+      ) %>%
+    select(-GP)
+    }
+
+# Aplicar la función genProb a todas las columnas de tipo data.frame
+datos_procesados <- datos_separados %>%
+  mutate(across(where(is.data.frame), ~genProb(.))) # Aqui se utiliza mutate(across()) para aplicar la función genProb() a todas las columnas de tipo data.frame en el objeto "datos_separados". El resultado se almacena en el objeto "datos_procesados", que es el data.frame con los valores extraídos según las condiciones especificadas.
+
+datos_procesados$ES000802191602[4, ] # Se puede acceder, por ejemplo, a la información del marcador 4 del individuo ES000802191602.
+
+str(datos_procesados) # Al observar la estructura del objeto "datos_procesados", esta es similar al objeto "datos_separados", solo que esta vez la variable "GP" contiene la probabilidad de genotipos del genotipo en fase imputado, y no una cadena con tres valores separados por "," (_,_,_,).
+
+write.table(x = datos_procesados, file = 'Imputacion/Beagle/Datos/Precision/Prec_2/Res_imputacion_v4.0.txt', sep = ' ', row.names = FALSE)
+
+####################
+# Grupo validación 3
+####################
+
+# Se importa el archivo VCF de genotipos imputados ----
+
+vcf4.0 <- data.table::fread('Imputacion/Beagle/Datos/Precision/Prec_3/Res_imputacion_v4.0.vcf', sep = '\t', skip = '#CHROM', header = TRUE)
+
+# Se importa el nombre de los individuos del tercer grupo de validación y se seleccionan y filtran los individuos y marcadores, respectivamente----
+
+Grup3 <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/Grup3.txt')
+
+vcf4.0_grup3 <- vcf4.0 %>%
+  select(ID, one_of(Grup3)) %>%
+  filter(ID %in% nomGen)
+
+vcf4.0_grup3 %>% select(1:4) %>% head(4)
+
+# Se crea inicialmente una función que se utilizara posteriormente para generar un nuevo objeto (o data frame llamado "datos_separados"), donde se separarán las columnas (o individuos) en tres columnas distintas (GT, DS y GP) ----
+
+ID_Beagle <- function(columna) {
+  columna %>%
+    str_split(':', simplify = TRUE) %>%
+      as.data.frame() %>%
+      setNames(., c('GT', 'DS', 'GP'))
+      }
+
+datos_separados <- vcf4.0_grup3 %>%
+  rowwise() %>%
+  mutate(across(all_of(Grup3), ~ID_Beagle(.)))
+
+str(datos_separados)
+
+# ----
+
+genProb <- function(columna) {
+  columna %>%
+    mutate(GT = as.character(GT)) %>%
+    mutate(
+      value = case_when(
+        GT == '0|0' ~ str_split_fixed(GP, ',', n = 3)[, 1],
+        GT == '0|1' | GT == '1|0' ~ str_split_fixed(GP, ',', n = 3)[, 2],
+        GT == '1|1' ~ str_split_fixed(GP, ',', n = 3)[, 3],
+        TRUE ~ NA_character_
+        )
+      ) %>%
+    select(-GP)
+    }
+
+datos_procesados <- datos_separados %>%
+  mutate(across(where(is.data.frame), ~genProb(.)))
+
+str(datos_procesados)
+
+write.table(x = datos_procesados, file = 'Imputacion/Beagle/Datos/Precision/Prec_3/Res_imputacion_v4.0.txt', sep = ' ', row.names = FALSE)
+
+####################
+# Grupo validación 4
+####################
+
+# Se importa el archivo VCF de genotipos imputados ----
+
+vcf4.0 <- data.table::fread('Imputacion/Beagle/Datos/Precision/Prec_4/Res_imputacion_v4.0.vcf', sep = '\t', skip = '#CHROM', header = TRUE)
+
+# Se importa el nombre de los individuos del cuarto grupo de validación y se seleccionan y filtran los individuos y marcadores, respectivamente----
+
+Grup4 <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/Grup4.txt')
+
+vcf4.0_grup4 <- vcf4.0 %>%
+  select(ID, one_of(Grup4)) %>%
+  filter(ID %in% nomGen)
+
+vcf4.0_grup4 %>% select(1:4) %>% head(4)
+
+# Se crea inicialmente una función que se utilizara posteriormente para generar un nuevo objeto (o data frame llamado "datos_separados"), donde se separarán las columnas (o individuos) en tres columnas distintas (GT, DS y GP) ----
+
+ID_Beagle <- function(columna) {
+  columna %>%
+    str_split(':', simplify = TRUE) %>%
+      as.data.frame() %>%
+      setNames(., c('GT', 'DS', 'GP'))
+      }
+
+datos_separados <- vcf4.0_grup4 %>%
+  rowwise() %>%
+  mutate(across(all_of(Grup4), ~ID_Beagle(.)))
+
+str(datos_separados)
+
+# ----
+
+genProb <- function(columna) {
+  columna %>%
+    mutate(GT = as.character(GT)) %>%
+    mutate(
+      value = case_when(
+        GT == '0|0' ~ str_split_fixed(GP, ',', n = 3)[, 1],
+        GT == '0|1' | GT == '1|0' ~ str_split_fixed(GP, ',', n = 3)[, 2],
+        GT == '1|1' ~ str_split_fixed(GP, ',', n = 3)[, 3],
+        TRUE ~ NA_character_
+        )
+      ) %>%
+    select(-GP)
+    }
+
+datos_procesados <- datos_separados %>%
+  mutate(across(where(is.data.frame), ~genProb(.)))
+
+str(datos_procesados)
+
+write.table(x = datos_procesados, file = 'Imputacion/Beagle/Datos/Precision/Prec_4/Res_imputacion_v4.0.txt', sep = ' ', row.names = FALSE)
+
+####################
+# Grupo validación 5
+####################
+
+
+
+####################
+# Grupo validación 6
+####################
+
+# Se importa el archivo VCF de genotipos imputados ----
+
+vcf4.0 <- data.table::fread('Imputacion/Beagle/Datos/Precision/Prec_6/Res_imputacion_v4.0.vcf', sep = '\t', skip = '#CHROM', header = TRUE)
+
+# Se importa el nombre de los individuos del sexto grupo de validación y se seleccionan y filtran los individuos y marcadores, respectivamente----
+
+Grup6 <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/Grup6.txt')
+
+vcf4.0_grup6 <- vcf4.0 %>%
+  select(ID, one_of(Grup6)) %>%
+  filter(ID %in% nomGen)
+
+vcf4.0_grup6 %>% select(1:4) %>% head(4)
+
+# Se crea inicialmente una función que se utilizara posteriormente para generar un nuevo objeto (o data frame llamado "datos_separados"), donde se separarán las columnas (o individuos) en tres columnas distintas (GT, DS y GP) ----
+
+ID_Beagle <- function(columna) {
+  columna %>%
+    str_split(':', simplify = TRUE) %>%
+      as.data.frame() %>%
+      setNames(., c('GT', 'DS', 'GP'))
+      }
+
+datos_separados <- vcf4.0_grup6 %>%
+  rowwise() %>%
+  mutate(across(all_of(Grup6), ~ID_Beagle(.)))
+
+str(datos_separados)
+
+# ----
+
+genProb <- function(columna) {
+  columna %>%
+    mutate(GT = as.character(GT)) %>%
+    mutate(
+      value = case_when(
+        GT == '0|0' ~ str_split_fixed(GP, ',', n = 3)[, 1],
+        GT == '0|1' | GT == '1|0' ~ str_split_fixed(GP, ',', n = 3)[, 2],
+        GT == '1|1' ~ str_split_fixed(GP, ',', n = 3)[, 3],
+        TRUE ~ NA_character_
+        )
+      ) %>%
+    select(-GP)
+    }
+
+datos_procesados <- datos_separados %>%
+  mutate(across(where(is.data.frame), ~genProb(.)))
+
+str(datos_procesados)
+
+write.table(x = datos_procesados, file = 'Imputacion/Beagle/Datos/Precision/Prec_6/Res_imputacion_v4.0.txt', sep = ' ', row.names = FALSE)
+
+####################
+# Grupo validación 7
+####################
+
+
+
+####################
+# Grupo validación 8
+####################
+
+# Se importa el archivo VCF de genotipos imputados ----
+
+vcf4.0 <- data.table::fread('Imputacion/Beagle/Datos/Precision/Prec_8/Res_imputacion_v4.0.vcf', sep = '\t', skip = '#CHROM', header = TRUE)
+
+# Se importa el nombre de los individuos del octavo grupo de validación y se seleccionan y filtran los individuos y marcadores, respectivamente----
+
+Grup8 <- read_lines(file = 'Imputacion/Beagle/Datos/Precision/Grup8.txt')
+
+vcf4.0_grup8 <- vcf4.0 %>%
+  select(ID, one_of(Grup8)) %>%
+  filter(ID %in% nomGen)
+
+vcf4.0_grup8 %>% select(1:4) %>% head(4)
+
+# Se crea inicialmente una función que se utilizara posteriormente para generar un nuevo objeto (o data frame llamado "datos_separados"), donde se separarán las columnas (o individuos) en tres columnas distintas (GT, DS y GP) ----
+
+ID_Beagle <- function(columna) {
+  columna %>%
+    str_split(':', simplify = TRUE) %>%
+      as.data.frame() %>%
+      setNames(., c('GT', 'DS', 'GP'))
+      }
+
+datos_separados <- vcf4.0_grup8 %>%
+  rowwise() %>%
+  mutate(across(all_of(Grup8), ~ID_Beagle(.)))
+
+str(datos_separados)
+
+# ----
+
+genProb <- function(columna) {
+  columna %>%
+    mutate(GT = as.character(GT)) %>%
+    mutate(
+      value = case_when(
+        GT == '0|0' ~ str_split_fixed(GP, ',', n = 3)[, 1],
+        GT == '0|1' | GT == '1|0' ~ str_split_fixed(GP, ',', n = 3)[, 2],
+        GT == '1|1' ~ str_split_fixed(GP, ',', n = 3)[, 3],
+        TRUE ~ NA_character_
+        )
+      ) %>%
+    select(-GP)
+    }
+
+datos_procesados <- datos_separados %>%
+  mutate(across(where(is.data.frame), ~genProb(.)))
+
+str(datos_procesados)
+
+write.table(x = datos_procesados, file = 'Imputacion/Beagle/Datos/Precision/Prec_8/Res_imputacion_v4.0.txt', sep = ' ', row.names = FALSE)
+```

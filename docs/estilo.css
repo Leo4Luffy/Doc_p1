@@ -1,0 +1,92 @@
+/*Fondo del cuerpo del escrito y la fuente*/
+body {
+    background-color: #ffffff;
+    font-family: 'Source Sans Pro', sans-serif;
+    font-size: 14;
+    text-align: justify;
+  }
+  
+  /*Color de la fuente del cuerpo*/
+  em {
+      font-family: 'Source Sans Pro', sans-serif;
+      color: black;
+  }
+  
+  /*Color del objeto asignado y color del fragmento interactivo*/
+  .ace-tm {
+      background-color: #ffffff;
+      color: black;
+  }
+  
+  /*Color del borde del fragmento interactivo*/
+  .panel, pre {
+      border-radius: 0;
+      border-color: #e0e0e0;
+      background-color: #ffffff;
+  }
+  
+  /*Color de la parte superior del fragmento interactivo y de la palabra code*/
+  .panel-default > .panel-heading {
+      color: black;
+      background-color: #ffffff;
+      border-color: black;
+  }
+  
+  /*Aspecto general del menú 1*/
+  .topicsList .topic {
+      font-family: 'Source Sans Pro', sans-serif;
+      line-height: 40px;
+      font-size: 13px;
+      padding-left: 10px;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      background-size: 2px 80px;
+      background-position: left 100%;
+          background-position-y: 100%;
+      background-image: url(images/topicProgress.png);
+      border-bottom: 2px solid gray;
+      -webkit-transition-property: background-position;
+      transition-property: background-position;
+      -webkit-transition-duration: 0.25s;
+      transition-duration: 0.25s;
+  }
+  
+  /*Aspecto general del menú 2*/
+  .topicsList .topic.current {
+      font-family: 'Source Sans Pro', sans-serif;
+      background-color: #D3D3D3;
+      color: #ffffff;
+      border: 0px;
+  }
+  
+  /*Color y otras opciones de código dentro del texto*/
+  code {
+      font-family: 'Roboto Mono', monospace;
+      color: gray;
+      background-color: #E0FFFF;
+      font-size: 14px;
+  }
+  
+  a {
+      font-family: 'Source Sans Pro', sans-serif;
+      color: black;
+      text-decoration: none;
+  }
+  
+  /*Aspecto de la cajita del código que se corre de forma interactiva*/
+  .btn-primary, .btn-success, .btn-info {
+      color: black;
+      background-color: yellow;
+      background-image: none;
+      border: none;
+      font-family: 'Roboto Slab', serif;
+  }
+  
+  /*Aspecto de la cajita de temas previo*/
+  .btn-default {
+      color: black;
+      background-color: yellow;
+      background-image: none;
+      border: none;
+      font-family: 'Roboto Slab', serif;
+  }

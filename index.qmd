@@ -1,0 +1,41 @@
+---
+description-meta: |
+    Este es un libro con un pequeño tutorial de los procedimientos realizados.
+---
+
+## Bienvenido {.unnumbered}
+
+Aquí encontrará los procedimientos realizados durante el trabajo de grado del [Doctorado en Ciencia y Tecnología de la Producción Animal](http://www.upv.es/entidades/EDOCTORADO/info/1004425normalc.html), específicamente, el procedimiento realizado en la parte de la simulación.
+
+## Programas necesarios
+
+<td>&#128046; <a href="Softwares/plink" class="export">PLINK v. 1.9</a></td> <HD>
+
+<td>&#128046; <a href="Softwares/seekparentf90" class="export">SeekParentF90</a></td> <HD>
+
+<td>&#128046; <a href="Softwares/beagle_v4.0.jar" class="export">Beagle v. 4.0</a></td> <HD>
+
+<td>&#128046; <a href="Softwares/beagle_v5.4.jar" class="export">Beagle v. 5.4</a></td> <HD>
+
+<td>&#128046; <a href="Softwares/AlphaImpute" class="export">AlphaImpute v. 1.9</a></td> <HD>
+
+<td>&#128046; AlphaImpute2 [^intro-1]</td> <Hd>
+
+<td>&#128046; Paquete de `R` tidyverse [^intro-2]</td>
+
+[^intro-1]: Para conocer sobre el programa __AlphaImpute2__ y conocer demás métodos y enfoques computacionales de genética cuantitativa, puede visitar la pagina de GitHub https://github.com/AlphaGenes, o bien su página web https://alphagenes.roslin.ed.ac.uk/wp/.
+
+[^intro-2]: Para instalar el `tidyverse` y conocer más de que trata, puede visitar su página web https://www.tidyverse.org/.
+
+## Licencia
+
+Esta página web es de uso gratuito y está licenciado bajo la licencia [Creative Commons Attribution-NonCommercial-NoDerivs 4.0](https://creativecommons.org/license/by-nc-nd/4.0/). Si tiene alguna inquietud al respecto, por favor informar a los correos leonardo.lopez@inia.csic.es, cdiaz@inia.csic.es, mjc@inia.csic.es y meneses.cristina@inia.csic.es.
+
+<!-- Ejemplo de código interactivo
+   
+<iframe style="margin:0 auto; min-width: 100%;" id="cod-1" class="interactive" src="https://jorge-leonardo-lopez-martinez.shinyapps.io/LDbloq_simDoc/" scrolling="no" frameborder="no"></iframe>
+   
+<script>
+  iFrameResize({}, ".interactive");
+</script>
+ -->

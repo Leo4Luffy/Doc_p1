@@ -1,0 +1,1177 @@
+---
+title: "Parte 4: evaluación de la precisión de la imputación - Parte 1"
+format: html
+---
+
+```{r}
+#| label: Directorio de trabajo
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+```
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se crean las distintas carpetas donde se guardaran los resultados de la imputación para los 8 grupos de validación.
+-->
+
+```{r}
+#| label: Subcarpetas de validación
+
+# 1. Se indica la ruta base de la carpeta donde deseas crear las subcarpetas:
+ruta_base <- "../../Imputacion/Beagle/Datos/Precision/"
+
+# 2. Se utiliza un bucle for para crear las 8 carpetas:
+for (i in 1:8) {
+  # Se genera el nombre de la carpeta
+  nombre_carpeta <- paste0("Prec_", i)
+  
+  # Se crean la carpetas
+  dir.create(paste0(ruta_base, nombre_carpeta))
+  } # La función paste0() se utiliza para concatenar el nombre de la carpeta con la ruta base. El bucle for recorre los valores de 1 a 8 y en cada iteración crea una nueva carpeta utilizando la función dir.create().
+```
+
+<!--
+NOTA: Se identifica a continuación los marcadores con genotipo completo. Las opciones de PLINK (algunas de ellas descrita en la Parte-2.qmd dentro de la carpeta "Plink") que se usan significan lo siguiente:
+
++ --geno: se filtran los marcadores que tienen tasas de valores faltantes igual a cero.
+-->
+
+```{r}
+#| label: Identificación de marcadores completamente genotipados
+
+# Se usa PLINk para identificar los marcadores con genotipo completos ----
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_8 --geno 0  --make-bed --recode --out ../../Imputacion/Beagle/Datos/Precision/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 584 marcadores en 2894 individuos.
+
+# Se exporta el nombre de los marcadores con genotipo completos ----
+
+nomGen <- read_table(file = '../../Imputacion/Beagle/Datos/Precision/Paso_1.bim', col_names = FALSE) # Se importa en archivo anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
+
+nomGen %>%
+  select(X2) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/nomGen.txt', col_names = FALSE, delim = ' ') # Se exporta solo el nombre de los marcadores con genotipo completos.
+```
+
+<!--
+NOTA: Se observa a continuación la distribución de los 584 marcadores en cada uno de los cromosomas. Las opciones de PLINK usadas en el fragmento a continuación (algunas de ellas descrita en la Parte-2.qmd dentro de la carpeta "Plink"), significan lo siguiente:
+
++ --extract: indica que se extraerán los marcadores que se encuentran en el archivo "nomGen.txt".
+
++ --freq: esta opción de PLINK calcula las frecuencias alélicas de los marcadores en cada cromosoma, dando con esto una idea de cómo se distribuyen las variantes alélicas a lo largo de los cromosomas.
+-->
+
+```{r}
+#| label: Distribución de los 584 marcadores (identificados como marcadores con genotipo completo) por cromosoma
+
+# Se extraen los marcadores que estan en el archivo anteriormente generado ("nomGen.txt"), que son los marcadores con genotipos completos, generando un nuevo archivo PLINK de genotipos con esos marcadores. ----
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_8 --extract ../../Imputacion/Beagle/Datos/Precision/nomGen.txt --make-bed --recode --out ../../Imputacion/Beagle/Datos/Precision/Paso_2')
+
+# A continuación se obtiene la distribución de los marcadores por cromosoma ----
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Beagle/Datos/Precision/Paso_2 --freq --out ../../Imputacion/Beagle/Datos/Precision/Paso_3') # Este análisis proporcionará información sobre cómo están distribuidos los marcadores en términos de frecuencias alélicas por cromosoma.
+
+# Con los archivos PLINK generados, se observa la distribución de los marcadores en los cromosomas ----
+
+bimMar <- read_table(file = 'datQC/Paso_8.bim', col_names = FALSE) %>%
+  rename(
+   SNP = X2,
+   BPP = X4
+   ) %>% # Se importa el archivo "Paso_1.bim" donde se encuentra la posición del marcador en el cromosoma.
+   select(SNP, BPP)
+
+distMar <- read_table(file = '../../Imputacion/Beagle/Datos/Precision/Paso_3.frq', col_names = TRUE) %>% # Se importa el archivo "Paso_4.frq" que indica las frecuencias alélicas del marcador por cromosoma.
+  left_join(y = bimMar, by = 'SNP')
+
+num_marcadores <- distMar %>%
+  summarise(n = n(), .by = CHR) # Se observa el número de marcadores por cromosoma.
+
+distMar %>%
+  ggplot(data = ., aes(x = BPP, y = MAF, size = MAF, colour = MAF, fill = MAF)) +
+  geom_point(alpha = 0.4) +
+  facet_wrap(~ CHR, labeller = labeller(CHR = function(x) paste("Cromosoma", x, "- n =", num_marcadores$n[num_marcadores$CHR == x]))) +
+  labs(x = 'Posición en pares de bases', y = 'Frecuencia alélica del marcador') +
+  theme_bw() +
+  scale_fill_gradient(low = 'yellow', high = 'red') +
+  scale_colour_gradient(low = 'yellow', high = 'red') +
+  theme(
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.7),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    )
+```
+
+<!--
+NOTA: A continuación se realiza la identificación y visualización de bloques de desequilibrio de ligamiento. Con PLINK, se calculan las medidas de desequilibrio de ligamiento entre marcadores. Las opciones de PLINK usadas en el fragmento a continuación (algunas de ellas descrita en la Parte-2.qmd dentro de la carpeta "Plink"), significan lo siguiente:
+
++ --ld-window-kb: Este valor especifica el tamaño de la ventana en kilobases (kb) dentro del cual se considerarán los marcadores para el cálculo de LD. Un valor común es 100 kb.
+
++ --ld-window: Este valor determina el número máximo de marcadores que pueden estar dentro de la ventana especificada por ld-window-kb. Se puede utilizar un valor grande, como 99999, para asegurarte de que se consideren todos los marcadores dentro de la ventana.
+
++ --ld-window-r2: Este valor establece el umbral de R^2 para considerar que dos marcadores están en desequilibrio de ligamiento. Un valor típico es 0.2.
+
++ ----ld-snp-list: Aquí se indica el nombre del archivo que contiene la lista de marcadores para los que deseas calcular el desequilibrio de ligamiento.
+-->
+
+```{r}
+#| label: Bloques de desequilibrio de ligamiento 
+
+# Se cácula el desequilibrio de ligamiento (r2) entre marcadores. ----
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_8 --r2 --ld-window-kb 100 --ld-window 99999 --ld-window-r2 0.2 --ld-snp-list ../../Imputacion/Beagle/Datos/Precision/nomGen.txt --out ../../Imputacion/Beagle/Datos/Precision/Paso_4')
+
+# Con los archivos PLINK generados, se visualiza los bloques de desequilibrio de ligamiento mediante un Heatmap de Desequilibrio de Ligamiento (R^2) ----
+
+ldMar <- read_table(file = '../../Imputacion/Beagle/Datos/Precision/Paso_4.ld', col_names = TRUE) # Se importa el archivo "Paso_5.ld" donde se encuentran los valores R2.
+
+#############
+# Cromosoma 1
+#############
+
+ldMar_1 <- ldMar %>%
+  filter(CHR_A == 1, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 1 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_1 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo1 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 1', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 2
+#############
+
+ldMar_2 <- ldMar %>%
+  filter(CHR_A == 2, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 2 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_2 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo2 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 2', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 3
+#############
+
+ldMar_3 <- ldMar %>%
+  filter(CHR_A == 3, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 3 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_3 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo3 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 3', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 4
+#############
+
+ldMar_4 <- ldMar %>%
+  filter(CHR_A == 4, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 4 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_4 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo4 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 4', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 5
+#############
+
+ldMar_5 <- ldMar %>%
+  filter(CHR_A == 5, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 5 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_5 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo5 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 5', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 6
+#############
+
+ldMar_6 <- ldMar %>%
+  filter(CHR_A == 6, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 6 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_6 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo6 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 6', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 7
+#############
+
+ldMar_7 <- ldMar %>%
+  filter(CHR_A == 7, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 7 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_7 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo7 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 7', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 8
+#############
+
+ldMar_8 <- ldMar %>%
+  filter(CHR_A == 8, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 8 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_8 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo8 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 8', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+#############
+# Cromosoma 9
+#############
+
+ldMar_9 <- ldMar %>%
+  filter(CHR_A == 9, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 9 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_9 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo9 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 9', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 10
+##############
+
+ldMar_10 <- ldMar %>%
+  filter(CHR_A == 10, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 10 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_10 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo10 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 10', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 11
+##############
+
+ldMar_11 <- ldMar %>%
+  filter(CHR_A == 11, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 11 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_11 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo11 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 11', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 12
+##############
+
+ldMar_12 <- ldMar %>%
+  filter(CHR_A == 12, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 12 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_12 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo12 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 12', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 13
+##############
+
+ldMar_13 <- ldMar %>%
+  filter(CHR_A == 13, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 13 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_13 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo13 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 13', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 14
+##############
+
+ldMar_14 <- ldMar %>%
+  filter(CHR_A == 14, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 14 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_14 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo14 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 14', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 15
+##############
+
+ldMar_15 <- ldMar %>%
+  filter(CHR_A == 15, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 15 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_15 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo15 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 15', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 16
+##############
+
+ldMar_16 <- ldMar %>%
+  filter(CHR_A == 16, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 16 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_16 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo16 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 16', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 17
+##############
+
+ldMar_17 <- ldMar %>%
+  filter(CHR_A == 17, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 17 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_17 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo17 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 17', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 18
+##############
+
+ldMar_18 <- ldMar %>%
+  filter(CHR_A == 18, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 18 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_18 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo18 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 18', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 19
+##############
+
+ldMar_19 <- ldMar %>%
+  filter(CHR_A == 19, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 19 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_19 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo19 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 19', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 20
+##############
+
+ldMar_20 <- ldMar %>%
+  filter(CHR_A == 20, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 20 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_20 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo20 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 20', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 21
+##############
+
+ldMar_21 <- ldMar %>%
+  filter(CHR_A == 21, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 21 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_21 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo21 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 21', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 22
+##############
+
+ldMar_22 <- ldMar %>%
+  filter(CHR_A == 22, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 22 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_22 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo22 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 22', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 23
+##############
+
+ldMar_23 <- ldMar %>%
+  filter(CHR_A == 23, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 23 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_23 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo23 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 23', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 24
+##############
+
+ldMar_24 <- ldMar %>%
+  filter(CHR_A == 24, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 24 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_24 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo24 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 24', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 25
+##############
+
+ldMar_25 <- ldMar %>%
+  filter(CHR_A == 25, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 25 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_25 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo25 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 25', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 26
+##############
+
+ldMar_26 <- ldMar %>%
+  filter(CHR_A == 26, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 26 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_26 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo26 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 26', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 27
+##############
+
+ldMar_27 <- ldMar %>%
+  filter(CHR_A == 27, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 27 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_27 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo27 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 27', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 28
+##############
+
+ldMar_28 <- ldMar %>%
+  filter(CHR_A == 28, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 28 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_28 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo28 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 28', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+
+##############
+# Cromosoma 29
+##############
+
+ldMar_29 <- ldMar %>%
+  filter(CHR_A == 29, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 29 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ldMar_29 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = "SNP_A") # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo29 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'green', name = 'R²') +
+  labs(title = 'Cromosoma 29', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+```
+
+<!--
+NOTA: Usando el archivo datGen.txt generado para evaluar la precisión de la imputación hecha con el software AlphaImpute, se generan distintos archivos con el nombre de los individuos en cada uno de los 8 grupos de validación.
+-->
+
+```{r}
+#| label: Grupos de validación
+
+# Se exporta el archivo de genotipos y se asigna un nombre a las columnas ----
+
+datGen <- read_delim(file = '../../Imputacion/AlphaImpute/datGen.txt', col_names = FALSE, delim = ' ')
+
+colnames(datGen) <- c('IID', paste0('SNP', 1:(ncol(datGen) - 1)))
+
+# Se determina el número de individuos y grupos ----
+
+num_individuos <- nrow(datGen)
+num_grupos <- 8
+
+# Se calcula el número de individuos en cada grupo ----
+
+tamano <- ceiling(num_individuos / num_grupos) # Se indica aquí que el número de individuos en cada grupo es de 362.
+
+# Se generan el vector de grupos ----
+
+set.seed(123)  # Para garantizar la reproducibilidad de los resultados.
+
+Grupos <- rep(x = 1:num_grupos, each = tamano)  # Se crea un vector con los valores de 1 a 8 repetidos 362 veces.
+
+# Se ajusta el tamaño de uno de los grupos de validación ----
+
+ajuste_grup <- length(Grupos) - num_individuos
+
+Grupos <- Grupos[-(1:ajuste_grup)] # Este paso se hace debido a que hay 2894 individuos, por lo que cada grupo de validación tendra 362 individuos excepto uno que tendra 360 individuos.
+
+# Se asigna de forma aleatoria los grupos a la columna Grupos ----
+
+datGen_2 <- datGen %>%
+  mutate(Grupos = sample(Grupos))
+
+table(datGen_2$Grupos) # Se verifica la repetición de los identificadores de grupo. Aquí, el grupo de validación 1 tendra 360 individuos, y el resto 362 individuos.
+
+####################
+# Grupo validación 1
+####################
+
+datGen_2 %>%
+  filter(Grupos == 1) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 2
+####################
+
+datGen_2 %>%
+  filter(Grupos == 2) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 3
+####################
+
+datGen_2 %>%
+  filter(Grupos == 3) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 4
+####################
+
+datGen_2 %>%
+  filter(Grupos == 4) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 5
+####################
+
+datGen_2 %>%
+  filter(Grupos == 5) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 6
+####################
+
+datGen_2 %>%
+  filter(Grupos == 6) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 7
+####################
+
+datGen_2 %>%
+  filter(Grupos == 7) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ')
+
+####################
+# Grupo validación 8
+####################
+
+datGen_2 %>%
+  filter(Grupos == 8) %>%
+  select(IID) %>%
+  write_delim(file = '../../Imputacion/Beagle/Datos/Precision/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Se modifica el archivo VCF que se uso inicialmente en la imputación (Paso_2.vcf), para enmascarar los genotipos de los marcadores para cada uno de los grupos de validación, y luego se exportan en cada una de las subcarpetas.
+-->
+
+```{r}
+#| label: Genotipos enmascarados
+
+# Se indica la ruta del archivo vcf y del archivo donde estan los nombres de los marcadores ----
+
+vcf_file <- "../../Imputacion/Beagle/Datos/Paso_2.vcf"
+marcadores_file <- "../../Imputacion/Beagle/Datos/Precision/nomGen.txt"
+
+# Se lee el archivo VCF ----
+
+vcf_data <- data.table::fread(vcf_file, sep = "\t", skip = "#CHROM", header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+#######################################
+# Precisión en el grupo de validación 1
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del primer grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_1/Grup1.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_1/Grup1.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_1 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# prueba <- vcf_data_1 %>% filter(ID %in% c('Affx-106540322', 'Affx-106547280', 'Affx-106549838', 'Affx-106521013')) %>% select(ES091202559779, ES081202382326, ES090803819535, ES090803808298) # Se realiza la prueba para ver por ejemplo si en el marcador 10 (fila 10) que se enmascara, los genotipos de estos individuos aparece como "./.".
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_1, output_file, sep = "\t", quote = FALSE) # Se mira el numero de filas y de columnas mediante la terminal de linux: awk '{print NR}' Grup1.vcf | tail -n 1 && awk '{print NF; exit}' Grup1.vcf
+
+#######################################
+# Precisión en el grupo de validación 2
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del segundo grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_2/Grup2.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_2/Grup2.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_2 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_2, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 3
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del tercer grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_3/Grup3.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_3/Grup3.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_3 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_3, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 4
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del cuarto grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_4/Grup4.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_4/Grup4.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_4 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_4, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 5
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del quinto grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_5/Grup5.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_5/Grup5.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_5 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_5, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 6
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del sexto grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_6/Grup6.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_6/Grup6.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_6 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_6, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 7
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del septimo grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_7/Grup7.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_7/Grup7.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_7 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_7, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 8
+#######################################
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del octavo grupo de validación y donde se guardará el archivo vcf generado con los genotipos enmascarados ----
+
+individuos_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_8/Grup8.txt"
+output_file <- "../../Imputacion/Beagle/Datos/Precision/Prec_8/Grup8.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file)
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_8 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_8, output_file, sep = "\t", quote = FALSE)
+```
+
+<!--
+NOTA: Se exporta el archivo de pedigrí para usar en la imputación.
+-->
+
+```{r}
+#| label: Generación y exportación del archivo de pedigrí
+
+datPed <- read_delim(file = 'datQC/Paso_8.fam', delim = ' ', col_select = c(1:4), col_names = FALSE)
+
+# A continuación, se exporta el archivo de pedigrí (datPed) a las distintas carpetas (Prec_1, Prec_2, ..., Prec_8) ----
+
+directorio_base <- '../../Imputacion/Beagle/Datos/Precision/'
+
+num_carpetas <- 8 # Se indica aqí el número de carpetas (8 en este caso).
+
+# Se itera sobre las carpetas y se exportan los datos
+for (i in 1:num_carpetas) {
+  # Se construye la ruta de la carpeta actual
+  carpeta_actual <- paste0(directorio_base, 'Prec_', i, '/')
+  
+  # Se exportan los datos a la carpeta actual
+  ruta_archivo <- file.path(carpeta_actual, 'datPed.txt')
+  write_delim(x = datPed, file = ruta_archivo, col_names = FALSE, delim = ' ')
+  }
+```

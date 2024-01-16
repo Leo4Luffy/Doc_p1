@@ -1,0 +1,417 @@
+---
+title: "Parte 1: edición del pedigrí y formación de estructuras de familias"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: se crea un archivo (FAM_arch) con la ID del individuo, su padre y su madre.
+-->
+
+```{r}
+#| label: Lectura del archivo FAM y selección de columnas
+
+FAM_arch <- read_delim(file = 'Plink/Datos/datPuros/FAM_2899_ani_OCT2023.txt', col_names = FALSE)
+
+# Se crea a continuación un archivo (FAM_arch), donde se extrae la ID de los individuos, sus padres y sus madres ----
+
+FAM_arch <- FAM_arch %>%
+    select(2:4) # Se extrae la columna 2, 3 y 4, que indica el ID del individuo, del padre y de la madre.
+```
+
+<!--
+NOTA: A continuación, se extrae del archivo ANI_2917_feb2023_ARS_UCD12.ped, solo la ID del individuo. Luego, esta se une con el archivo anterior (FAM_arch), y así obtengo la ID del individuo, padre y madre que estan dentro del archivo ANI_2917_feb2023_ARS_UCD12.ped.
+-->
+
+```{r}
+#| label: Generación de archivo con ID del individuo padre y madre dentro del archivo *.ped
+
+datPed <- read_delim(file = 'Plink/Datos/datPuros/ANI_2917_feb2023_ARS_UCD12.ped', delim = '\t', col_names = TRUE) # Al importar estos datos indican que son dos columnas. Estas son, al escribir en la terminal de Linux "head -n 1 ANI_2917_feb2023_ARS_UCD12.ped", las columnas #Sample Filename y Genotype.
+
+# Se extrae a continuación la primera columna que indica la ID del individuo ----
+
+indID <- datPed %>% 
+    select(1) %>% # Se extrae solo la 1ra columna.
+    rename(X2 = '#Sample_Filename') %>% # Se cambia el nombre para que quede igual al nombre de la columna que indica la identificación del individuo en el archivo FAM_3154_ani.txt.
+    mutate(X2 = str_replace_all(X2, "(?i)\\.cel$", "")) # Se elimina la palabra ".cel" al final del ID de los individuos. Aquí, se usa mutate y str_remove de los paquetes dplyr y stringr, respectivamente. En str_remove, el argumento \\.cel$ especifica la cadena que se desea eliminar. El punto (.) se debe escapar con una barra invertida (\\) ya que es un carácter especial en expresiones regulares. El signo de dolar ($) indica que la cadena buscada debe estar al final del valor en la columna. (?i) es un modificador de expresión regular que indica que la coincidencia de patrón debe ser insensible a mayúsculas y minúsculas (ya que también hay finalización con mayúscula ".CEL").
+
+# Se une a continuación los objetos indID y FAM_arch ----
+
+ID_FAM <- left_join(x = indID, y = FAM_arch, by = 'X2') # Se usa la función left_join(), de forma que, se une ambos objetos dejando los individuos en indID que coinciden con FAM_arch.
+
+# Se eliminan algunos individuos, debido a que no hubo una buena trazabilidad y aparecen duplicados en el archivo de genotipos (ANI_2917_feb2023_ARS_UCD12.ped) ----
+
+indDup <- c('ES070812979748', 'ES010812979753', 'ES001004446825', 'ES081004446845', 'ES031004446873', 'ES001007312302', 'ES081007110951', 'ES090809843886') # Aquí se especifican los individuos duplicados (indDup) a eliminar.
+
+ID_FAM2 <- ID_FAM %>%
+    filter(!X2 %in% indDup & !X3 %in% indDup & !X4 %in% indDup)
+
+write_delim(x = ID_FAM2, file = 'Plink/Datos/datFam/ID_FAM.txt', col_names = FALSE, delim = '\t')
+```
+
+<!--
+NOTA: Se importa a continuación el conjunto de datos anteriormente generado, y se forman las distintas familias (familia de hermanos medios por padre, madre y completos).
+-->
+
+```{r}
+#| label: Familias de hermanos medios por padre, madre y completos
+
+ID_FAM2 <- read_delim(file = 'Plink/Datos/datFam/ID_FAM.txt', col_names = FALSE)
+
+# 1. Familias de hermanos medios por padre:
+
+## Se filtran los individuos que tienen información de padre ----
+
+datFam1 <- ID_FAM2 %>%
+  filter(X2 != 0)
+
+## Se identifican las familias de medios hermanos de padre ----
+
+# NOTA: Para identificar familias de medios hermanos de padre, se buscan aquellos individuos que tengan al menos un padre en común, pero con diferentes madres.
+
+Fam_pad.a <- datFam1 %>%
+  summarise(n_hijos = n_distinct(X1), .by = X2) %>% # Primero, se agrupa por padre y se cuenta el número de hijos unicos que tiene.
+  left_join(x = datFam1, by = 'X2') %>% # Se unen el conjunto de datos resultante anterior con el cojunto de datos "datFam1".
+  filter(n_hijos > 1) %>% # Por último, se seleccionan únicamente los individuos que tienen hermanos medios de padre.
+  arrange(X2) %>%
+  select(-n_hijos)
+
+# NOTA: También se identifican padres que solo tengan un hijo.
+
+Fam_pad.b <- datFam1 %>%
+  summarise(n_hijos = n_distinct(X1), .by = X2) %>%
+  left_join(x = datFam1, by = 'X2') %>%
+  filter(
+    n_hijos == 1,
+    X3 == 0
+    ) %>%
+  arrange(X2) %>%
+  select(-n_hijos) %>%
+  rename(
+    ID_ind = X1,
+    ID_pad = X2,
+    ID_mad = X3
+    ) %>%
+  mutate(ID_FAM = 'No_rel')
+
+# 2. Familias de hermanos medios por madre:
+
+## Se filtran los individuos que tienen información de madre ----
+
+datFam2 <- ID_FAM2 %>%
+  filter(X3 != 0)
+
+## Se identifican las familias de medios hermanos de madre ----
+
+# NOTA: Para identificar familias de medios hermanos de madre, se buscan aquellos individuos que tengan al menos una madre en común, pero con diferentes padres.
+
+Fam_mad.a <- datFam2 %>%
+  summarise(n_hijos = n_distinct(X1), .by = X3) %>% # Primero, se agrupa por madre y se cuenta el número de hijos unicos que tiene.
+  left_join(x = datFam2, by = 'X3') %>% # Se unen el conjunto de datos resultante anterior con el cojunto de datos "datFam2".
+  filter(n_hijos > 1) %>% # Por último, se seleccionan únicamente los individuos que tienen hermanos medios de madre.
+  arrange(X3) %>%
+  select(-n_hijos)
+
+# NOTA: También se identifican madres que tengan solo un hijo.
+
+Fam_mad.b <- datFam2 %>%
+  summarise(n_hijos = n_distinct(X1), .by = X3) %>%
+  left_join(x = datFam2, by = 'X3') %>%
+  filter(
+    n_hijos == 1,
+    X2 == 0
+    ) %>%
+  arrange(X3) %>%
+  select(-n_hijos) %>%
+  rename(
+    ID_ind = X1,
+    ID_pad = X2,
+    ID_mad = X3
+    ) %>%
+  mutate(ID_FAM = 'No_rel')
+
+# 3. Familias de hermanos completos:
+
+## Se filtran los individuos que tienen información tanto de padre como de madre ----
+
+datFam3 <- ID_FAM2 %>%
+  filter(X2 != 0 & X3 != 0 )
+
+## Se identifican las familias de hermanos completos ----
+
+# NOTA: Para identificar familias de hermanos completos, se buscan aquellos individuos que tengan al menos un padre y una madre en común a la vez.
+
+Fam_comp <- datFam3 %>%
+  summarise(n_hijos = n(), .by = c(X2, X3)) %>% # Primero, se agrupa por padre y por madre, y se cuenta el número de hijos en común que tienen.
+  left_join(x = datFam3, by = c('X2', 'X3')) %>% # Se unen el conjunto de datos resultante anterior con el cojunto de datos "datFam3".
+  filter(n_hijos > 1) %>% # Finalmente, se filtra para seleccionar únicamente aquellos individuos que tienen más de un hijo en común
+  arrange(X2, X3) %>%
+  select(-n_hijos)
+```
+
+<!--
+NOTA: Se crean a continuación diferentes conjuntos de datos donde se desea ver, por ejemplo que individuos estan tanto en el archivo de familias de hermanos completos como en el archivo de familia de hermanos medios de padre, y así tambien para el archivo de hermanos medios de madre, y demás coincidencias.
+-->
+
+```{r}
+#| label: Coincidencia entre familias de hermanos medios por padre y completos, familias de hermanos medios de madre y completos.
+
+# Se les asigna un nombre a las columnas ----
+
+Fam_pad <- Fam_pad.a %>%
+  rename(
+    ID_ind = X1,
+    ID_pad.1 = X2,
+    ID_mad.1 = X3
+  ) # Id_pad.1 significa identificación del padre en el archivo de familia 1 (de familia de hermanos medios de padre).
+
+Fam_mad <- Fam_mad.a %>%
+  rename(
+    ID_ind = X1,
+    ID_pad.2 = X2,
+    ID_mad.2 = X3
+  ) # Id_pad.2 significa identificación del padre en el archivo de familia 2 (de familia de hermanos medios de madre).
+
+Fam_comp <- Fam_comp %>%
+  rename(
+    ID_ind = X1,
+    ID_pad.3 = X2,
+    ID_mad.3 = X3
+  ) # Id_pad.3 significa identificación del padre en el archivo de familia 3 (de familia de hermanos completos).
+
+write_delim(x = Fam_comp, file = 'Plink/Datos/datFam/Fam_comp.txt', col_names = TRUE, delim = '\t')
+
+####
+# 1.
+####
+
+# 1.1. Se observa a continuación que individuos en Fam_mad coinciden con Fam_pad ----
+
+Fam_mad_pad <- inner_join(x = Fam_pad, y = Fam_mad, by = 'ID_ind') %>%
+  arrange(ID_mad.2)
+
+# 1.2. Luego se observa que individuos en Fam_mad_pad coinciden con Fam_comp ----
+
+Fam_mad_pad_comp <- inner_join(x = Fam_comp, y = Fam_mad_pad, by = 'ID_ind')
+
+# 1.3. Por último, mediante la función anti_join(), solo se dejan los individuos que son solo Fam_mad_pad ----
+
+Fam_mad_pad.b <- anti_join(x = Fam_mad_pad, y = Fam_mad_pad_comp, by = 'ID_ind')
+
+write_delim(x = Fam_mad_pad.b, file = 'Plink/Datos/datFam/Fam_mad_pad.txt', col_names = TRUE, delim = '\t')
+
+####
+# 2.
+####
+
+# 2.1. Se observa a continuación que individuos en Fam_pad coinciden con Fam_comp ----
+
+Fam_pad_comp <- inner_join(x = Fam_comp, y = Fam_pad, by = 'ID_ind') # Al ver este conjunto de datos, los 32 indiviuos del conjunto de datos de hermanos completos, también estan en el conjunto de datos de hermanos medios de padre.
+
+# 2.2. Mediante la función anti_join(), solo se dejan los individuos que son solo hermanos medios de padre ----
+
+Fam_pad <- anti_join(x = Fam_pad, y = Fam_pad_comp, by = 'ID_ind') %>%
+  arrange(ID_pad.1)
+
+# 2.3. De nuevo usando la función anti_join(), se dejan los individuos en "Fam_pad" que no estan dentro del objeto anterior "Fam_mad_pad", y se cuenta a continuación el número de padres ----
+
+Fam_pad_b <- anti_join(x = Fam_pad, y = Fam_mad_pad, by = 'ID_ind') %>%
+  arrange(ID_pad.1)
+
+write_delim(x = Fam_pad_b, file = 'Plink/Datos/datFam/Fam_pad.txt', col_names = TRUE, delim = '\t')
+
+P_Fam_pad <- Fam_pad_b %>%
+  summarise(n = n(), .by = ID_pad.1) %>%
+  rename(ID_pad = ID_pad.1)
+
+write_delim(x = P_Fam_pad, file = 'Plink/Datos/datFam/P_Fam_pad.txt', col_names = TRUE, delim = '\t')
+
+####
+# 3.
+####
+
+# 3.1.a. Se observa a continuación que individuos en Fam_mad coinciden con Fam_comp ----
+
+Fam_mad_comp <- inner_join(x = Fam_comp, y = Fam_mad, by = 'ID_ind') # Al hacer un inner_join() entre los dos conjuntos de datos se observa que el objeto "Fam_mad_comp" tiene 32 filas. Por lo tanto, hay 32 individuos que tienen hermanos completos y que además tienen una madre en común.
+
+# 3.1.b. Otra forma de observar individuos coincidentes ----
+
+id_hermanos_comp <- Fam_comp$ID_ind # Se obtenie un vector con los ID de los individuos del conjunto de datos de hermanos completos.
+
+Fam_mad_comp <- Fam_mad %>% 
+  filter(ID_ind %in% id_hermanos_comp) # Se filtra el conjunto de datos de hermanos medios de madre para obtener únicamente las observaciones con los ID de los individuos del conjunto de datos de hermanos completos.
+
+# 3.2. Mediante la función anti_join(), solo se dejan los 278 individuos que son solo hermanos medios de madre, y se cuenta a continuación el número de padres ----
+
+Fam_mad <- anti_join(x = Fam_mad, y = Fam_mad_comp, by = 'ID_ind') %>%
+  arrange(ID_mad.2)
+
+# 3.3. De nuevo usando la función anti_join(), se dejan los individuos en "Fam_mad" que no estan dentro del objeto anterior "Fam_mad_pad", y se cuenta a continuación el número de madres ----
+
+Fam_mad_b <- anti_join(x = Fam_mad, y = Fam_mad_pad, by = 'ID_ind') %>%
+  arrange(ID_mad.2)
+
+write_delim(x = Fam_mad_b, file = 'Plink/Datos/datFam/Fam_mad.txt', col_names = TRUE, delim = '\t')
+
+M_Fam_mad <- Fam_mad_b %>%
+  summarise(n = n(), .by = ID_mad.2) %>%
+  rename(ID_mad = ID_mad.2)
+
+write_delim(x = M_Fam_mad, file = 'Plink/Datos/datFam/M_Fam_mad.txt', col_names = TRUE, delim = '\t')
+
+####
+# 4.
+####
+
+# 4.1. Se observa a continuación que individuos en Fam_mad_comp coinciden con Fam_pad_comp ----
+
+Fam_pad_comp_mad_comp <- inner_join(x = Fam_mad_comp, y = Fam_pad_comp, by = 'ID_ind')
+
+write_delim(x = Fam_pad_comp_mad_comp, file = 'Plink/Datos/datFam/Fam_pad_comp_mad_comp.txt', col_names = TRUE, delim = '\t')
+```
+
+<!--
+NOTA: En base a lo anterior, se crea la denominación de las distintas familias.
+-->
+
+```{r}
+#| label: Denominación de familias
+
+#########################################################
+# 1. Denominación de familias de hermanos medios de padre
+#########################################################
+
+Fam_pad <- read_delim(file = 'Plink/Datos/datFam/Fam_pad.txt', col_names = TRUE)
+
+Fam_pad_2 <- Fam_pad %>%
+  group_by(ID_pad.1) %>% # Se agrupan los datos de acuerdo al ID de los padres.
+  mutate(ID_FAM = paste0('herMP_', match(ID_pad.1, unique(Fam_pad$ID_pad.1)))) %>% # A cada fila (es decir, a cada individuo) se le asigna un "ID_FAM", que es una cadena de texto construida de la siguiente manera: 'herMP_', seguido del número correspondiente a la ID del padre dentro del conjunto de padres únicos en los datos. La función match() se utiliza para buscar en el vector de IDs de padre únicos (extraído de Fam_pad$ID_pad.1) la posición del ID del padre actual (ID_pad.1) y se utiliza para crear el número final del ID de hermano medio. La función unique() se utiliza para evitar contar varias veces a un mismo padre cuando aparece en varias filas de la tabla.
+  rename(
+    ID_pad = ID_pad.1,
+    ID_mad = ID_mad.1
+    )
+
+#########################################################
+# 2. Denominación de familias de hermanos medios de madre
+#########################################################
+
+Fam_mad <- read_delim(file = 'Plink/Datos/datFam/Fam_mad.txt', col_names = TRUE)
+
+Fam_mad_2 <- Fam_mad %>%
+  group_by(ID_mad.2) %>%
+  mutate(ID_FAM = paste0('herMM_', match(ID_mad.2, unique(Fam_mad$ID_mad.2)))) %>%
+  rename(
+    ID_pad = ID_pad.2,
+    ID_mad = ID_mad.2
+    )
+
+###################################################
+# 3. Denominación de familias de hermanos completos
+###################################################
+
+Fam_comp <- read_delim(file = 'Plink/Datos/datFam/Fam_comp.txt', col_names = TRUE)
+
+Fam_comp_2 <- Fam_comp %>%
+  group_by(ID_pad.3, ID_mad.3) %>%
+  mutate(ID_FAM = paste0('herC_', match(paste0(ID_pad.3, ID_mad.3), unique(paste0(Fam_comp$ID_pad.3, Fam_comp$ID_mad.3))))) %>% # En este caso, se agrupa primero por padre y madre, y luego se utiliza la función match() para asignar un número consecutivo a cada grupo de hermanos completos basado en la concatenación del código del padre y el de la madre. La función paste0() se utiliza para concatenar las cadenas de caracteres. El resultado se guarda en la nueva columna ID_FAM.
+  rename(
+    ID_pad = ID_pad.3,
+    ID_mad = ID_mad.3
+    )
+
+# Se realiza a continuación una prueba para ver si hay individuos duplicados o con una misma denominación ----
+
+Prueba <- bind_rows(Fam_mad_2, Fam_pad_2, Fam_comp_2, Fam_pad.b, Fam_mad.b, Fam_mad_pad.b)
+
+Prueba_2 <- Prueba %>% group_by(ID_ind) %>% filter(duplicated(ID_ind)) # No hay individuos duplicados.
+```
+
+<!--
+NOTA: Se unen a continuación los conjuntos de datos con las distintas familias.
+-->
+
+```{r}
+#| label: Unión de conjuntos de datos
+
+# 1. Se importa el conjunto de datos con todos los individuos ----
+
+ID_FAM <- read_delim(file = 'Plink/Datos/datFam/ID_FAM.txt', col_names = c('ID_ind', 'ID_pad', 'ID_mad'))
+
+# 2. Se unen por filas los conjuntos de datos anteriores con las denominaciones de las distintas familias ----
+
+datFam.a <- bind_rows(Fam_mad_2, Fam_pad_2, Fam_comp_2)
+
+# 3. Se une el anterior conjunto de datos con el conjunto de datos del total de individuos ----
+
+datFam.b <- left_join(x = ID_FAM, y = datFam.a, by = c('ID_ind', 'ID_pad', 'ID_mad'))
+
+# 4. El resto de individuos, como no tienen relación de familias (hermanos medios de padre, de madre y hermanos completos), se identifican según su identificación en ID_ind. ----
+
+datFam.c <- datFam.b %>%
+  mutate(
+    ID_FAM = case_when(
+      is.na(ID_FAM) ~ ID_ind,
+      TRUE ~ ID_FAM
+      )
+    ) %>%
+  relocate(
+    ID_FAM,
+    .before = ID_ind
+    )
+
+# 5. Por último, se forman e importan los conjuntos de datos que se utilizaran en la edición de datos (control de calidad mediante el uso de PLINK (en el archivo Parte-2.qmd) ----
+
+# NOTA: Se obtiene un archivo con identificación familiar (se coloca aquí los valores de ID del individuos), identificación del individuo (dentro de la familia), identificación parental (padre y madre), archivo que se usara más adelante para actualizar la ID de padres y de madres con la opción "--update-ids" de PLINK.
+
+datInd <- datFam.c %>%
+  select(2:4) %>%
+  mutate(ID_fam = ID_ind) %>%
+  relocate(
+    ID_fam,
+    .before = ID_ind
+    )
+
+write_delim(x = datInd, file = 'Plink/Datos/datQC/ID_ind.txt', col_names = FALSE, delim = '\t')
+
+# NOTA: Se obtiene un archivo con ID familiar antiguo, ID del individuo antiguo, nueva identificación familiar (con las denominaciones de familias anteriormente creadas) y nueva identificación del individuo (en este caso, sería la misma ID del individuo antiguo), archivo que se usara para actualizar la ID de la familia con la opción "--update-parents" de PLINK.
+
+datFam <- datFam.c %>%
+    select(1:2) %>%
+    mutate(
+        ID_fam_antiguo = ID_ind,
+        ID_ind_antiguo = ID_ind
+        ) %>%
+    relocate(
+        ID_fam_antiguo,
+        .before = ID_FAM
+        ) %>%
+    relocate(
+        ID_ind_antiguo,
+        .after = ID_fam_antiguo
+        )
+
+write_delim(x = datFam, file = 'Plink/Datos/datQC/ID_fam.txt', col_names = FALSE, delim = '\t')
+
+# NOTA: Se obtiene un archivo con nueva identificación familiar (con las denominaciones de familias anteriormente creadas), nueva identificación del individuo (en este caso, sería la misma ID del individuo antiguo) y su respectivo sexo, archivo que se usara para actualizar el sexo de los individuos con la opción "--update-sex" de PLINK.
+
+datSex <- datFam.c %>%
+  select(ID_FAM, ID_ind) %>%
+  rename(X2 = ID_ind) %>%
+  left_join(y = FAM_arch, by = 'X2') %>%
+  select(1:2, 6) %>%
+  rename(
+    ID_ind = X2,
+    ID_sex = X5
+    )
+
+write_delim(x = datSex, file = 'Plink/Datos/datQC/ID_sex.txt', col_names = FALSE, delim = '\t')
+```

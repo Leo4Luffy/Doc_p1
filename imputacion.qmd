@@ -1,0 +1,3924 @@
+---
+output: 
+  html_document:
+    includes:
+      in_header: arch1.html
+execute:
+    warning: false
+    message: false
+bibliography: references.bib
+---
+
+```{r}
+#| label: Paquetes de R
+#| echo: false
+#| eval: true
+
+pacman::p_load(here, tidyverse, gt, patchwork)
+```
+
+## Imputación de genotipos {.unnumbered}
+
+La imputación de genotipos es un proceso para predecir estadísticamente los genotipos en los marcadores que no están directamente genotipados en ciertos individuos. En algunas situaciones, la imputación también puede extenderse a individuos completamente sin genotipos.
+
+La figura a continuación ilustra la imputación de genotipos para una muestra de individuos. <!--Colocar la figura del "Box 1" del articulo "Genotype imputation for genome-wide association studies". O bien, la figura 1 del articulo "A broad overview of genotype imputation: Standard guidelines, approaches, and future investigations in genomic association studies".-->
+
+```{r}
+#| label: fig-1.a
+#| fig-cap: Esquema general de cómo funciona la imputación del genotipo. 
+#| out-width: 100%
+#| echo: false
+#| eval: true
+#| warning: false
+
+data.frame(x = 1, y = 2) %>%
+
+  ggplot() +
+  
+  annotate(geom = 'rect', xmin = 1.45, xmax = 1.63, ymin = 1.25, ymax = -3.25, colour = 'white', fill = 'black', alpha = 0.1) +
+  annotate(geom = 'rect', xmin = 1.71, xmax = 1.76, ymin = 1.25, ymax = -3.25, colour = 'white', fill = 'black', alpha = 0.1) +
+  annotate(geom = 'rect', xmin = 1.84, xmax = 1.89, ymin = 1.25, ymax = -3.25, colour = 'white', fill = 'black', alpha = 0.1) +
+  annotate(geom = 'rect', xmin = 2.11, xmax = 2.21, ymin = 1.25, ymax = -3.25, colour = 'white', fill = 'black', alpha = 0.1) +
+  annotate(geom = 'rect', xmin = 2.30, xmax = 2.35, ymin = 1.25, ymax = -3.25, colour = 'white', fill = 'black', alpha = 0.1) +
+  annotate(geom = 'text', x = 1.9, y = 1, label = '1 ? ? ? 1 ? 1 ? 0 2 2 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = 0.5, label = '0 ? ? ? 2 ? 2 ? 0 2 2 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = 0.0, label = '1 ? ? ? 2 ? 2 ? 0 2 1 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -0.5, label = '1 ? ? ? 2 ? 1 ? 1 2 2 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -1.0, label = '2 ? ? ? 2 ? 2 ? 1 2 1 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -1.5, label = '1 ? ? ? 1 ? 1 ? 1 2 2 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -2.0, label = '1 ? ? ? 2 ? 2 ? 0 2 1 ? ? 2 ? 1', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -2.5, label = '2 ? ? ? 1 ? 1 ? 1 2 1 ? ? 2 ? 1', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 1.9, y = -3.0, label = '1 ? ? ? 0 ? 0 ? 2 2 2 ? ? 2 ? 0', size = 4.0, colour = 'black') +
+
+  annotate(geom = 'rect', xmin = 2.7, xmax = 3.37, ymin = 1.8, ymax = 2.2, colour = 'yellow', fill = 'yellow', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.365, xmax = 3.8, ymin = 1.8, ymax = 2.2, colour = 'red', fill = 'red', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 2.7, xmax = 3.0, ymin = 1.3, ymax = 1.7, colour = 'gray14', fill = 'gray14', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.0, xmax = 3.8, ymin = 1.3, ymax = 1.7, colour = 'cyan', fill = 'cyan', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 3.25, y = 2.0, label = '0 ? ? ? 1 ? 1 ? 0 1 1 ? ? 1 ? 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 3.25, y = 1.5, label = '1 ? ? ? 1 ? 1 ? 0 1 1 ? ? 1 ? 0', size = 4.0, colour = 'black') +
+  geom_curve(x = 2.418, xend = 2.45, y = 1.0, yend = 1.68, arrow = arrow(length = unit(0.05, 'inch')), size = 0.4, color = 'black', curvature = -0.4, linetype = 'solid') +
+  geom_curve(x = 2.418, xend = 2.45, y = 1.0, yend = 1.18, arrow = arrow(length = unit(0.05, 'inch')), size = 0.4, color = 'black', curvature = -0.4, linetype = 'solid') +
+
+  annotate(geom = 'text', x = 4.1, y = 1, label = '1 1 1 1 1 2 1 0 0 2 2 0 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = 0.5, label = '0 0 1 0 2 2 2 0 0 2 2 2 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = 0.0, label = '1 1 1 1 2 2 2 0 0 2 1 1 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -0.5, label = '1 1 2 0 2 2 1 0 1 2 2 1 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -1.0, label = '2 2 2 2 2 1 2 0 1 2 1 1 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -1.5, label = '1 1 1 0 1 2 1 0 1 2 2 1 2 2 2 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -2.0, label = '1 1 2 1 2 1 2 0 0 2 1 1 1 2 1 1', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -2.5, label = '2 2 2 1 1 1 1 0 1 2 1 0 1 2 1 1', size = 4.0, colour = 'black') +
+  annotate(geom = 'text', x = 4.1, y = -3.0, label = '1 2 2 0 0 2 0 0 2 2 2 1 2 2 2 0', size = 4.0, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 6.8, ymax = 7.2, colour = 'yellow', fill = 'yellow', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 7, label = '0 0 0 0 1 1 1 0 0 1 1 1 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 6.3, ymax = 6.7, colour = 'orange', fill = 'orange', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 6.5, label = '1 1 1 1 1 1 1 0 0 1 0 0 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 5.8, ymax = 6.2, colour = 'gray14', fill = 'gray14', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 6.0, label = '1 1 1 1 1 0 1 0 0 1 0 0 0 1 0 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 5.3, ymax = 5.7, colour = 'green', fill = 'green', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 5.5, label = '0 0 1 0 1 1 1 0 0 1 1 1 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 4.8, ymax = 5.2, colour = 'red', fill = 'red', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 5.0, label = '1 1 1 0 1 1 0 0 1 1 1 0 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 4.3, ymax = 4.7, colour = 'cyan', fill = 'cyan', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 4.5, label = '0 0 1 0 1 1 1 0 0 1 1 1 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 3.8, ymax = 4.2, colour = 'dimgray', fill = 'dimgray', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 4.0, label = '1 1 1 1 1 0 1 0 0 1 0 0 0 1 0 1', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 3.3, ymax = 3.7, colour = 'hotpink', fill = 'hotpink', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 3.5, label = '1 1 1 0 0 1 0 0 1 1 1 0 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 2.8, ymax = 3.2, colour = 'rosybrown4', fill = 'rosybrown4', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 3.0, label = '0 0 0 0 1 1 1 0 0 1 1 1 1 1 1 0', size = 4.0, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.35, xmax = 2.45, ymin = 2.3, ymax = 2.7, colour = 'tan1', fill = 'tan1', alpha = 0.2, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.9, y = 2.5, label = '1 1 1 0 0 1 0 0 1 1 1 0 1 1 1 0', size = 4.0, colour = 'black') +
+  
+  scale_x_continuous(limits = c(1.35, 4.65)) +
+  scale_y_continuous(limits = c(-3.55, 7.5)) +
+  
+  theme_bw() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+```
+
+<!--
+NOTA: La imputación de genotipos se puede resumir como un proceso comparativo entre un conjunto de muestras y un conjunto de objetivos conocido destinado a llenar los vacíos que faltan en el conjunto de muestras utilizando la información recuperada en el conjunto de objetivos. Aquí, definimos como "conjunto de muestra" el conjunto de datos de entrada, formado por individuos que han sido escasamente genotipados a lo largo del genoma y como "panel de referencia" el conjunto de individuos (haplotipos) que han sido analizados a nivel del genoma y se utilizan como plantilla para imputar la información recuperada en el conjunto de muestra. Esto lo dicen en un parrafo del articulo "A broad overview of genotype imputation: Standard guidelines, approaches, and future investigations in genomic association studies".
+-->
+
+## Información utilizada en el proceso de imputación
+
+Los programas de imputación de genotipos se clasifican principalmente en dos métodos de acuerdo al tipo de información que utilizan: imputación __basada en la población__ e imputación __basada en información genealógica__. La imputación basada en la población, por lo general, se basa en un panel de referencia de muestras no relacionadas y hace uso del desequilibrio de ligamiento y la correlación entre SNPs cercanos de una población específica para predecir marcadores sin genotipo. Por otro lado, la imputación basada en información genealógica, que se utiliza para predecir genotipos de individuos emparentados, se basa en información familiar, como pedigríes e identidad por descendencia, para reconstruir fases alélicas y predecir genotipos no observados.
+
+::: {.aclaracion}
+Si bien los individuos de parentesco no conocido (o no emparentados) no comparten largos segmentos de haplotipos debido a padres comunes (como en el caso de los miembros de una familia), si pueden compartir regiones más cortas debido a la presencia de ancestros comunes, aunque muy lejanos en el tiempo.
+:::
+
+La figura a continuación ilustra la imputación de genotipos dentro de una muestra de individuos emparentados.<!--Colocar la figura figura 1 del articulo "Genotype imputation".-->
+
+En relación a lo mencionado en el párrafo anterior, el uso de información genealógica generalmente proporciona más poder que el uso exclusivo de información de desequilibrio de ligamiento. Esto debido a que, según @cite:4, la información genealógica se puede utilizar durante la imputación para reducir el número de haplotipos plausibles que puede tener un individuo.
+
+Hoy en día, se han explorado enfoques híbridos que utilizan ambas fuentes de información en un algoritmo combinado, y de esta forma aprovechar las ventajas de las dos estrategias. Esto, según @cite:5, ha permitido un aumento considerable en el rendimiento de la imputación del genotipo.
+
+<!--Podria colocar la figura 1 del articulo "Genotype Imputation to Increase Sample Size in Pedigreed Populations", mencionando que con AlphaImpute se utilizan ambas fuentes de información. O bien, colocar esto al hablar sobre este software.-->
+
+## Análisis posterior a la imputación
+
+Para verificar la precisón de la imputación, es necesario realizar un control de calidad posterior a la misma. En este sentido, se han desarrollado tres métricas para evaluar la precisión de la imputación del genotipo, incluida la proporción de individuos correctamente genotipados, el puntaje de calidad de la imputación y la correlación entre genotipos verdaderos e imputados.
+
+En relación al puntaje de calidad de la imputación [@cite:6], este fue diseñado para evaluar la precisión de la imputación de cada marcador por separado. Para calcular el puntaje de calidad de la imputación de cada marcador, primero es necesario crear una tabla de clasificación cruzada marginal, correspondiente a la clase de genotipo aa, ab y bb, donde cada celda ($n_{ij}$) significa el número de muestras con genotipo verdadero y genotipo imputado.
+
+|  |  |  |  |  | 
+|-----|-----|-----|-----|-----|
+| Gen. imputado / Gen. verdadero | aa | ab | bb | Total |
+| aa   | n11 | n12 | n13 | n1. |
+| ab   | n21 | n22 | n23 | n2. |
+| bb   | n31 | n32 | n33 | n3. |
+| Total | n.1 | n.2 | n.3 | n..|
+
+Luego, con base en la tabla anterior, se calcula la tasa de concordancia ($P_{0}$) y la concordancia aleatoria ($P_{c}$), y con ellos se puede calcular el puntaje de calidad de la imputación (IQS).
+
+\begin{equation}
+P_{0} = \frac{\sum_{i} n_{ii}}{n_{..}}
+\end{equation}
+
+\begin{equation}
+P_{c} = \frac{\sum_{i} n_{i.} n_{.i}}{n_{..}^{2}}
+\end{equation}
+
+\begin{equation}
+IQS = \frac{P_{0} - P_{c}}{1 - P_{c}}
+\end{equation}
+
+La puntuación máxima del puntaje de calidad de la imputación es 1 (lo que indica una coincidencia perfecta) y sin mínimo teórico [@cite:6].
+
+::: {.aclaracion}
+El puntaje de calidad de la imputación, la proporción de individuos correctamente genotipados y la correlación entre genotipos verdaderos e imputados, comparan genotipos verdaderos con genotipos imputados. Sin embargo, estas dos últimas métricas pueden sobrestimar la precisión de la imputación en marcadores poco comunes (MAF < 5%) debido a que no se ajusta por acuerdo "casual".
+
+Cuando se realiza la imputación de datos genómicos, se intenta inferir la información faltante en un conjunto de datos a partir de un conjunto de referencia más grande y completo. Esto se hace mediante algoritmos que buscan patrones y similitudes en los datos disponibles. Sin embargo, debido a la variabilidad natural en los datos genómicos y a la forma en como funcionan los algoritmos de imputación, existe la posibilidad de que algunos alelos se imputen correctamente no porque se hayan inferido de manera precisa basada en información genómica, sino debido a coincidencias en los datos o al azar. En otras palabras, podría haber casos en los que un alelo se impute correctamente solo por casualidad, sin una base sólida en la información genómica real.
+
+Para abordar el problema anterior, se introdujo el puntaje de calidad de la imputación.
+
+<!-- NOTA: el uso de la correlación entre genotipos verdaderos e imputados como medida de la precisión de la imputación en marcadores de baja frecuencia puede resultar engañoso, ya que cuando la frecuencia del alelo menor de un marcador es inferior al 5%, un programa como Beagle podría asignar aleatoriamente los dos alelos a la muestra utilizando únicamente la frecuencia del alelo menor y lograr una precisión de más del 90%. Para evaluar la precisión de la imputación con énfasis en los marcadores menos comunes, se introdujo una nueva estadística conocida como la puntuación de calidad de la imputación (IQS). IQS tiene en cuenta la concordancia aleatoria y, por lo tanto, controla las frecuencias alélicas -->
+:::
+
+## Empecemos: imputación de genotipos en el trabajo de grado
+
+### Imputación a media densidad
+
+La precisión de la imputación se evaluó mediante el uso de las tres métricas descritas anteriormente: la tasa de concordancia, el puntaje de calidad de la imputación y la correlación entre genotipos verdaderos e imputados. Con este objetivo, se realizó una validación cruzada repetida de k, donde el conjunto de datos con 2894 individuos genotipados se dividió en ocho subconjuntos de datos no repetidos, cada uno de ellos con 362 individuos. La figura a continuación ilustra el proceso de validación cruzada.
+
+```{r}
+#| label: fig-1
+#| fig-cap: Proceso general de la validación cruzada repetida de k para evaluar la precisión de la imputación. Para realizar una validación cruzada ocho veces, de forma aleatoria y sin repetición, los 2894 individuos con genotipos se dividieron en ocho bloques ecualizados, cada uno con 362 individuos. Luego, en cada iteración uno de los bloques se usó como prueba o validación, y los siete bloques restantes como entrenamiento. 
+#| out-width: 100%
+#| echo: false
+#| eval: true
+#| warning: false
+
+data.frame(x = c(1.20, 12.20), y = c(4.90, -2.10)) %>%
+
+  ggplot() +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 20.25, ymin = 3.85, ymax = 4.85, colour = 'black', fill = 'white') +
+  geom_curve(x = 20.35, xend = 20.95, y = 4.35, yend = 4.35, arrow = arrow(length = unit(0.1, 'inch')), size = 1.4, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'text', x = 22.55, y = 4.45, label = '2894 individuos', size = 2.8, colour = 'black') +
+  annotate(geom = 'text', x = 22.55, y = 4.25, label = 'con genotipos.', size = 2.8, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 2.45, ymax = 3.45, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 2.45, ymax = 3.45, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 2.45, ymax = 3.45, colour = 'gray54', fill = 'gray54', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = 2.45, ymax = 3.45, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = 2.45, ymax = 3.45, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = 2.45, ymax = 3.45, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = 2.45, ymax = 3.45, colour = 'plum2', fill = 'plum2', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = 2.45, ymax = 3.45, colour = 'saddlebrown', fill = 'saddlebrown', alpha = 0.2) +
+
+  geom_curve(x = 20.35, xend = 21.15, y = 2.95, yend = 2.95, arrow = arrow(length = unit(0.1, 'inch')), size = 1.4, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'text', x = 22.53, y = 3.19, label = 'Los datos se', size = 2.8, colour = 'black') +
+  annotate(geom = 'text', x = 22.44, y = 2.95, label = 'dividen en', size = 2.8, colour = 'black') +
+  annotate(geom = 'text', x = 22.39, y = 2.71, label = '8 grupos.', size = 2.8, colour = 'black') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = 1.05, ymax = 2.05, colour = 'saddlebrown', fill = 'saddlebrown', alpha = 0.2) +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = 0.05, ymax = 0.95, colour = 'plum2', fill = 'plum2', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -0.95, ymax = -0.05, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -2.05, ymax = -1.05, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -3.15, ymax = -2.15, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -3.15, ymax = -2.15, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -4.25, ymax = -3.25, colour = 'gray54', fill = 'gray54', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -4.25, ymax = -3.25, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -5.35, ymax = -4.35, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -5.35, ymax = -4.35, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -6.45, ymax = -5.45, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.70, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 10.80, xmax = 13.075, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 13.175, xmax = 15.45, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 15.55, xmax = 17.825, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 17.925, xmax = 20.25, ymin = -6.45, ymax = -5.45, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'text', x = 21.10, y = -2.10, label = 'Validación cruzada', size = 4.4, colour = 'black', angle = 90) +
+  annotate(geom = 'text', x = 21.80, y = -2.10, label = 'repetida de ocho.', size = 4.4, colour = 'black', angle = 90) +
+
+  scale_x_continuous(limits = c(1.20, 22.98)) +
+  
+  theme_bw() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+```
+
+Para hacer posible la comparación directa entre genotipos verdaderos e imputados, 584 marcadores con genotipos completos fueron enmascarados. Es decir, en cada iteración del proceso de validación cruzada descrito en el párrafo anterior, se enmascararon los 584 marcadores con genotipos completos y luego fueron imputados usando los programas de imputación de genotipos que se describirán más adelante.
+
+::: {.aclaracion}
+Por lo general, la cantidad de genotipos a enmascarar deberían ser igual al porcentaje mínimo establecido. En este estudio del 10%. Sin embargo, ninguno de los marcadores en el archivo de genotipos estaba completamente genotipado, por lo que se identificaron los marcadores con genotipos completos (584 en total), y estos fueron los que se enmascararon.
+:::
+
+A continuación, se puede observar la distribución de los 584 marcadores en cada uno de los cromosomas. Se puede observar que dichos marcadores se encuentran distribuidos en todos los cromosomas, siendo el cromosoma 1 el de mayor cantidad de marcadores con 45, y el de menor cantidad de marcadores es el cromosoma 27 con 8.
+
+```{r}
+#| label: fig-1b
+#| fig-cap: Distribución y frecuencias alélicas de cada uno de los 584 marcadores con genotipos completos en cada cromosoma. 
+#| echo: false
+#| eval: true
+
+bimMar <- read_table(file = 'Imputacion/Beagle/Datos/Precision/Paso_1.bim', col_names = FALSE) %>% #
+  rename(
+   SNP = X2,
+   BPP = X4
+   ) %>% # Se importa el archivo "Paso_1.bim" donde se encuentra la posición del marcador en el cromosoma.
+   select(SNP, BPP)
+
+distMar <- read_table(file = 'Imputacion/Beagle/Datos/Precision/Paso_3.frq', col_names = TRUE) %>% # Se importa el archivo "Paso_4.frq" que indica las frecuencias alélicas del marcador por cromosoma.
+  left_join(y = bimMar, by = 'SNP')
+
+num_marcadores <- distMar %>%
+  summarise(n = n(), .by = CHR)
+
+distMar %>%
+  ggplot(data = ., aes(x = BPP, y = MAF, size = MAF, colour = MAF, fill = MAF)) +
+  geom_point(alpha = 0.4) +
+  facet_wrap(~ CHR, labeller = labeller(CHR = function(x) paste("Cromosoma", x, "- n =", num_marcadores$n[num_marcadores$CHR == x]))) +
+  labs(x = 'Posición en pares de bases', y = 'Frecuencia alélica del marcador') +
+  theme_bw() +
+  scale_fill_gradient(low = 'yellow', high = 'red') +
+  scale_colour_gradient(low = 'yellow', high = 'red') +
+  theme(
+    axis.text.x = element_text(size = 6, angle = 45, vjust = 0.7),
+    axis.text.y = element_text(size = 6),
+    axis.title = element_text(size = 6, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 6, colour = 'black', face = 'bold')
+    )
+```
+
+::: {.aclaracion}
+La distribución de los marcadores en todos los cromosomas es deseable en el contexto de la imputación de datos genómicos. En la imputación de datos genómicos, los marcadores faltantes se infieren a partir de los datos disponibles y los patrones de desequilibrio de ligamiento. Si los marcadores están distribuidos en todos los cromosomas, es más probable que haya marcadores cercanos en regiones genómicas faltantes, lo que puede mejorar la precisión de la imputación. La distribución uniforme de los marcadores en todos los cromosomas es esencial para asegurar que los análisis genómicos y la imputación de datos sean confiables, precisos y capaces de capturar la variabilidad genética en todo el genoma.
+:::
+
+También se puede observar a continuación si existen bloques de desequilibrio de ligamiento por cromosomas. El desequilibrio de ligamiento se calculó como r2 de acuerdo con @cite:7. Este parámetro indica la correlación entre alelos de dos loci. Se estableció un valor umbral de $r^2$ igual a 0.2, para considerar que dos marcadores están en desequilibrio de ligamiento.
+
+::: {.callout-caution collapse="true"}
+## Expandir para ver los bloques de desequilibrio de ligamiento para cada cromosoma mediante Heatmap.
+```{r}
+#| echo: false
+#| eval: true
+
+# Con los archivos PLINK generados, se visualiza los bloques de desequilibrio de ligamiento mediante un Heatmap de Desequilibrio de Ligamiento (R^2) ----
+
+ldMar <- read_table(file = 'Imputacion/Beagle/Datos/Precision/Paso_4.ld', col_names = TRUE) # Se importa el archivo "Paso_4.ld" donde se encuentran los valores R2.
+
+# Se crea una lista para almacenar los gráficos ----
+
+cromo_plots <- list()
+
+# Se itera sobre los cromosomas y se construye los gráficos ----
+
+for (cromo in 1:29) {
+  ldMar_cromo <- ldMar %>%
+    filter(CHR_A == cromo, SNP_A != SNP_B)
+
+  mR2 <- ldMar_cromo %>%
+    reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum)
+
+  dfR2 <- reshape2::melt(mR2, id.vars = 'SNP_A')
+
+  plot_title <- paste('Cromosoma', cromo)
+
+  cromo_plot <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+    geom_tile() +
+    scale_fill_gradient(low = 'white', high = 'orange', name = 'r²') +
+    labs(title = plot_title, x = ' ', y = ' ') +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+      axis.text.y = element_text(size = 5)
+    )
+
+  cromo_plots[[cromo]] <- cromo_plot
+
+  print(cromo_plot)
+  }
+```
+:::
+
+::: {.aclaracion}
+Que existan bloques de desequilibrio de ligamiento (LD) es importante en la imputación de genotipos por las siguientes razones: __Inferencia de genotipos__: Cuando un marcador genético en un bloque de LD se encuentra genotipado, su información se puede utilizar para predecir los genotipos de otros marcadores en el mismo bloque que no están genotipados. Esto es especialmente útil cuando se trabaja con conjuntos de datos con marcadores faltantes; __Reducir el espacio de búsqueda__: Al agrupar marcadores en bloques de LD, se reduce el número de posibles alelos y combinaciones a considerar durante la imputación. Esto puede acelerar el proceso de imputación y aumentar la precisión de las predicciones. 
+:::
+
+Para la imputación de los genotipos se utilizaron varios programas. A saber, Beagle v. 4.0, Beagle v. 5.4<!--, AlphaImpute v. 1.9--> y AlphaImpute2.
+
+<p><mark><big>1. Imputación mediante Beagle v. 4.0</big></mark></p>
+
+La imputación de los genotipos con Beagle v. 4.0 se realizó con parámetros predeterminados. A continuación, podrá descargar el Bash scripting que se utilizó para realizar esta imputación.
+
+<td>&#128046; <a href="/Imputacion/Beagle/Codigo/Parte-2.sh" class="export">bash Beagle v. 4.0</a></td><br>
+
+En relación al Bash scripting anterior, en `gt=[archivo]` se especificó el archivo con genotipos en formato VCF (Variant Call Format). El código de PLINK usado para obtener el archivo en este formato fue el siguiente.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile datQC/Paso_8 --recode vcf --alleleACGT --out ../../Imputacion/Beagle/Datos/Paso_1 --const-fid')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita sesiones anteriores) que se usan significan lo siguiente:
+
++ --recode vcf: Con esta opción, PLINK recodificará los datos en formato VCF (Variant Call Format).
+
++ --alleleACGT: Esta opción asegura que las variantes en el archivo VCF recodificado utilicen las letras A, C, G y T para representar los alelos, en lugar de los códigos internos de PLINK.
+
++ --const-fid: Con esta opción, PLINK establece el identificador de familia (FID) de cada individuo como constante. Es útil cuando los datos no contienen información de familia, y PLINK asignará el mismo FID a todos los individuos.
+:::
+
+Del mismo modo, en `ped=[archivo]` del Bash scripting anterior, se indicó el pedigrí. Al imputar los genotipos usando Beagle v. 4.0, se obtuvo un archivo VCF de genotipos imputados. A continuación podrá encontrar un ejemplo del formato del archivo resultante.
+
+```{r}
+#| label: fig-2
+#| fig-cap: Ejemplo del archivo VCF que resultó al imputar los genotipos con Beagle v. 4.0.
+#| out-width: 180%
+#| echo: false
+#| eval: true
+#| warning: false
+
+knitr::include_graphics(here('Imagenes', 'vcf_Beaglev4.0.png'))
+```
+
+::: {.aclaracion}
+En el archivo VCF de genotipos imputados con Beagle v. 4.0, se incluye de forma predeterminada tres campos en formato GT, DS y GP. En GT se informan los genotipos en fase representados como 0|0 (homocigoto para el alelo de referencia), 1|1 (homocigoto para el alelo alternativo) y 0|1 o 1|0 (heterocigoto). Esto se puede representar como X|Y (X e Y pueden ser 0 o 1), donde X representa el alelo heredado normalmente de la madre e Y representa el alelo heredado normalmente del padre. Es decir, los genotipos en fase es la secuencia de alelos que se heredaron juntos en los gametos parentales que se fusionaron para producir el individuo.
+
+Cada genotipo imputado no se informa como un genotipo discreto sino como una probabilidad de genotipo (GP); es decir, dado los dos alelos (0 y 1), la probabilidad de que un individuo sea 0|0, 0|1 o 1|0 y 1|1. Para resumir estos valores probabilísticos, los datos imputados se representan principalmente en términos de dosis alélica (DS), un valor entre 0 y 2; la dosis alélica informa el número de alelos alternativos portados por un solo individuo. Por lo general, una dosis igual a 0 corresponde a una probabilidad de 1 de ser homocigoto para el alelo de referencia, una dosis igual a 1 una probabilidad de 1 de ser heterocigoto y una dosis de 2 de ser homocigoto para el alelo alternativo. Debido a que la dosis alélica es un valor continuo, todos los valores posibles entre 0 y 2 representan una probabilidad de estar más cerca de uno de los tres genotipos.
+:::
+
+Como primera métrica para evaluar la precisión de la imputación de los genotipos, se puede observar a continuación la proporción de individuos correctamente genotipados.
+
+```{r}
+#| label: tbl-1
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+carpetas <- c(1:5, 8)
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in carpetas) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+  file_path <- paste0('/home/leonardo/Escritorio/Doc_p1/Imputacion/Beagle/Datos/Precision/Prec_', i, '/Prec_imput_', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+  }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+  rename(
+    'Gen_imput' = 'Genotipos imputados',
+    'Gen_real' = 'Genotipos reales'
+    ) %>%
+    mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+  mutate(
+    Resultado = case_when(
+      Gen_imput == Gen_real ~ 'Correcto',
+      Gen_imput != Gen_real ~ 'No_correcto'
+      )
+    ) %>%
+  summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+Además, en la siguiente figura se puede observar el número de genotipos incorrectamente imputados, siendo más frecuente en genotipos heterocigotos (ab), resultando en genotipos imputados aa (o 0 como dosis alélica).
+
+```{r}
+#| label: fig-3
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: true
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas))) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+```
+
+Luego se calculó el puntaje de calidad de la imputación de cada marcador (IQS), y se estimó el promedio y su desvío estandár por grupo de validación, obteniendo con esto el resultado que se puede observar a continuación.
+
+```{r}
+#| label: tbl-2
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.932 ± 0.0716.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.959 ± 0.0677.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.960 ± 0.0651.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.958 ± 0.0666.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.959 ± 0.0638.
+
+####################
+# Grupo validación 6
+####################
+
+
+
+####################
+# Grupo validación 7
+####################
+
+
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.963 ± 0.0639.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+Por último, se calculó también la correlación entre los genotipos verdaderos e imputados, teniendo este un valor promedio de `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+
+<p><mark><big>2. Imputación mediante Beagle v. 5.4</big></mark></p>
+
+Al igual que se hizo con Beagle v. 4.0, la imputación de los genotipos con Beagle v. 5.4 se realizó con parámetros predeterminados. A continuación, podrá descargar el Bash scripting que se utilizó para realizar esta imputación.
+
+<td>&#128046; <a href="/Imputacion/Beagle/Codigo/Parte-3.sh" class="export">bash Beagle v. 5.4</a></td><br>
+
+En el Bash scripting anterior, se puede observar que al igual que con Beagle v. 4.0, en la imputación con Beagle v. 5.4 el archivo de genotipos se especificó con el parámetro `gt=[archivo]`, y a diferencia del Beagle v. 4.0, no fue necesario indicar el archivo de pedigrí. A continuación podrá observar un ejemplo del archivo VCF que resultó al imputar los genotipos usando Beagle v. 5.4.
+
+```{r}
+#| label: fig-4
+#| fig-cap: Ejemplo del archivo VCF que resultó al imputar los genotipos con Beagle v. 5.4.
+#| out-width: 180%
+#| echo: false
+#| eval: true
+#| warning: false
+
+knitr::include_graphics(here('Imagenes', 'vcf_Beaglev5.4.png'))
+```
+
+::: {.aclaracion}
+Con Beagle v. 4.0, las probabilidades de genotipos y la dosis alélica se imprimen para todos los marcadores, tanto aquellos que están genotipados originalmente como los que son imputados durante el proceso de imputación, lo que significa que para todos los marcadores, independientemente de si están presentes en el panel de referencia o son genotipos perdidos de forma espontánea, Beagle v. 4.0 proporciona la información de las probabilidades de genotipos y la dosis alélica. Con Beagle v. 5.4, la impresión de las probabilidades de genotipos es más restrictiva y está condicionada a ciertas circunstancias. Se imprimirán las probabilidades de genotipos solo cuando se especifique un panel de referencia con el parámetro `ref=[archivo]` y cuando `gp=true`. Además, estas probabilidades de genotipos solo se imprimirán para marcadores no genotipados originalmente que sean imputados usando el panel de referencia.
+:::
+
+En la tabla a continuación se puede observar la proporción de individuos correctamente genotipados.
+
+```{r}
+#| label: tbl-3
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+carpetas <- c(1, 2, 3, 4, 5, 6, 7, 8)
+
+prec_imput <- list()
+
+for (i in carpetas) {
+
+  file_path <- paste0('/home/leonardo/Escritorio/Doc_p1/Imputacion/Beagle/Datos/Precision/Prec_', i, '/Prec_imput_', i, '.b.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE)
+  }
+
+prec.Imput <- bind_rows(prec_imput) %>%
+  rename(
+    'Gen_imput' = 'Genotipos imputados',
+    'Gen_real' = 'Genotipos reales'
+    ) %>%
+  mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+  mutate(
+    Resultado = case_when(
+      Gen_imput == Gen_real ~ 'Correcto',
+      Gen_imput != Gen_real ~ 'No_correcto'
+      )
+    ) %>%
+  summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| label: fig-5
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: true
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 4) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+```
+
+También se puede ver a continuación el promedio estimado y su desvío estándar por grupo de validación, al calcular el puntaje de calidad de la imputación de cada marcador (IQS).
+
+```{r}
+#| label: tbl-4
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.945 ± 0.0670.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.977 ± 0.0600.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.976 ± 0.0599.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.977 ± 0.0611.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvío = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.976 ± 0.0596.
+
+####################
+# Grupo validación 6
+####################
+
+Prec_imput_6 <- prec.Imput %>%
+  filter(Grupo_val == 'Sexto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_6 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_6 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.977 ± 0.0609.
+
+####################
+# Grupo validación 7
+####################
+
+Prec_imput_7 <- prec.Imput %>%
+  filter(Grupo_val == 'Séptimo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.972 ± 0.0613.
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.978 ± 0.0592.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+El promedio de la correlación entre los genotipos verdaderos e imputados fue igual a `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+<!--
+<p><mark><big>3. Imputación mediante AlphaImpute v. 1.9</big></mark></p>
+
+Para imputar genotipos con AlphaImpute v. 1.9, se necesitan de tres archivos: __(1)__ un archivo, denominado como spec file, donde se especifican los parámetros de la imputación, __(2)__ un archivo de genotipo y __(3)__ un archivo de pedigrí. Para los archivos de genotipo y de pedigrí, AlphaImpute v. 1.9 acepta formatos de texto simple o archivos con formato PLINK 1.9 [@cite:3]. A continuación, podrá descargar el spec file que se utilizó para realizar esta imputación. Dicha imputación se realizó con parámetros predeterminados.
+
+<td>&#128046; <a href="Imputacion/AlphaImpute/AlphaImputeSpec.txt" class="export">spec file AlphaImpute v. 1.9</a></td><br>
+
+Como resultado de la imputación mediante AlphaImpute v. 1.9, se generan distintos archivos, siendo los más relevantes los presentados a continuación.
+
+```{r}
+#| echo: false
+#| eval: false
+
+fs::dir_tree("/home/leonardo/Escritorio/Doc_p1/Imputacion/AlphaImpute/Results", all = TRUE)
+```
+
+```{r}
+#| label: fig-6
+#| fig-cap: Ejemplo de  archivos que resultan al imputar los genotipos con AlphaImpute v. 1.9.
+#| out-width: 180%
+#| echo: false
+#| eval: false
+#| warning: false
+
+knitr::include_graphics(here('Imagenes', 'AlphaImpute_phase_genotypes.png'))
+```
+
+::: {.aclaracion}
+Como se puede observar, AlphaImpute v. 1.9 genera distintos archivos de fases y genotipos imputados para todos los individuos. En ambos archivos, los valores imputados se presentan como enteros: los genotipos, representados con dosis alélica, como valores numéricos entre 0 y 2, y valores entre 0 y 1 para las fases. Los genotipos y las fases que no logran ser imputados se codifican con un valor de 3 o de 9.
+:::
+
+Al igual que la imputación hecha con Beagle v. 4.0 y Beagle v. 5.4, la precisión de la imputación se evaluó usando distintas métricas. La primera de ellas fue la proporción de individuos correctamente genotipados, cuyo resultado se puede observar a continuación.
+
+```{r}
+#| label: tbl-5
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: false
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:8) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+  file_path <- paste0('Imputacion/AlphaImpute/Precision/Prec_', i, '/Prec_imput_', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+    }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+  rename(
+      'Gen_imput' = 'Genotipos imputados',
+      'Gen_real' = 'Genotipos reales'
+      ) %>%
+  mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| label: fig-7
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: false
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 9 ~ 3,
+      TRUE ~ Gen_imput
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Septimo', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2', '3')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  mutate(
+    GenI_GenV = ifelse(is.na(GenI_GenV), "NA-NA", GenI_GenV)
+  ) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+  ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2,
+      Gen_imput == 'NA' ~ 3 # Se coloca aquí 3, pero en verdad es 9. Esto para poder hacer el gráfico a continuación.
+    ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+    )
+  ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 4) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:3, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green', 'black', 'yellow', 'red'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green', 'black', 'yellow', 'red'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 4, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 3.5), ylim = c(-0.5, 2.5))
+```
+
+```{r}
+#| label: tbl-6
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: false
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.299 ± 0.0594.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.306 ± 0.0587.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.310 ± 0.0564.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.277 ± 0.0608.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvío = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.300 ± 0.0578.
+
+####################
+# Grupo validación 6
+####################
+
+Prec_imput_6 <- prec.Imput %>%
+  filter(Grupo_val == 'Sexto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_6 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_6 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.280 ± 0.0605.
+
+####################
+# Grupo validación 7
+####################
+
+Prec_imput_7 <- prec.Imput %>%
+  filter(Grupo_val == 'Séptimo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.295 ± 0.0552.
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.302 ± 0.0591.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: false
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+El promedio de la correlación entre los genotipos verdaderos e imputados fue igual a `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+-->
+<p><mark><big>3. Imputación mediante AlphaImpute2</big></mark></p>
+
+<td>&#128046; <a href="Imputacion/AlphaImpute2/Codigo/Parte-4.sh" class="export">bash AlphaImpute2 - basado en la población</a></td><br>
+
+<td>&#128046; <a href="Imputacion/AlphaImpute2/Codigo/Parte-2.qmd" class="export">código `R`</a></td><br>
+
+<p><mark><span style="font-size: medium;">4.1 Imputación basada en el pedigrí</span></mark></p>
+
+```{r}
+#| label: tbl-7
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:8) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+  file_path <- paste0('/home/leonardo/Escritorio/Doc_p1/Imputacion/AlphaImpute2/Datos/Precision/Prec_', i, '/Prec_imput_1.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+  }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+  rename(
+      'Gen_imput' = 'Genotipos imputados',
+      'Gen_real' = 'Genotipos reales'
+      ) %>%
+  mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| label: fig-8
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: true
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 4) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+```
+
+```{r}
+#| label: tbl-8
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.749 ± 0.114.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.797 ± 0.110.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.781 ± 0.111.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.782 ± 0.109.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvío = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.753 ± 0.113.
+
+####################
+# Grupo validación 6
+####################
+
+Prec_imput_6 <- prec.Imput %>%
+  filter(Grupo_val == 'Sexto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_6 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_6 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.286 ± 0.0738.
+
+####################
+# Grupo validación 7
+####################
+
+Prec_imput_7 <- prec.Imput %>%
+  filter(Grupo_val == 'Séptimo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.765 ± 0.113.
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.764 ± 0.116.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+El promedio de la correlación entre los genotipos verdaderos e imputados fue igual a `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+
+<p><mark><span style="font-size: medium;">4.2 Imputación basada en la población</span></mark></p>
+
+```{r}
+#| label: tbl-9
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:8) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+  file_path <- paste0('Imputacion/AlphaImpute2/Datos/Precision/Prec_', i, '/Prec_imput_2.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+  }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+  rename(
+      'Gen_imput' = 'Genotipos imputados',
+      'Gen_real' = 'Genotipos reales'
+      ) %>%
+  mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+  
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| label: fig-9
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: true
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 4) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+```
+
+```{r}
+#| label: tbl-10
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.830 ± 0.129.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.851 ± 0.130.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.849 ± 0.128.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.847 ± 0.133.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvío = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.848 ± 0.130.
+
+####################
+# Grupo validación 6
+####################
+
+Prec_imput_6 <- prec.Imput %>%
+  filter(Grupo_val == 'Sexto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_6 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_6 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.805 ± 0.130.
+
+####################
+# Grupo validación 7
+####################
+
+Prec_imput_7 <- prec.Imput %>%
+  filter(Grupo_val == 'Séptimo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.843 ± 0.134.
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.8582 ± 0.130.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+El promedio de la correlación entre los genotipos verdaderos e imputados fue igual a `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+
+<p><mark><span style="font-size: medium;">4.3 Imputación usando ambas fuentes de información</span></mark></p>
+
+```{r}
+#| label: tbl-11
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:8) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+  file_path <- paste0('Imputacion/AlphaImpute2/Datos/Precision/Prec_', i, '/Prec_imput_3.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+  prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+  }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+  rename(
+      'Gen_imput' = 'Genotipos imputados',
+      'Gen_real' = 'Genotipos reales'
+      ) %>%
+  mutate(Grupo_val = recode(Grupo_val, 'Septimo' = 'Séptimo'))
+
+# Se verifica la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+  mutate(Porcentaje = (Cantidad / sum(Cantidad) * 100), .by = Grupo_val) %>%
+  filter(Resultado == 'Correcto') %>%
+  select(Grupo_val, Porcentaje) %>%
+  rename('Grupo de validación' = 'Grupo_val', 'Proporción (%)' = 'Porcentaje') %>%
+  mutate('Proporción (%)' = round(x = `Proporción (%)`, digits = 2)) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| label: fig-10
+#| fig-cap: Genotipos mal imputados por grupo de validación. 
+#| echo: false
+#| eval: true
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 4) +
+  #geom_text(data = conteo, aes(label = conteo), position = position_jitter(width = 0.2, height = 0.3), vjust = 0.0, size = 3, colour = 'black') +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+```
+
+```{r}
+#| label: tbl-12
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+####################
+# Grupo validación 1
+####################
+
+Prec_imput_1 <- prec.Imput %>%
+  filter(Grupo_val == 'Primero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_1 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_1 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.907 ± 0.0756.
+
+####################
+# Grupo validación 2
+####################
+
+Prec_imput_2 <- prec.Imput %>%
+  filter(Grupo_val == 'Segundo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_2 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_2 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.938 ± 0.0655.
+
+####################
+# Grupo validación 3
+####################
+
+Prec_imput_3 <- prec.Imput %>%
+  filter(Grupo_val == 'Tercero') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_3 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_3 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.933 ± 0.0636.
+
+####################
+# Grupo validación 4
+####################
+
+Prec_imput_4 <- prec.Imput %>%
+  filter(Grupo_val == 'Cuarto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_4 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_4 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.937 ± 0.0645.
+
+####################
+# Grupo validación 5
+####################
+
+Prec_imput_5 <- prec.Imput %>%
+  filter(Grupo_val == 'Quinto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_5 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_5 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvío = sd(IQS, na.rm = TRUE)
+    ) # El resultado fue igual a 0.938 ± 0.0585.
+
+####################
+# Grupo validación 6
+####################
+
+Prec_imput_6 <- prec.Imput %>%
+  filter(Grupo_val == 'Sexto') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_6 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_6 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.907 ± 0.0765.
+
+####################
+# Grupo validación 7
+####################
+
+Prec_imput_7 <- prec.Imput %>%
+  filter(Grupo_val == 'Séptimo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.929 ± 0.0700.
+
+####################
+# Grupo validación 8
+####################
+
+Prec_imput_8 <- prec.Imput %>%
+  filter(Grupo_val == 'Octavo') %>%
+  mutate(
+    Gen_real = case_when(
+      Gen_real == 0 ~ 'AA',
+      Gen_real == 1 ~ 'AB',
+      Gen_real == 2 ~ 'BB'
+      ),
+    Gen_imput = case_when(
+      Gen_imput == 0 ~ 'AA',
+      Gen_imput == 1 ~ 'AB',
+      Gen_imput == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_8 %>%
+  unite(col = 'Combinacion', c(Gen_imput, Gen_real), sep = '_')
+
+T_IQS_2 <- T_IQS %>%
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) %>%
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0 <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_0 = sum(Cantidad) / 362, .by = `ID genotipos`)
+
+P_c <- T_IQS_2 %>%
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) %>%
+  summarise(P_c = sum(Cantidad * Cantidad) / 362^2, .by = `ID genotipos`)
+
+IQS <- inner_join(x = P_0, y = P_c, by = 'ID genotipos') %>%
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_8 <- IQS %>%
+  summarise(
+    Promedio = mean(IQS),
+    Desvío = sd(IQS)
+    ) # El resultado fue igual a 0.943 ± 0.0628.
+
+# A continuación, se obtiene la media y el Desvío estándar de IQS para cada grupo de validación ----
+
+IQS <- ls(pattern = 'IQS_imput\\_')
+
+IQS <- mget(IQS)
+
+bind_rows(IQS) %>%
+  mutate('Grupo de validación' = c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo')) %>%
+  relocate(
+    'Grupo de validación',
+    .before = Promedio
+    ) %>%
+  mutate(
+    Promedio = round(x = Promedio, digits = 4),
+    Desvío = round(x = Desvío, digits = 4)
+    ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Se calcula a continuación la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+  summarise(
+    Correlacion = cor(Gen_imput, Gen_real),
+    valorP = cor.test(Gen_imput, Gen_real)$p.value,
+    .by = Grupo_val
+    )
+```
+
+El promedio de la correlación entre los genotipos verdaderos e imputados fue igual a `r cor.Imput %>% summarise(round(mean(Correlacion), digits = 2))` ± `r cor.Imput %>% summarise(round(sd(Correlacion), digits = 4))`.
+
+### Imputación a alta densidad
+
+Como resultado del análisis anterior se obtuvieron genotipos imputados a media densidad. Como paso posterior a este, se realizó la imputación de media a alta densidad. Para el control de calidad de los marcadores genotipados a alta densidad, se excluyeron aquellos marcadores ubicados en regiones no autosómicas, si tenían un valor p de equilibrio de Hardy-Weinberg menor a 0.00001, con frecuencia alélica mínima menos de 0.01, y demás opciones descritas en el control de calidad realizado a los marcadores genotipados a media densidad.
+
+Previo a la unión de los conjuntos de datos de media (no imputados) y de alta densidad, se identificaron individuos y marcadores compartidos entre ambos conjuntos de datos. Del total de 43421 y 621994 marcadores de media y alta densidad, respectivamente, 33378 marcadores se compartieron entre ambas densidades luego del control de calidad.<!-- En relación a los individuos en común, se encontraron 208 individuos compartidos.-->
+
+```{r}
+#| label: fig-11
+#| fig-cap: Diagrama de Venn que muestra marcadores (A) e individuos (B) únicos y compartidos entre conjuntos de datos. Se identificaron marcadores como compartidos entre conjuntos de datos si la posición del marcador dentro del cromosoma, el alelo de referencia y el alelo alternativo eran idénticos.
+#| echo: false
+#| eval: true
+
+Venn <- tibble(
+  x = c(0.866, -0.866),
+  y = c(-0.5, -0.5),
+  Densidades = c('HD', '50k')
+  )
+
+# Marcadores en común ----
+
+marc_comun <- tibble(
+  marcadores = c(621994, 33378, 43421)
+    ) %>%
+  mutate(
+    x = c(1.5, 0, -1.5),
+    y = c(-0.5, -0.5, -0.5)
+    )
+
+p_marc_comun <- ggplot(data = Venn) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) + # Con el parámetro r(= 1.5) se define el radio del círculo.
+  coord_fixed() +
+  scale_colour_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
+  scale_fill_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
+  labs(x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = 'bold'),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    ) +
+  annotate("text", x = marc_comun$x, y = marc_comun$y, label = marc_comun$marcadores, size = 4.5)
+
+# Individuos en común ----
+
+#ind_comun <- tibble(
+  #marcadores = c(284, 208, 2896)
+    #) %>%
+  #mutate(
+    #x = c(1.5, 0, -1.5),
+    #y = c(-0.5, -0.5, -0.5)
+    #)
+
+#p_ind_comun <- ggplot(data = Venn) +
+  #ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) +
+  #coord_fixed() +
+  #scale_colour_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
+  #scale_fill_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
+  #labs(title = 'B', x = ' ', y = ' ') +
+  #theme_bw() +
+  #theme(
+    #plot.title = element_text(size = 10, face = 'bold'),
+    #legend.text = element_text(size = 10),
+    #legend.title = element_text(size = 10, face = 'bold'),
+    #axis.line = element_blank(),
+    #axis.text = element_blank(),
+    #axis.ticks = element_blank()
+    #) +
+  #annotate("text", x = ind_comun$x, y = ind_comun$y, label = ind_comun$marcadores, size = 4.5)
+
+#(p_marc_comun / p_ind_comun) + plot_layout(guides = 'collect')
+
+p_marc_comun
+```
+
+Al unir los conjuntos de datos de media y de alta densidad, se generó un conjunto de datos de densidades combinadas. Esto a partir del siguiente código de PLINK.
+
+```{r}
+#| echo: true
+#| eval: false
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4 --bmerge ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.bed ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.bim ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_10.fam --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_11 --list-duplicate-vars')
+```
+
+::: {.codigo}
+Las opciones de PLINK (algunas de ellas descrita sesiones anteriores) que se usan significan lo siguiente:
+
++ --bmerge: Esta opción permite unir datos de genotipo de diferentes fuentes en un solo conjunto de datos. Con <u>--bmerge ../../Imputacion/Imp_HD/Datos/datQC/Paso_15.bed ../../Imputacion/Imp_HD/Datos/datQC/Paso_15.bim ../../Imputacion/Imp_HD/Datos/datQC/Paso_15.fam</u>, se especifica los archivos que se fusionarán con los datos del archivo base (<u>../../Imputacion/Imp_HD/Datos/datQC/Paso_9</u>). Estos archivos contienen la información de genotipo (.bed), información del mapa genético (.bim) y datos de familia (.fam).
+
++ --list-duplicate-vars: Con esta opción se muestra los marcadores duplicados en un archivo de salida con extensión *.missnp (en este caso, Paso_16.missnp).
+:::
+
+De la unión anterior, se obtuvo un conjunto de datos de densidades combinadas con 621994 marcadores y 2970 individuos. Luego, se extrajeron solo los individuos presentes en el conjunto de datos de alta densidad, obteniéndose un conjunto de datos con 621994 marcadores y 284 individuos.
+
+La precisión de la imputación a alta densidad se obtuvo utilizando la misma metodología que se empleó para la imputación a densidad media. Esto implicó enmascarar y posteriormente predecir los genotipos en un entorno de validación cruzada. Los grupos de validación se formaron con base en los 284 individuos. Para facilitar una comparación directa entre los genotipos reales y los imputados, se seleccionaron algunos marcadores para ser enmascarados (511184 marcadores con genotipos completos).
+
+La figura a continuación ilustra el proceso de validación cruzada.
+
+```{r}
+#| label: fig-12
+#| fig-cap: Proceso general de la validación cruzada repetida de k para evaluar la precisión de la imputación. Se formaron cuatro bloques ecualizados, cada uno con 71 individuos. Luego, en cada iteración uno de los bloques se usó como prueba o validación, y los tres bloques restantes como entrenamiento. 
+#| out-width: 80%
+#| echo: false
+#| eval: true
+#| warning: false
+
+data.frame(x = c(1.20, 12.20), y = c(4.90, -2.10)) %>%
+
+  ggplot() +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 10.75, ymin = 3.85, ymax = 4.85, colour = 'black', fill = 'white') +
+  geom_curve(x = 10.85, xend = 11.15, y = 4.35, yend = 4.35, arrow = arrow(length = unit(0.1, 'inch')), size = 2.4, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'text', x = 12.05, y = 4.45, label = '284 individuos', size = 3.4, colour = 'black') +
+  annotate(geom = 'text', x = 12.05, y = 4.25, label = 'con genotipos.', size = 3.4, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 2.45, ymax = 3.45, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 2.45, ymax = 3.45, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 2.45, ymax = 3.45, colour = 'gray14', fill = 'gray14', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.75, ymin = 2.45, ymax = 3.45, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  geom_curve(x = 10.85, xend = 11.15, y = 2.95, yend = 2.95, arrow = arrow(length = unit(0.1, 'inch')), size = 2.4, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'text', x = 12.05, y = 3.15, label = 'Los datos se', size = 3.4, colour = 'black') +
+  annotate(geom = 'text', x = 12.01, y = 2.95, label = 'dividen en', size = 3.4, colour = 'black') +
+  annotate(geom = 'text', x = 11.97, y = 2.75, label = '4 grupos.', size = 3.4, colour = 'black') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 1.05, ymax = 2.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.75, ymin = 1.05, ymax = 2.05, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = 0.05, ymax = 0.95, colour = 'gray14', fill = 'gray14', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.75, ymin = 0.05, ymax = 0.95, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -0.95, ymax = -0.05, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.75, ymin = -0.95, ymax = -0.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'rect', xmin = 1.25, xmax = 3.575, ymin = -2.05, ymax = -1.05, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 3.675, xmax = 5.95, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 6.05, xmax = 8.325, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 8.425, xmax = 10.75, ymin = -2.05, ymax = -1.05, colour = 'black', fill = 'white', linetype = 'longdash') +
+
+  annotate(geom = 'text', x = 11.20, y = 0.00, label = 'Validación cruzada', size = 4.8, colour = 'black', angle = 90) +
+  annotate(geom = 'text', x = 11.60, y = 0.00, label = 'repetida de cuatro.', size = 4.8, colour = 'black', angle = 90) +
+
+  scale_x_continuous(limits = c(1.20, 12.30)) +
+  
+  theme_bw() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+```
+
+La precisión de la imputación se evaluó mediante el uso de las tres métricas descritas anteriormente (la tasa de concordancia, el puntaje de calidad de la imputación y la correlación entre genotipos verdaderos e imputados).
+
+En la tabla a continuación se puede observar la proporción de individuos correctamente genotipados.
+
+```{r}
+#| label: tbl-13
+#| tbl-cap: Proporción de individuos correctamente genotipados para cada grupo de validación.
+#| echo: false
+#| eval: true
+
+tribble(
+  ~'Grupo de validación', ~'Proporción (%)',
+  'Primero', 97.6,
+  'Segundo', 97.4,
+  'Tercero', 97.2,
+  'Cuarto', 97.5
+  ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+Además, en la siguiente figura se puede observar el número de genotipos incorrectamente imputados.
+
+```{r}
+#| label: fig-13
+#| fig-cap: Genotipos mal imputados por grupo de validación.
+#| out-width: 80%
+#| echo: false
+#| eval: true
+
+knitr::include_graphics(here('Imputacion', 'Imp_HD', 'Imagenes', 'Graf_imput.png'))
+```
+
+También se puede ver a continuación el promedio estimado y su desvío estándar por grupo de validación, al calcular el puntaje de calidad de la imputación de cada marcador (IQS).
+
+```{r}
+#| label: tbl-14
+#| tbl-cap: Cálculo del IQS con base en la tabla de clasificación cruzada marginal de genotipos verdaderos e imputados de un único marcador.
+#| echo: false
+#| eval: true
+
+tribble(
+  ~'Grupo de validación', ~'Promedio', ~'Desvío',
+  'Primero', 0.958, 0.098,
+  'Segundo', 0.953, 0.100,
+  'Tercero', 0.948, 0.101,
+  'Cuarto', 0.955, 0.100
+  ) %>%
+  gt() %>%
+  tab_options(table.width = pct(100))
+```
+
+En relación al promedio de la correlación entre los genotipos verdaderos e imputados, este fue igual a 0.941 ± 0.00237.
+
+<!--
+::: {.conclusion}
+Hola.
+:::
+-->
+
+## Referencias bibliográficas

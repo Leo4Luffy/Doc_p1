@@ -1,0 +1,903 @@
+---
+title: "Parte 16: evaluación de la precisión de la imputación con AlphaImpute2 - Parte 2"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: A continuación, se generan los distintos conjuntos de datos con los genotipos reales e imputados, este último de acuerdo al grupo de validación y el tipo de imputación (basado en el pedigrí, en la población o imputación conjunta).
+-->
+
+```{r}
+#| label: Genotipos reales e imputados
+
+# Se importan los genotipos reales y se asigna un nombre a las columnas ----
+
+datGen <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/datGen.txt', col_names = FALSE, delim = ' ')
+
+colnames(datGen) <- c('IID', paste0('Geno', 1:(ncol(datGen) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "Geno" y un número que va del 1 al número de columnas de genotipos (ncol(datGen) - 1).
+
+# Se extraen los marcadores con genotipo completos ----
+
+columnas_sin_9 <- datGen %>%
+    select(-IID) %>%
+    keep(~ all(.x != 9)) %>% # Se utiliza la función keep() del paquete purrr junto con el operador ~ para mantener solo las columnas en las que todos los valores sean diferentes de 9. El resultado se almacena en el objeto columnas_sin_9.
+    names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 592 marcadores con genotipo en todos los individuos.
+
+datGen_2 <- datGen %>%
+    select(IID, all_of(columnas_sin_9)) # Se usa IID como un argumento independiente en select(), y luego se usa all_of() para seleccionar las columnas almacenadas en columnas_sin_9 como argumento adicional.
+
+datGen_2 <- datGen_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos reales'
+        ) # Se cambia a formato largo, de tal forma que cada columna represente el ID del indivdiuo, el ID del genotipo y el genotipo real (recordar que 0 representa homocigoto para el alelo de referencia 1, 1 representa heterocigoto, 2 representa homocigoto para el alelo alternativo y 9 valor o genotipo ausente).
+
+#head(datGen_2) # Se ve la estructura del objeto anteriormente creado.
+
+#######################
+# Grupo 1 de validación
+#######################
+
+Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Grup1.txt', delim = ' ', col_names = FALSE) %>% # Se importa desde la carpeta Beagle el nombre de los individuos que hacen parte del primer grupo de validación.
+  separate(
+    col = 'X1',
+    into = c('X1', 'X2')
+    ) %>%
+  select(X1)
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Resultado1.genotypes', col_names = FALSE, delim = ' ')
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup1$X1) # Se eligen solo los individuos del primer grupo de validación. La expresión IID %in% Grup1$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup1$X1.
+
+Prec_imput_2.1.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Pedigrí', # Se indica el tipo de imputación (basado en el pedigrí).
+        Grupo_val = 'Primero' # Se indica el grupo de validación (primer grupo).
+        )
+
+Prec_imput_2.1.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_1.1.txt', col_names = TRUE, delim = ' ')
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Resultado2.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup1$X1) # Se eligen solo los individuos del primer grupo de validación. La expresión IID %in% Grup1$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup1$X1.
+
+Prec_imput_2.2.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Población', # Se indica el tipo de imputación (basado en la población).
+        Grupo_val = 'Primero' # Se indica el grupo de validación (primer grupo).
+        )
+
+Prec_imput_2.2.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_2.1.txt', col_names = TRUE, delim = ' ')
+
+########################
+# c. Imputación conjunta
+########################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Resultado3.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información tanto del pedigrí como de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup1$X1) # Se eligen solo los individuos del primer grupo de validación. La expresión IID %in% Grup1$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup1$X1.
+
+Prec_imput_2.3.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Conjunta', # Se indica el tipo de imputación (conjunta).
+        Grupo_val = 'Primero' # Se indica el grupo de validación (primer grupo).
+        ) 
+
+Prec_imput_2.3.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_1/Prec_imput_3.1.txt', col_names = TRUE, delim = ' ')
+
+#######################
+# Grupo 2 de validación
+#######################
+
+Grup2 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Grup2.txt', delim = ' ', col_names = FALSE) %>% # Se importa desde la carpeta Beagle el nombre de los individuos que hacen parte del primer grupo de validación.
+  separate(
+    col = 'X1',
+    into = c('X1', 'X2')
+    ) %>%
+  select(X1)
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Resultado1.genotypes', col_names = FALSE, delim = ' ')
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup2$X1) # Se eligen solo los individuos del segundo grupo de validación. La expresión IID %in% Grup2$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup2$X1.
+
+Prec_imput_2.1.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Pedigrí', # Se indica el tipo de imputación (basado en el pedigrí).
+        Grupo_val = 'Segundo' # Se indica el grupo de validación (segundo grupo).
+        )
+
+Prec_imput_2.1.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_1.2.txt', col_names = TRUE, delim = ' ')
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Resultado2.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup2$X1) # Se eligen solo los individuos del segundo grupo de validación. La expresión IID %in% Grup2$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup2$X1.
+
+Prec_imput_2.2.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Población', # Se indica el tipo de imputación (basado en la población).
+        Grupo_val = 'Segundo' # Se indica el grupo de validación (segundo grupo).
+        )
+
+Prec_imput_2.2.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_2.2.txt', col_names = TRUE, delim = ' ')
+
+########################
+# c. Imputación conjunta
+########################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Resultado3.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información tanto del pedigrí como de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup2$X1) # Se eligen solo los individuos del segundo grupo de validación. La expresión IID %in% Grup2$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup2$X1.
+
+Prec_imput_2.3.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Conjunta', # Se indica el tipo de imputación (conjunta).
+        Grupo_val = 'Segundo' # Se indica el grupo de validación (segundo grupo).
+        ) 
+
+Prec_imput_2.3.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_2/Prec_imput_3.2.txt', col_names = TRUE, delim = ' ')
+
+#######################
+# Grupo 3 de validación
+#######################
+
+Grup3 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Grup3.txt', delim = ' ', col_names = FALSE) %>% # Se importa desde la carpeta Beagle el nombre de los individuos que hacen parte del primer grupo de validación.
+  separate(
+    col = 'X1',
+    into = c('X1', 'X2')
+    ) %>%
+  select(X1)
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Resultado1.genotypes', col_names = FALSE, delim = ' ')
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup3$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.1.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Pedigrí', # Se indica el tipo de imputación (basado en el pedigrí).
+        Grupo_val = 'Tercero' # Se indica el grupo de validación (tercer grupo).
+        )
+
+Prec_imput_2.1.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_1.3.txt', col_names = TRUE, delim = ' ')
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Resultado2.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup3$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.2.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Población', # Se indica el tipo de imputación (basado en la población).
+        Grupo_val = 'Tercero' # Se indica el grupo de validación (tercer grupo).
+        )
+
+Prec_imput_2.2.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_2.3.txt', col_names = TRUE, delim = ' ')
+
+########################
+# c. Imputación conjunta
+########################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Resultado3.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información tanto del pedigrí como de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup3$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.3.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Conjunta', # Se indica el tipo de imputación (conjunta).
+        Grupo_val = 'Tercero' # Se indica el grupo de validación (tercer grupo).
+        ) 
+
+Prec_imput_2.3.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_3/Prec_imput_3.3.txt', col_names = TRUE, delim = ' ')
+
+#######################
+# Grupo 4 de validación
+#######################
+
+Grup4 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Grup4.txt', delim = ' ', col_names = FALSE) %>% # Se importa desde la carpeta Beagle el nombre de los individuos que hacen parte del primer grupo de validación.
+  separate(
+    col = 'X1',
+    into = c('X1', 'X2')
+    ) %>%
+  select(X1)
+
+####################################
+# a. Imputación basado en el pedigrí
+####################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Resultado1.genotypes', col_names = FALSE, delim = ' ')
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup4$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.1.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Pedigrí', # Se indica el tipo de imputación (basado en el pedigrí).
+        Grupo_val = 'Cuarto' # Se indica el grupo de validación (tercer grupo).
+        )
+
+Prec_imput_2.1.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_1.4.txt', col_names = TRUE, delim = ' ')
+
+######################################
+# b. Imputación basado en la población
+######################################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Resultado2.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup4$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.2.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Población', # Se indica el tipo de imputación (basado en la población).
+        Grupo_val = 'Cuarto' # Se indica el grupo de validación (tercer grupo).
+        )
+
+Prec_imput_2.2.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_2.4.txt', col_names = TRUE, delim = ' ')
+
+########################
+# c. Imputación conjunta
+########################
+
+# Se importan los genotipos imputados y se asigna un nombre a las columnas ----
+
+Prec_imput_1 <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Resultado3.genotypes', col_names = FALSE, delim = ' ') # Se importan los genotipos imputados usando la información tanto del pedigrí como de la población.
+
+colnames(Prec_imput_1) <- c('IID', paste0('Geno', 1:(ncol(Prec_imput_1) - 1))) # Se asigna un nombre a las columnas.
+
+# En los genotipos imputados, se extraen los marcadores que anteriormente se habian identificado como completamente genotipados, en el primer grupo de validación. Luego, se cambia a formato largo y se unen con el conjunto de datos de genotipos reales ----
+
+Prec_imput_2 <- Prec_imput_1 %>%
+    select(IID, all_of(columnas_sin_9)) %>%
+    filter(IID %in% Grup4$X1) # Se eligen solo los individuos del tercer grupo de validación. La expresión IID %in% Grup3$X1 filtra las filas en las que el valor de la columna IID está presente en el objeto Grup3$X1.
+
+Prec_imput_2.3.1 <- Prec_imput_2 %>%
+    pivot_longer(
+        cols = c(2:511185),
+        names_to = 'ID genotipos',
+        values_to = 'Genotipos imputados'
+        ) %>%
+    inner_join(datGen_2, by = c('IID', 'ID genotipos')) %>%
+    mutate(
+        Tipo = 'Conjunta', # Se indica el tipo de imputación (conjunta).
+        Grupo_val = 'Cuarto' # Se indica el grupo de validación (tercer grupo).
+        ) 
+
+Prec_imput_2.3.1 %>%
+    write_delim(file = 'Imp_HD/Datos/AlphaImpute2/Precision/Prec_4/Prec_imput_3.4.txt', col_names = TRUE, delim = ' ')
+```
+
+<!--
+NOTA: Se evalua la precisón de la imputación a partir de la correlación entre los genotipos reales e imputados.
+-->
+
+```{r}
+#| label: Precisón de la imputación
+
+#################################
+# Imputación basado en el pedigrí
+#################################
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:4) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+    file_path <- paste0('Imp_HD/Datos/AlphaImpute2/Precision/Prec_', i, '/Prec_imput_1.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+    prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+    }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+    rename(
+        'Gen_imput' = 'Genotipos imputados',
+        'Gen_real' = 'Genotipos reales'
+    )
+
+# Se calcula la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+    summarise(
+        Correlacion = cor(Gen_imput, Gen_real),
+        valorP = cor.test(Gen_imput, Gen_real)$p.value,
+        .by = Grupo_val
+        )
+
+print(cor.Imput)
+
+# Se calcula la media de las correlaciones anteriores y su desvió estandár ----
+
+cor.Imput_2 <- cor.Imput %>%
+    summarise(
+        Promedio = mean(Correlacion),
+        Desvio = sd(Correlacion)
+    )
+
+print(cor.Imput_2) # El resultado fue igual a 0.115 ± 0.0283.
+
+# Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+    mutate(Porcentaje = Cantidad / sum(Cantidad) * 100, .by = Grupo_val)
+
+tribble(
+  ~'Grupo de validación', ~'Proporción (%)',
+  'Primero', 34.9,
+  'Segundo', 36.7,
+  'Tercero', 35.3,
+  'Cuarto', 35.3
+  )
+
+################################################
+# Gráfica de genotipos incorrectamente imputados
+################################################
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 2) +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+
+ggsave('../../Imagenes/Graf_imput_3.png', width = 20, height = 20, units = 'cm')
+
+###################################
+# Imputación basado en la población
+###################################
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:4) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+    file_path <- paste0('Imp_HD/Datos/AlphaImpute2/Precision/Prec_', i, '/Prec_imput_2.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+    prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+    }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+    rename(
+        'Gen_imput' = 'Genotipos imputados',
+        'Gen_real' = 'Genotipos reales'
+    )
+
+# Se calcula la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+    summarise(
+        Correlacion = cor(Gen_imput, Gen_real),
+        valorP = cor.test(Gen_imput, Gen_real)$p.value,
+        .by = Grupo_val
+        )
+
+print(cor.Imput)
+
+# Se calcula la media de las correlaciones anteriores y su desvió estandár ----
+
+cor.Imput_2 <- cor.Imput %>%
+    summarise(
+        Promedio = mean(Correlacion),
+        Desvio = sd(Correlacion)
+    )
+
+print(cor.Imput_2) # El resultado fue igual a 0.843 ± 0.0192.
+
+# Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+    mutate(Porcentaje = Cantidad / sum(Cantidad) * 100, .by = Grupo_val)
+
+tribble(
+  ~'Grupo de validación', ~'Proporción (%)',
+  'Primero', 88.4,
+  'Segundo', 88.7,
+  'Tercero', 88.4,
+  'Cuarto', 88.6
+  )
+
+################################################
+# Gráfica de genotipos incorrectamente imputados
+################################################
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 2) +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+
+ggsave('../../Imagenes/Graf_imput_4.png', width = 20, height = 20, units = 'cm')
+
+#####################
+# Imputación conjunta
+#####################
+
+# Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
+
+prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
+
+for (i in 1:4) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
+
+    file_path <- paste0('Imp_HD/Datos/AlphaImpute2/Precision/Prec_', i, '/Prec_imput_3.', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+    
+    prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
+    }
+
+prec.Imput <- bind_rows(prec_imput) %>% # Despues de importar los archivos y almacenarlos en la lista "prec_imput", se utiliza la función bind_rows() para combinar los conjuntos de datos en un solo objeto llamado "prec.Imput" (de precisión de la imputación). Esta función une los conjuntos de datos por filas, asumiendo que tienen la misma estructura de columnas.
+    rename(
+        'Gen_imput' = 'Genotipos imputados',
+        'Gen_real' = 'Genotipos reales'
+    )
+
+# Se calcula la correlación y la significancia de la correlación por grupo de validación ----
+
+cor.Imput <- prec.Imput %>%
+    summarise(
+        Correlacion = cor(Gen_imput, Gen_real),
+        valorP = cor.test(Gen_imput, Gen_real)$p.value,
+        .by = Grupo_val
+        )
+
+print(cor.Imput)
+
+# Se calcula la media de las correlaciones anteriores y su desvió estandár ----
+
+cor.Imput_2 <- cor.Imput %>%
+    summarise(
+        Promedio = mean(Correlacion),
+        Desvio = sd(Correlacion)
+    )
+
+print(cor.Imput_2) # El resultado fue igual a 0.967 ± 0.00761.
+
+# Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
+
+por.Imput <- prec.Imput %>%
+    mutate(
+        Resultado = case_when(
+            Gen_imput == Gen_real ~ 'Correcto',
+            Gen_imput != Gen_real ~ 'No_correcto'
+            )
+        ) %>%
+    summarise(Cantidad = n(), .by = c(Grupo_val, Resultado))
+
+por.Imput %>%
+    mutate(Porcentaje = Cantidad / sum(Cantidad) * 100, .by = Grupo_val)
+
+tribble(
+  ~'Grupo de validación', ~'Proporción (%)',
+  'Primero', 90.6,
+  'Segundo', 90.1,
+  'Tercero', 90.6,
+  'Cuarto', 90.3
+  )
+
+################################################
+# Gráfica de genotipos incorrectamente imputados
+################################################
+
+# Se dejan solo las filas donde los genotipos imputados y verdaderos sean distintos ----
+
+Graf_imput <- prec.Imput %>%
+  mutate(
+    Gen_imput_2 = case_when(
+      Gen_imput == 0 ~ 'aa',
+      Gen_imput == 1 ~ 'ab',
+      Gen_imput == 2 ~ 'bb'
+      ),
+    Gen_real_2 = case_when(
+      Gen_real == 0 ~ 'aa',
+      Gen_real == 1 ~ 'ab',
+      Gen_real == 2 ~ 'bb'
+      )
+    ) %>%
+  filter(Gen_imput != Gen_real) %>%
+  unite(
+    col = GenI_GenV,
+    Gen_imput_2:Gen_real_2,
+    sep = '-'
+    )
+
+# Se colocan algunas opciones para que el gráfico quede bien ----
+
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto') # Se indica el orden en el que se presentarán las facetas.
+
+etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
+
+conteo <- Graf_imput %>%
+  summarise(conteo = n(), .by = c(Grupo_val, GenI_GenV)) %>%
+  mutate('GenI-GenV' = GenI_GenV) %>%
+  separate(
+    col = 'GenI-GenV',
+    into = c('Gen_imput', 'Gen_real'),
+    sep = '-'
+    ) %>%
+  mutate(
+    Gen_imput = case_when(
+      Gen_imput == 'aa' ~ 0,
+      Gen_imput == 'ab' ~ 1,
+      Gen_imput == 'bb' ~ 2
+      ),
+    Gen_real = case_when(
+      Gen_real == 'aa' ~ 0,
+      Gen_real == 'ab' ~ 1,
+      Gen_real == 'bb' ~ 2
+      )
+    ) # Se cuentan el número de combinaciones Gen_imput - Gen_real.
+
+# Se realiza el gráfico----
+
+Graf_imput %>%
+  ggplot(data = ., aes(x = Gen_imput, y = Gen_real, colour = GenI_GenV, fill = GenI_GenV)) +
+  geom_count(alpha = 0.4) +
+  ggrepel::geom_label_repel(data = conteo, aes(label = conteo), size = 3.4, box.padding = 0.25, fill = 'white', colour = 'black') +
+  facet_wrap(~ reorder(Grupo_val, match(Grupo_val, orden_facetas)), ncol = 2) +
+  scale_x_continuous(breaks = 0:2, labels = etiquetas_x) +
+  scale_y_continuous(breaks = 0:2, labels = etiquetas_y) +
+  scale_colour_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  scale_fill_manual(values = c('black', 'yellow', 'red', 'cyan', 'orange', 'green'), name = 'Genotipo imputado - Genotipo verdadero') +
+  labs(x = 'Genotipos imputados', y = 'Genotipos verdaderos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 10, colour = 'black', face = 'bold')
+    ) +
+  coord_cartesian(xlim = c(-0.5, 2.5), ylim = c(-0.5, 2.5))
+
+ggsave('../Imagenes/Graf_imput_5.png', width = 20, height = 20, units = 'cm')
+```

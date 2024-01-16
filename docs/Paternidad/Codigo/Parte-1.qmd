@@ -1,0 +1,86 @@
+---
+title: "Parte 1: Organización de conjuntos de datos de marcadores y de pedigrí"
+format: html
+---
+
+```{r}
+#| label: Paquetes de R
+
+pacman::p_load(tidyverse)
+```
+
+```{r}
+#| label: Lectura de conjuntos de datos
+
+ped <- read_delim(file = 'Paternidad/Datos/QC_plink.ped', delim = ' ', col_names = FALSE)
+
+colnames(ped) <- c('FID', 'IID', 'PID', 'MID', 'Sex', 'P', paste0('SNP', 1:(ncol(ped) - 6))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(ped) - 6).
+```
+
+```{r}
+#| label: Recodificación de genotipos y exportación de conjuntos de datos de marcadores
+
+# 1. Se crea una función que permite unir cada dos columnas ----
+
+Geno <- function(x, y) {
+  paste0(x, y)
+  }
+
+# 2. Se aplica la función anterior a cada par de columnas del conjunto de datos (que representa los dos alelos de un genotipo), y se usa la función map2 para generar el conjunto de datos de genotipos (11 | 12 | 21 | 22 | 00) ----
+
+datAle <- ped %>% # Se seleccionan las columnas de alelos.
+  select(-c(1:6))
+
+datGen <- map2(datAle[, seq(1, ncol(datAle), by = 2)], datAle[, seq(2, ncol(datAle), by = 2)], Geno) %>% # Se obtienen las columnas de genotipos uniendo cada par consecutivo de columnas de alelos del objeto anterior.
+  as_tibble()
+
+colnames(datGen) <- paste0('Geno', seq_len(ncol(datGen)))
+
+#write_delim(x = datGen, file = 'Paternidad/Datos/datGen.ped', delim = ' ', col_names = TRUE) # Se importa para comprobar el resultado.
+
+# 3. Se realiza la recodificación del conjunto anterior de genotipos, indicando los genotipos 11 como 0, 12 o 21 como 1, 22 como 2 y 00 como 5.
+
+recGen <- function(x) {
+  case_when(
+    x == '00' ~ '5',
+    x == '11' ~ '0',
+    x %in% c('12', '21') ~ '1',
+    x == '22' ~ '2'
+  )
+  } # Se define la función de recodificación.
+
+datGen_recode <- datGen %>%
+  map(recGen) %>%
+  as_tibble() %>%
+  unite('Geno', sep = '')
+
+#write_delim(x = datGen_recode, file = 'Paternidad/Datos/datGen_recode.ped', delim = ' ', col_names = TRUE) # Se importa para comprobar el resultado.
+
+# 4. Se une el conjunto de datos anteriormente recodificado con el conjunto de datos inicial (que tiene la identificación del individuo), y posteriormente se importa para usar en el programa seekparentf90 ----
+datMar <- ped %>%
+  select(2) %>%
+  bind_cols(datGen_recode)
+
+write_delim(x = datMar, file = 'Paternidad/Datos/datMar.txt', delim = ' ', col_names = FALSE) # El archivo de marcadores debe contener dos columnas, la primera con la identificación individual y la segunda columna con la información del marcador. La segunda columna debe comenzar en la misma posición para todas las filas.
+```
+
+```{r}
+#| label: Exportación de conjuntos de datos de pedigrí y de lista de padres y madres
+
+datPed <- ped %>%
+  select(2:4)
+
+write_delim(x = datPed, file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) # El archivo de pedigrí debe tener 3 campos con identificación de animal, padre y madre separados por al menos un espacio.
+
+datPad <- ped %>%
+  select(3) %>% # Se utilizarán estos datos como una lista de toros que se usarán para buscar un padre.
+  filter(PID != 0)
+
+write_delim(x = datPad, file = 'Paternidad/Datos/datPad.txt', delim = ' ', col_names = FALSE)
+
+datMad <- ped %>%
+  select(4) %>% # Se utilizarán estos datos como una lista de vacas que se usarán para buscar una madre.
+  filter(MID != 0)
+
+write_delim(x = datMad, file = 'Paternidad/Datos/datMad.txt', delim = ' ', col_names = FALSE)
+```
