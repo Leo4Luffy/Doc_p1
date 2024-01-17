@@ -22,7 +22,7 @@ NOTA: Se importan los conjuntos de datos para todos los caracteres a considerar.
 
 # Se importa los datos de los caracteres peso y crecimiento a los 365 día de edad ----
 
-dat_pc305 <- read_delim(file = 'eva_genomica/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
+dat_pc305 <- read_delim(file = 'eva_genomica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
   rename(
     P365 = X1,
     C365 = X2,
@@ -44,7 +44,7 @@ dat_pc305 %>%
 
 # Se importa los datos del caracter peso al destete ----
 
-dat_pdtte <- read_delim(file = 'eva_genomica/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
+dat_pdtte <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
   rename(
     Pdtte = X1,
     Edad_pdtte = X2,
@@ -65,7 +65,7 @@ dat_pdtte %>%
 
 # Se importa los datos de los caracteres peso y rendimiento a la canal ----
 
-dat_prc <- read_delim(file = 'eva_genomica/datPuros/DatosPesoRendimiento_valora_PurosSep23.txt', col_names = FALSE, delim = ' ') |>
+dat_prc <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosPesoRendimiento_valora_PurosSep23.txt', col_names = FALSE, delim = ' ') |>
   rename(
     PC = X1,
     RC = X2,
@@ -87,7 +87,7 @@ dat_prc %>%
 
 # Se importa los datos de los caracteres edad al primer parto e intervalo entre partos (parto 1 a parto 2) ----
 
-dat_EPP_IEP <- read_delim(file = 'eva_genomica/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
+dat_EPP_IEP <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
   rename(
     EPP = X1,
     IEP = X2,
@@ -123,7 +123,7 @@ dat_EPP_IEP %>%
 
 # Se importa los datos donde se extraera la genealogía (pedigrí) ----
 
-datPed <- read_delim(file = 'eva_genomica/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
+datPed <- read_delim(file = 'eva_genomica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
   rename(
     id = Animal,
     sire = Padre,
@@ -243,11 +243,31 @@ NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
 
 ped <- nadiv::prepPed(pedigree = datPed_4, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
 
-datPed_4 |> filter(sire_renum == 42507) # Al ver los primeros seis individuos en el objeto anterior (head(ped)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
+datPed_4 |> filter(sire_renum == 42507) # Al ver los primeros diez individuos en el objeto anterior (slice_head(ped, n = 10)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
 
 # Se genera el pedigrí con base en información fenotípica ----
 
 pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$id_renum) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
 
 pedPrune |> filter(sire_renum == 42507) # Se observa de nuevo el mismo individuo 42507 como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
+```
+
+<!--
+NOTA: A continuación, se exportan los conjuntos de datos con información fenotípica y de pedigrí o genealogíca.
+-->
+
+```{r}
+#| label: Exportación de conjuntos de datos
+
+# Exportación de conjuntos de datos de pedigrí (o genealogíca) ----
+
+pedPrune |>
+  mutate_all(~if_else(is.na(.), as.factor(0), .)) |>
+  write_delim(file = 'eva_genomica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
+
+# Exportación de conjuntos de datos de fenotipos ----
+
+datProd_2 |>
+  mutate_all(function(x) if_else(is.na(x), as.factor(0), as.character(x))) |>
+  write_delim(file = 'eva_genomica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ')
 ```
