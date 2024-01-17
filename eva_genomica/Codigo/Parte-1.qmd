@@ -36,6 +36,12 @@ dat_pc305 <- read_delim(file = 'eva_genomica/datPuros/AnimalesDatoPURO.txt', col
 dat_pc305 %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
 
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pc305):
+#
+# 1. Grupos de comparación (GC_pc305): Estos se difinieron dentro del cebadero como cebadero - año - mes de entrada al cebadero. El número mínimo de animales exigido por grupo de comparación fue de cinco observaciones.
+#
+# 2. Grupo de edad (GC_pc305): Se difinieron dos grupos de edades en función de si tenían menos de 247 días a la entrada en el cebadero o si su edad era mayor.
+
 # Se importa los datos del caracter peso al destete ----
 
 dat_pdtte <- read_delim(file = 'eva_genomica/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
@@ -50,6 +56,12 @@ dat_pdtte <- read_delim(file = 'eva_genomica/datPuros/DatosDestete_FICT.txt', co
 
 dat_pdtte %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
+
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pdtte):
+#
+# 1. Grupos de comparación (GC_pdtte): Estos fueron definidos dentro de las ganaderías por técnicas de clusters. Esta técnica se basa en las distancias entre fechas de nacimiento de los terneros dentro de una misma ganadería. La distancia máxima permitida por grupo está establecida en 90 días. La distancia mínima dentro de grupo se fijó a 30 días y se estableció un número mínimo de animales por grupo de cinco.
+#
+# 2. Edad de la madre al parto (Edad_madre_pdtte): Aquí, las vacas se agruparon en seis grupos de edades.
 
 # Se importa los datos de los caracteres peso y rendimiento a la canal ----
 
@@ -67,24 +79,47 @@ dat_prc <- read_delim(file = 'eva_genomica/datPuros/DatosPesoRendimiento_valora_
 dat_prc %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
 
-# Se importa los datos de los caracteres edad al primer parto e intervalo entre partos ----
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_prc):
+#
+# 1. Grupos de comparación (GC_PC y GC_RC): Este se definio como cebadero - matadero - año de sacrificio, e indica el conjunto de animales que se han cebado y sacrificado en el mismo año. Ambos caracteres tienen los mismos grupos para cada animal, sin embargo el caracter rendimiento a la canal (RC) tiene menor número de observaciones (GC_RC = 271) debido a que hay valores en 0 (o NA) para este caracter.
+#
+# 2. Edad (Edad_prc): Se definieron tres niveles (≤12,3 meses; >12,3 meses y ≤15,1 meses; y >15,1 meses).
+
+# Se importa los datos de los caracteres edad al primer parto e intervalo entre partos (parto 1 a parto 2) ----
 
 dat_EPP_IEP <- read_delim(file = 'eva_genomica/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
   rename(
     EPP = X1,
-    IEP = X2, # Este es el IEP o IPP (intervalo primer parto)
-    Sexo_EPP = X3,
-    Edad_toro_EPP = X4,
+    IEP = X2,
+    Sexo_P1 = X3, # Este es el sexo de la cría en el primer parto.
+    Edad_toro_P1 = X4,
     GC_EPP = X5,
-    ID_toro_EPP = X6, # ¿Esta es la ID del padre?
-    Sexo_IEP = X7, # Este sexo es distinto a Sexo_EPP, ¿porque?
-    EPP_IEP = X8, # ¿Aquí la edad al primer parto se trataria como un efecto para el IEP?
-    Edad_toro_IEP = X9,
+    ID_toro_EPP = X6,
+    Sexo_P2 = X7, # Este es el sexo de la cría en el segundo parto.
+    EPP_IEP = X8,
+    Edad_toro_P2 = X9,
     Raza_toro = X10,
     GC_IEP = X11,
-    ID_toro_IEP = X12, # ¿Esta es la ID del padre?
-    ID = X13 # ¿Este sería el ID del individuo?
-    ) # En este conjunto de datos, la primera columna representa la edad al primer parto, la segunda al intervalo entre parto, la tercera al sexo para la edad al primer parto, la cuarta la edad del toro para la edad al primer parto, la quinta al grupo contemporaneo para la edad al primer parto, la sexta la ID del padre, la séptima al sexo para el intervalo entre parto, la octava a la edad al primer parto para el intervalo entre parto, la novena a la edad del toro para el intervalo entre parto, la decima a la raza del toro, la onceava al grupo comtemporaneo para el intervalo entre parto, la doceava a la ID del padre y la treceava a la ID del animal.
+    ID_toro_IEP = X12,
+    ID = X13
+    ) # En este conjunto de datos, la primera columna representa la edad al primer parto, la segunda al intervalo entre parto, la tercera al sexo para la edad al primer parto, la cuarta la edad del toro para la edad al primer parto, la quinta al grupo de comparación para la edad al primer parto, la sexta la ID del padre, la séptima al sexo para el intervalo entre parto, la octava a la edad al primer parto para el intervalo entre parto, la novena a la edad del toro para el intervalo entre parto, la decima a la raza del toro, la onceava al grupo de comparación para el intervalo entre parto, la doceava a la ID del padre y la treceava a la ID del animal.
+
+dat_EPP_IEP %>%
+  summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
+
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_EPP_IEP):
+#
+# 1. Grupos de comparación (GC_EPP y GC_IEP): Este indica, para ambos caracteres (EPP e IPP), el efecto ambiental común para todas las hembras que tienen el primer parto en la misma ganadería y periodo. El número mínimo de hembras por grupo fue de tres.
+#
+# 2. Sexo de la descendencia (Sexo_P1 y Sexo_P2): Este representa al sexo de la cría de acuerdo al parto. Sexo_P1 para el primer parto y Sexo_P2 para el segundo parto.
+#
+# 3. Edad al primer parto como efecto para IEP (EPP_IEP): Este corresponde a la edad al primer parto de la hembra clasificada en tres grupos (< a 2.5 años de edad, <= a 2.5 años y <= a 3 años, y > a 3 años).
+#
+# 4. Raza del toro (Raza_toro): Este indica la raza del toro (Avileña-Negra Ibérica, Charolés y Limusín).
+#
+# 5. Efecto ambiental permanente del toro (ID_toro_EPP e ID_toro_IEP): Este representa la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor.
+#
+# 6. Edad del toro (Edad_toro_P1 e Edad_toro_P2): Este indica la edad del toro al nacimiento de la descendencia. Se clasificó en 5 grupos (< de 3 años, >= a 3 años y < a 4 años, >= a 4 años y < a 5 años, >= a 5 años y < a 6 años, y > a 6 años). Edad_toro_P1 indica la edad del toro en el primer parto y Edad_toro_P2 en el segundo parto.
 
 # Se importa los datos donde se extraera la genealogía (pedigrí) ----
 
@@ -204,15 +239,15 @@ NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
 ```{r}
 #| label: Generación de pedigrí con base en información fenotípica
 
-# ----
+# Se genera el pedigrí incluyendo indviduos fundadores ----
 
 ped <- nadiv::prepPed(pedigree = datPed_4, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
 
 datPed_4 |> filter(sire_renum == 42507) # Al ver los primeros seis individuos en el objeto anterior (head(ped)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
 
-# ----
+# Se genera el pedigrí con base en información fenotípica ----
 
-pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$id_renum) # 
+pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$id_renum) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
 
 pedPrune |> filter(sire_renum == 42507) # Se observa de nuevo el mismo individuo 42507 como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
 ```
