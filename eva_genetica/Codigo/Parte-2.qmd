@@ -21,16 +21,16 @@ NOTA:
 #| label: Edición de datos de genotipos
 
 a <- tribble(
-  ~'A1', ~'A2', ~'A3', ~'A4',
-  2, 1, 9, 0,
-  1, 2, 1, 1,
-  1, 9, 0, 9,
-  0, 1, 2, 0
+  ~'ID_gen', ~'A1', ~'A2', ~'A3', ~'A4',
+  'ES1', 2, 1, 9, 0,
+  'ES2', 1, 2, 1, 1,
+  'ES3', 1, 9, 0, 9,
+  'ES4', 0, 1, 2, 0
   )
 
 cod_geno <- function(columna) {
   columna <- columna |>
-    mutate(across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))) # En "across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))" se utiliza la función across() para aplicar la transformación a todas las columnas; Con everything() se indica que se quiere aplicar la transformación a todas las columnas. Dentro de case_when(), se especifica que si el valor de una columna es igual a 9, se reemplazará con 5, de lo contrario, se dejará sin cambios. Por último, con mutate() se realiza la transformación.
+    mutate(across(.cols = where(is.numeric), ~case_when(. == 9 ~ 5, TRUE ~ .))) # En "across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))" se utiliza la función across() para aplicar la transformación a todas las columnas; Con everything() se indica que se quiere aplicar la transformación a todas las columnas. Dentro de case_when(), se especifica que si el valor de una columna es igual a 9, se reemplazará con 5, de lo contrario, se dejará sin cambios. Por último, con mutate() se realiza la transformación. where(is.numeric) se ha usado como argumento de .cols dentro de across, esto con el fin de seleccionar solo las columnas numéricas, excluyendo así la primera columna (IID) que es de tipo caracter.
 
   return(columna)
   }
@@ -59,15 +59,68 @@ c <- bind_cols(b, ID_geno) |>
 # Alphaimpute2 con información de población
 ####
 
+# Se importa los datos de genotipos y se asigna un nombre a las columnas ----
+
+res1 <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Resultados/resultado1.genotypes', col_names = FALSE) # Hay 3853 individuos y 43421 genotipos.
+
+colnames(res1) <- c('IID', paste0('SNP', 1:(ncol(res1) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(res1) - 1).
+
 # ----
 
-res1 <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Resultados/resultado1.genotypes', col_names = FALSE)
+cod_geno <- function(columna) {
+  columna <- columna |>
+    mutate(across(.cols = where(is.numeric), ~case_when(. == 9 ~ 5, TRUE ~ .))) # En "across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))" se utiliza la función across() para aplicar la transformación a todas las columnas; Con everything() se indica que se quiere aplicar la transformación a todas las columnas. Dentro de case_when(), se especifica que si el valor de una columna es igual a 9, se reemplazará con 5, de lo contrario, se dejará sin cambios. Por último, con mutate() se realiza la transformación. where(is.numeric) se ha usado como argumento de .cols dentro de across, esto con el fin de seleccionar solo las columnas numéricas, excluyendo así la primera columna (IID) que es de tipo caracter.
 
-# ----
+  return(columna)
+  }
+
+res1_edit <- cod_geno(res1) # Usando la función anterior, se cambia los valores de 9 (que indica valor ausente en AlphaImpute2) a 5 (ya que así lo requiere el conjunto de programas del blupf90). 
+
+# Se extrae la ID de los genotipos ----
 
 res1 |>
-  select(X1) |>
+  select(IID) |>
   write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_geno1_AI2.txt', col_names = FALSE) # Aquí se extrae la primera columna que indica el ID de los genotipos.
 
 # ----
+
+datFen <- read_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ', col_select = c(1:2)) |> # Este conjunto de datos contiene la ID de los individuos y la ID renumerada.
+  rename(
+    ID = X1,
+    ID_renum = X2)
+
+datPed <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_select = c(1, 6)) |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(x = datFen, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+datPed |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datPed |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE) # Aquí se exporta el conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+# ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE, delim = ' ', col_select = c(2:3)) |>
+  rename(IID = ID_ofi)
+
+# ----
+
+datGen <- res1 |>
+  unite('Geno', starts_with('SNP'), sep = '', remove = FALSE) |>
+  select(IID, Geno) |>
+  inner_join(y = datPed, by = 'IID') |>
+  relocate(
+    ID_renum,
+    .before = IID
+    ) |>
+  #summarize(na_n = sum(is.na(ID_renum))) # Hay 516 individuos con identificación renumerada (id_renum) como NA. Esto debido a que no aparecen en la genealogía de los fenotipos, aun cuando fueron genotipados.
+  filter(!is.na(ID_renum)) |> # Se quitan los individuos con identificación renumerada (id_renum) NA.
+  select(-IID)
+
+datGen <- cod_geno(datGen) # Esta es la función creada anteriormente para cambiar los valores ausentes de 9 a 5.
 ```
