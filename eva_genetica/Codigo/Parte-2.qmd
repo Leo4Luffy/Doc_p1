@@ -1,0 +1,73 @@
+---
+title: "Parte 2: Edición de la información ID en los datos de genotipos"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: 
+-->
+
+```{r}
+#| label: Edición de datos de genotipos
+
+a <- tribble(
+  ~'A1', ~'A2', ~'A3', ~'A4',
+  2, 1, 9, 0,
+  1, 2, 1, 1,
+  1, 9, 0, 9,
+  0, 1, 2, 0
+  )
+
+cod_geno <- function(columna) {
+  columna <- columna |>
+    mutate(across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))) # En "across(everything(), ~case_when(. == 9 ~ 5, TRUE ~ .))" se utiliza la función across() para aplicar la transformación a todas las columnas; Con everything() se indica que se quiere aplicar la transformación a todas las columnas. Dentro de case_when(), se especifica que si el valor de una columna es igual a 9, se reemplazará con 5, de lo contrario, se dejará sin cambios. Por último, con mutate() se realiza la transformación.
+
+  return(columna)
+  }
+
+b <- cod_geno(a)
+
+ID_geno <- tribble(
+  ~'ID_gen',
+   'ES1',
+   'ES2',
+   'ES3',
+   'ES4'
+   )
+
+c <- bind_cols(b, ID_geno) |>
+  relocate(
+    ID_gen,
+    .before = A1
+    ) |>
+  unite('Geno', starts_with('A'), sep = '', remove = FALSE) |>
+  select(ID_gen, Geno)
+
+# ----
+
+####
+# Alphaimpute2 con información de población
+####
+
+# ----
+
+res1 <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Resultados/resultado1.genotypes', col_names = FALSE)
+
+# ----
+
+res1 |>
+  select(X1) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_geno1_AI2.txt', col_names = FALSE) # Aquí se extrae la primera columna que indica el ID de los genotipos.
+
+# ----
+```

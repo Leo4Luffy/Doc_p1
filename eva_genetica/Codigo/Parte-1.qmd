@@ -22,7 +22,7 @@ NOTA: Se importan los conjuntos de datos para todos los caracteres a considerar.
 
 # Se importa los datos de los caracteres peso y crecimiento a los 365 día de edad ----
 
-dat_pc305 <- read_delim(file = 'eva_genomica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
+dat_pc305 <- read_delim(file = 'eva_genetica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
   rename(
     P365 = X1,
     C365 = X2,
@@ -31,7 +31,7 @@ dat_pc305 <- read_delim(file = 'eva_genomica/Datos/datPuros/AnimalesDatoPURO.txt
     Edad_pc305 = X5,
     GC_pc305 = X6,
     ID = X7
-    ) # En este conjunto de datos, la primera columna representa el peso a los 305 días, la segunda columna al crecimiento a los 305 días, la tercera columna al peso de entrada, la cuarta columna a los días de cebo, la quinta columna al grupo de edad, la sexta columna al grupo de comparación y la sexta columna corresponde a la ID del animal.
+    ) # En este conjunto de datos, la primera columna representa el peso a los 365 días, la segunda columna al crecimiento a los 365 días, la tercera columna al peso de entrada, la cuarta columna a los días de cebo, la quinta columna al grupo de edad, la sexta columna al grupo de comparación y la sexta columna corresponde a la ID del animal.
 
 dat_pc305 %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
@@ -44,7 +44,7 @@ dat_pc305 %>%
 
 # Se importa los datos del caracter peso al destete ----
 
-dat_pdtte <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
+dat_pdtte <- read_delim(file = 'eva_genetica/Datos/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') |>
   rename(
     Pdtte = X1,
     Edad_pdtte = X2,
@@ -61,11 +61,11 @@ dat_pdtte %>%
 #
 # 1. Grupos de comparación (GC_pdtte): Estos fueron definidos dentro de las ganaderías por técnicas de clusters. Esta técnica se basa en las distancias entre fechas de nacimiento de los terneros dentro de una misma ganadería. La distancia máxima permitida por grupo está establecida en 90 días. La distancia mínima dentro de grupo se fijó a 30 días y se estableció un número mínimo de animales por grupo de cinco.
 #
-# 2. Edad de la madre al parto (Edad_madre_pdtte): Aquí, las vacas se agruparon en seis grupos de edades.
+# 2. Edad de la madre al parto (Edad_madre_pdtte): Aquí, las vacas se agruparon en seis grupos de edades (2.5, de 3.5, de 4.5, de entre 4.5 y 9.5 años, y mayores de 9.5 años ¿Es que no dan seis grupos?).
 
 # Se importa los datos de los caracteres peso y rendimiento a la canal ----
 
-dat_prc <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosPesoRendimiento_valora_PurosSep23.txt', col_names = FALSE, delim = ' ') |>
+dat_prc <- read_delim(file = 'eva_genetica/Datos/datPuros/DatosPesoRendimiento_valora_PurosSep23.txt', col_names = FALSE, delim = ' ') |>
   rename(
     PC = X1,
     RC = X2,
@@ -83,11 +83,11 @@ dat_prc %>%
 #
 # 1. Grupos de comparación (GC_PC y GC_RC): Este se definio como cebadero - matadero - año de sacrificio, e indica el conjunto de animales que se han cebado y sacrificado en el mismo año. Ambos caracteres tienen los mismos grupos para cada animal, sin embargo el caracter rendimiento a la canal (RC) tiene menor número de observaciones (GC_RC = 271) debido a que hay valores en 0 (o NA) para este caracter.
 #
-# 2. Edad (Edad_prc): Se definieron tres niveles (≤12,3 meses; >12,3 meses y ≤15,1 meses; y >15,1 meses).
+# 2. Edad a la canal (Edad_prc): Se definieron tres niveles (≤ 12.3 meses; > 12.3 meses y ≤ 15.1 meses; y > 15.1 meses).
 
 # Se importa los datos de los caracteres edad al primer parto e intervalo entre partos (parto 1 a parto 2) ----
 
-dat_EPP_IEP <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
+dat_EPP_IEP <- read_delim(file = 'eva_genetica/Datos/datPuros/DatosEPPIPP.txt', col_names = FALSE, delim = ' ') |>
   rename(
     EPP = X1,
     IEP = X2,
@@ -102,7 +102,7 @@ dat_EPP_IEP <- read_delim(file = 'eva_genomica/Datos/datPuros/DatosEPPIPP.txt', 
     GC_IEP = X11,
     ID_toro_IEP = X12,
     ID = X13
-    ) # En este conjunto de datos, la primera columna representa la edad al primer parto, la segunda al intervalo entre parto, la tercera al sexo para la edad al primer parto, la cuarta la edad del toro para la edad al primer parto, la quinta al grupo de comparación para la edad al primer parto, la sexta la ID del padre, la séptima al sexo para el intervalo entre parto, la octava a la edad al primer parto para el intervalo entre parto, la novena a la edad del toro para el intervalo entre parto, la decima a la raza del toro, la onceava al grupo de comparación para el intervalo entre parto, la doceava a la ID del padre y la treceava a la ID del animal.
+    ) # En este conjunto de datos, la primera columna representa la edad al primer parto, la segunda al intervalo entre parto, la tercera al sexo para la edad al primer parto, la cuarta la edad del toro en el primer parto, la quinta al grupo de comparación para la edad al primer parto, la sexta la ID del padre, la séptima al sexo para el intervalo entre parto, la octava a la edad al primer parto para el intervalo entre parto, la novena a la edad del toro en el segundo parto, la decima a la raza del toro, la onceava al grupo de comparación para el intervalo entre parto, la doceava a la ID del padre y la treceava a la ID del animal.
 
 dat_EPP_IEP %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
@@ -113,7 +113,7 @@ dat_EPP_IEP %>%
 #
 # 2. Sexo de la descendencia (Sexo_P1 y Sexo_P2): Este representa al sexo de la cría de acuerdo al parto. Sexo_P1 para el primer parto y Sexo_P2 para el segundo parto.
 #
-# 3. Edad al primer parto como efecto para IEP (EPP_IEP): Este corresponde a la edad al primer parto de la hembra clasificada en tres grupos (< a 2.5 años de edad, <= a 2.5 años y <= a 3 años, y > a 3 años).
+# 3. Edad al primer parto como efecto para IEP (EPP_IEP): Este corresponde a la edad al primer parto de la hembra clasificada en tres grupos (< a 2.5 años de edad, >= a 2.5 años y <= a 3 años, y > a 3 años).
 #
 # 4. Raza del toro (Raza_toro): Este indica la raza del toro (Avileña-Negra Ibérica, Charolés y Limusín).
 #
@@ -123,7 +123,7 @@ dat_EPP_IEP %>%
 
 # Se importa los datos donde se extraera la genealogía (pedigrí) ----
 
-datPed <- read_delim(file = 'eva_genomica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
+datPed <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
   rename(
     id = Animal,
     sire = Padre,
@@ -262,12 +262,12 @@ NOTA: A continuación, se exportan los conjuntos de datos con información fenot
 # Exportación de conjuntos de datos de pedigrí (o genealogíca) ----
 
 pedPrune |>
-  mutate_all(~if_else(is.na(.), as.factor(0), .)) |>
-  write_delim(file = 'eva_genomica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
+  mutate_all(~if_else(is.na(.), as.factor(0), .)) |> # Se convierten los valores NA a 0. 
+  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
 
 # Exportación de conjuntos de datos de fenotipos ----
 
 datProd_2 |>
-  mutate_all(function(x) if_else(is.na(x), as.factor(0), as.character(x))) |>
-  write_delim(file = 'eva_genomica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ')
+  mutate_all(function(x) if_else(is.na(x), as.factor(0), as.character(x))) |> # Se convierten los valores NA a 0.
+  write_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ')
 ```
