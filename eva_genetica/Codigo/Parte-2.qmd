@@ -14,11 +14,11 @@ pacman::p_load(tidyverse)
 ```
 
 <!--
-NOTA: A continuación se generan los conjuntos de datos de genotipos editados.
+NOTA: A continuación se generan los conjuntos de datos de genotipos editados en los datos de 50k con AlphaImpute2.
 -->
 
 ```{r}
-#| label: Edición de datos de genotipos
+#| label: Edición de datos de genotipos (50k) con AlphaImpute2
 
 # La función a continuación permite cambiar los genotipos faltantes de 9 (en AlphaImpute2) a 5 (en blupf90) ----
 
@@ -37,11 +37,62 @@ cod_geno <- function(columna) {
 
 geno <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/datGen.txt', col_names = FALSE)
 
-colnames(geno) <- c('IID', paste0('SNP', 1:(ncol(geno) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(res1) - 1).
+colnames(geno) <- c('IID', paste0('SNP', 1:(ncol(geno) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(geno) - 1).
 
-###########################################
-# Alphaimpute2 con información de población
-###########################################
+geno |> select(1:14) |> head() # Se observa aquí, por ejemplo, que el individuo ES000801569724 en la columna 12 (SNP11) tiene un valor de 9.
+
+# Se cambian los valores de genotipos de 9 a 5 ----
+
+geno_edit <- cod_geno(geno) # Usando la función al principio de este fragmento de código, se cambia los valores de 9 (que indica valor ausente en AlphaImpute2) a 5 (ya que así lo requiere el conjunto de programas del blupf90). 
+
+geno_edit |> select(1:14) |> head() # Se observa aquí que el mismo individuo anterior (ES000801569724), ahora el valor de su SNP11 ha cambiado de valor a 5.
+
+# Se importan distintos conjuntos de datos para así obtener un conjunto de datos con las tres identificaciones (ID | ID_renum | ID_ofi) ----
+
+datFen <- read_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ', col_select = c(1:2)) |> # Este conjunto de datos contiene la ID de los individuos y la ID renumerada.
+  rename(
+    ID = X1,
+    ID_renum = X2)
+
+datPed <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_select = c(1, 6)) |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(x = datFen, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+datPed |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datPed |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE) # Aquí se exporta el conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+# Se importa el conjunto de datos anterior exportado ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE, delim = ' ', col_select = c(2:3)) |>
+  rename(IID = ID_ofi) # Se importa el conjunto de datos con dos identificaciones: ID_renum | ID_ofi.
+
+# Se obtiene y exporta el conjunto de datos de genotipos no imputados ----
+
+datGen <- geno_edit |>
+  unite('Geno', starts_with('SNP'), sep = '', remove = FALSE) |>
+  select(IID, Geno) |>
+  inner_join(y = datPed, by = 'IID') |>
+  relocate(
+    ID_renum,
+    .before = IID
+    ) |>
+  #summarize(na_n = sum(is.na(ID_renum))) # Hay algunos individuos con identificación renumerada (id_renum) como NA. Esto debido a que no aparecen en la genealogía de los fenotipos, aun cuando fueron genotipados.
+  filter(!is.na(ID_renum)) |> # Se quitan los individuos con identificación renumerada (id_renum) NA.
+  select(-IID)
+
+datGen |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/no_Imput/res_noImput.txt', col_names = FALSE) # Aquí se exporta el conjunto de datos de genotipos.
+
+#########################################
+# Alphaimpute2 con información de pedigrí
+#########################################
 
 # Se importa los datos de genotipos y se asigna un nombre a las columnas ----
 
@@ -95,4 +146,143 @@ datGen <- res1_edit |>
 
 datGen |>
   write_delim(file = 'eva_genetica/Datos/eva_genomica/res1_AlphaImpute2/res1_AlphaImpute2.txt', col_names = FALSE) # Aquí se exporta el conjunto de datos de genotipos.
+
+###########################################
+# Alphaimpute2 con información de población
+###########################################
+
+# Se importa los datos de genotipos y se asigna un nombre a las columnas ----
+
+res2 <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Resultados/resultado2.genotypes', col_names = FALSE) # Hay 3853 individuos y 43421 genotipos.
+
+colnames(res2) <- c('IID', paste0('SNP', 1:(ncol(res2) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(res2) - 1).
+
+# Se cambian los valores de genotipos de 9 a 5 ----
+
+res2_edit <- cod_geno(res2) # Usando la función al principio de este fragmento de código, se cambia los valores de 9 (que indica valor ausente en AlphaImpute2) a 5 (ya que así lo requiere el conjunto de programas del blupf90). 
+
+# Se importan distintos conjuntos de datos para así obtener un conjunto de datos con las tres identificaciones (ID | ID_renum | ID_ofi) ----
+
+datFen <- read_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ', col_select = c(1:2)) |> # Este conjunto de datos contiene la ID de los individuos y la ID renumerada.
+  rename(
+    ID = X1,
+    ID_renum = X2)
+
+datPed <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_select = c(1, 6)) |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(x = datFen, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+datPed |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datPed |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE) # Aquí se exporta el conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+# Se importa el conjunto de datos anterior exportado ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE, delim = ' ', col_select = c(2:3)) |>
+  rename(IID = ID_ofi) # Se importa el conjunto de datos con dos identificaciones: ID_renum | ID_ofi.
+
+# Se obtiene y exporta el conjunto de datos de genotipos imputados con AlphaImpute2 usando la información de la población ----
+
+datGen <- res2_edit |>
+  unite('Geno', starts_with('SNP'), sep = '', remove = FALSE) |>
+  select(IID, Geno) |>
+  inner_join(y = datPed, by = 'IID') |>
+  relocate(
+    ID_renum,
+    .before = IID
+    ) |>
+  #summarize(na_n = sum(is.na(ID_renum))) # Hay algunos individuos con identificación renumerada (id_renum) como NA. Esto debido a que no aparecen en la genealogía de los fenotipos, aun cuando fueron genotipados.
+  filter(!is.na(ID_renum)) |> # Se quitan los individuos con identificación renumerada (id_renum) NA.
+  select(-IID)
+
+datGen |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/res2_AlphaImpute2/res2_AlphaImpute2.txt', col_names = FALSE) # Aquí se exporta el conjunto de datos de genotipos.
+
+####################################
+# Alphaimpute2 con información mixta
+####################################
+
+# Se importa los datos de genotipos y se asigna un nombre a las columnas ----
+
+res3 <- read_delim(file = 'Imputacion/AlphaImpute2/Datos/Resultados/resultado3.genotypes', col_names = FALSE) # Hay 3853 individuos y 43421 genotipos.
+
+colnames(res3) <- c('IID', paste0('SNP', 1:(ncol(res3) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(res3) - 1).
+
+# Se cambian los valores de genotipos de 9 a 5 ----
+
+res3_edit <- cod_geno(res3) # Usando la función al principio de este fragmento de código, se cambia los valores de 9 (que indica valor ausente en AlphaImpute2) a 5 (ya que así lo requiere el conjunto de programas del blupf90). 
+
+# Se importan distintos conjuntos de datos para así obtener un conjunto de datos con las tres identificaciones (ID | ID_renum | ID_ofi) ----
+
+datFen <- read_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ', col_select = c(1:2)) |> # Este conjunto de datos contiene la ID de los individuos y la ID renumerada.
+  rename(
+    ID = X1,
+    ID_renum = X2)
+
+datPed <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_select = c(1, 6)) |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(x = datFen, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+datPed |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datPed |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE) # Aquí se exporta el conjunto de datos con las tres identificaciones: ID | ID_renum | ID_ofi.
+
+# Se importa el conjunto de datos anterior exportado ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/eva_genomica/ID_ind.txt', col_names = TRUE, delim = ' ', col_select = c(2:3)) |>
+  rename(IID = ID_ofi) # Se importa el conjunto de datos con dos identificaciones: ID_renum | ID_ofi.
+
+# Se obtiene y exporta el conjunto de datos de genotipos imputados con AlphaImpute2 usando ambas fuentes información de la población ----
+
+datGen <- res3_edit |>
+  unite('Geno', starts_with('SNP'), sep = '', remove = FALSE) |>
+  select(IID, Geno) |>
+  inner_join(y = datPed, by = 'IID') |>
+  relocate(
+    ID_renum,
+    .before = IID
+    ) |>
+  #summarize(na_n = sum(is.na(ID_renum))) # Hay algunos individuos con identificación renumerada (id_renum) como NA. Esto debido a que no aparecen en la genealogía de los fenotipos, aun cuando fueron genotipados.
+  filter(!is.na(ID_renum)) |> # Se quitan los individuos con identificación renumerada (id_renum) NA.
+  select(-IID)
+
+datGen |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/res3_AlphaImpute2/res3_AlphaImpute2.txt', col_names = FALSE) # Aquí se exporta el conjunto de datos de genotipos.
+
+# NOTA: Si bien con todo el codigo anterior pude obtener la estructura de genotipos como lo requiere el programa blupf90 (los campos de ID del animal y los SNPs separados por al menos un espacio), el campo 2 (de los SNPs) no tienen un formato fijo (esto es, todas las filas de los genotipos deben iniciar en la misma posición de columna). Por ello, mediante la terminal de linux tuve que colocar lo siguiente: awk 'BEGIN{OFS="\t"} {printf "%-12s%-10s%-0s\n", $1, $2, $3}' res_noImput.txt > res_noImput_2.txt. Esto para que la posición de columna en el que comenzará los datos de genotipo fuera en la posición 12.
+```
+
+<!--
+NOTA: A continuación se generan los conjuntos de datos de genotipos editados en los datos de 50k con Beagle v. 5.4.
+-->
+
+```{r}
+#| label: Edición de datos de genotipos (50k) con Beagle v. 5.4
+
+# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
+
+cod_geno <- function(columna) { # Esta función permite cambiar los genotipos en fase del Beagle al código de genotipos como lo requiere el blupf90 (0: A1A1 | 5: fase desconocida | 2: A2A2 | 1: A1A2 | 1:A2A1... el primer alelo es el paterno y el segundo es el materno).
+  columna <- case_when(
+    columna == '0|0' ~ '0',
+    columna == '0|1' ~ '1',
+    columna == '1|0' ~ '1',
+    columna == '1|1' ~ '2',
+    columna == '.|.' ~ '5'
+    )
+  return(columna)
+  }
+
+
 ```
