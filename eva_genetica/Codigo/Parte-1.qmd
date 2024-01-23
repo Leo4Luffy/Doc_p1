@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, tidymodels)
 ```
 
 <!--
@@ -22,25 +22,25 @@ NOTA: Se importan los conjuntos de datos para todos los caracteres a considerar.
 
 # Se importa los datos de los caracteres peso y crecimiento a los 365 día de edad ----
 
-dat_pc305 <- read_delim(file = 'eva_genetica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
+dat_pc365 <- read_delim(file = 'eva_genetica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
   rename(
     P365 = X1,
     C365 = X2,
     Peso_ent = X3,
     Dia_cebo = X4,
-    Edad_pc305 = X5,
-    GC_pc305 = X6,
+    Edad_pc365 = X5,
+    GC_pc365 = X6,
     ID = X7
     ) # En este conjunto de datos, la primera columna representa el peso a los 365 días, la segunda columna al crecimiento a los 365 días, la tercera columna al peso de entrada, la cuarta columna a los días de cebo, la quinta columna al grupo de edad, la sexta columna al grupo de comparación y la sexta columna corresponde a la ID del animal.
 
-dat_pc305 %>%
+dat_pc365 %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
 
-# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pc305):
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pc365):
 #
-# 1. Grupos de comparación (GC_pc305): Estos se difinieron dentro del cebadero como cebadero - año - mes de entrada al cebadero. El número mínimo de animales exigido por grupo de comparación fue de cinco observaciones.
+# 1. Grupos de comparación (GC_pc365): Estos se difinieron dentro del cebadero como cebadero - año - mes de entrada al cebadero. El número mínimo de animales exigido por grupo de comparación fue de cinco observaciones.
 #
-# 2. Grupo de edad (GC_pc305): Se difinieron dos grupos de edades en función de si tenían menos de 247 días a la entrada en el cebadero o si su edad era mayor.
+# 2. Grupo de edad (GC_pc365): Se difinieron dos grupos de edades en función de si tenían menos de 247 días a la entrada en el cebadero o si su edad era mayor.
 
 # Se importa los datos del caracter peso al destete ----
 
@@ -205,7 +205,7 @@ NOTA: Se unen los conjuntos de datos de caracteres anteriormente importados.
 
 # Se unen los conjuntos de de todos los caracteres ----
 
-datProd <- full_join(x = dat_pc305, y = dat_pdtte, by = 'ID') |>
+datProd <- full_join(x = dat_pc365, y = dat_pdtte, by = 'ID') |>
   full_join(y = dat_prc, by = 'ID') |>
   full_join(y = dat_EPP_IEP, by = 'ID')
 
@@ -270,4 +270,76 @@ pedPrune |>
 datProd_2 |>
   mutate_all(function(x) if_else(is.na(x), as.factor(0), as.character(x))) |> # Se convierten los valores NA a 0.
   write_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Se calcula la varianza y covarianza entre caracteres.
+-->
+
+```{r}
+#| label: (Co)varianzas residuales entre caracteres
+
+datProd_2 |>
+  select(P365, C365, Pdtte, PC, RC, EPP, IEP) |>
+  recipes::variances(na_rm = TRUE) # Se calcula las varianzas para todos los caracteres.
+
+datProd_2 |>
+  select(P365, C365) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre P365 y C365, siendo esta igual a 3.38.
+
+datProd_2 |>
+  select(P365, Pdtte) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre P365 y Pdtte, siendo esta igual a 1301.12.
+
+datProd_2 |>
+  select(P365, PC) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre P365 y PC, siendo esta igual a 275.66.
+
+datProd_2 |>
+  select(P365, RC) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre P365 y RC, siendo esta igual a 8.17.
+
+datProd_2 |>
+  select(P365, EPP) |>
+  na.omit() |> # No hay individuos que tengan al mismo tiempo medido estos dos caracteres.
+  recipes::covariances() # Se calcula la covarianza entre P365 y Pdtte, siendo esta igual a .
+
+datProd_2 |>
+  select(P365, IEP) |>
+  na.omit() |> # No hay individuos que tengan al mismo tiempo medido estos dos caracteres.
+  recipes::covariances() # Se calcula la covarianza entre P365 e IEP, siendo esta igual a .
+
+datProd_2 |>
+  select(C365, Pdtte) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre C365 y Pdtte, siendo esta igual a -0.49.
+
+datProd_2 |>
+  select(C365, PC) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre C365 y PC, siendo esta igual a 0.73.
+
+datProd_2 |>
+  select(C365, RC) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre C365 y RC, siendo esta igual a -0.02.
+
+datProd_2 |>
+  select(C365, EPP) |>
+  na.omit() |> # No hay individuos que tengan al mismo tiempo medido estos dos caracteres.
+  recipes::covariances() # Se calcula la covarianza entre C365 y EPP, siendo esta igual a .
+
+datProd_2 |>
+  select(C365, IEP) |>
+  na.omit() |> # No hay individuos que tengan al mismo tiempo medido estos dos caracteres.
+  recipes::covariances() # Se calcula la covarianza entre C365 y IEP, siendo esta igual a .
+
+datProd_2 |>
+  select(Pdtte, PC) |>
+  na.omit() |>
+  recipes::covariances() # Se calcula la covarianza entre Pdtte y PC, siendo esta igual a 464.33.
 ```
