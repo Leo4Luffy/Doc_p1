@@ -284,7 +284,7 @@ cod_geno <- function(columna) { # Esta función permite cambiar los genotipos en
   return(columna)
   }
 
-# Se importa los datos de genotipos y se asigna un nombre a las columnas ----
+# Se importa los datos de genotipos ----
 
 res4 <- data.table::fread(file = 'Imputacion/Beagle/Datos/Res_imputacion_v5.4.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
 

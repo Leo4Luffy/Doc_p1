@@ -1,0 +1,374 @@
+---
+title: "Parte 1: "
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen solo los taqs. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos reales solo con taqs
+
+# Se importa los datos con los nombres de los taqs y se extrae este nombre como un vector ----
+
+dat_taqs <- read_delim(file = 'single_taqs/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
+
+gen_enmas <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt', col_names = FALSE, delim = ' ')
+
+# Se importa los datos de genotipos reales ----
+
+gen_real <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como taqs ----
+
+gen_real_2 <- gen_real |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+
+# Se transpone el conjunto de datos ----
+
+gen_real_3 <- gen_real_2 |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-c(ID_2))
+
+# Se cambia los valores de los genotipos ----
+
+cod_geno_1 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0/0' ~ '0',
+      columna[[i]] == '0/1' ~ '1',
+      columna[[i]] == '1/0' ~ '1',
+      columna[[i]] == '1/1' ~ '2',
+      columna[[i]] == './.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+gen_real_4 <- cod_geno_1(gen_real_3)
+
+save(gen_real_4, file = 'single_taqs/Datos/gen_Real.RData')
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) imputados, se extraen solo los taqs. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas. Esto para cada grupo de validación.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos imputados solo con taqs por grupo de validación
+
+# La función a continuación permite cambiar la codificación de los genotipos ----
+
+cod_geno_2 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+#######################
+# Grupo 1 de validación
+#######################
+
+# Se importa los nombres de los individuos del primer grupo de validación ----
+
+Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Grup1.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_1 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como taqs ----
+
+gen_imput_1b <- gen_imput_1 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_1c <- gen_imput_1b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup1$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_1d <- cod_geno_2(gen_imput_1c)
+
+save(gen_imput_1d, file = 'single_taqs/Datos/gen_Imput_HD_val1.RData')
+
+#######################
+# Grupo 2 de validación
+#######################
+
+# Se importa los nombres de los individuos del segundo grupo de validación ----
+
+Grup2 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Grup2.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_2 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como taqs ----
+
+gen_imput_2b <- gen_imput_2 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_2c <- gen_imput_2b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup2$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_2d <- cod_geno_2(gen_imput_2c)
+
+save(gen_imput_2d, file = 'single_taqs/Datos/gen_Imput_HD_val2.RData')
+
+#######################
+# Grupo 3 de validación
+#######################
+
+# Se importa los nombres de los individuos del tercer grupo de validación ----
+
+Grup3 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Grup3.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_3 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como taqs ----
+
+gen_imput_3b <- gen_imput_3 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_3c <- gen_imput_3b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup3$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_3d <- cod_geno_2(gen_imput_3c)
+
+save(gen_imput_3d, file = 'single_taqs/Datos/gen_Imput_HD_val3.RData')
+
+#######################
+# Grupo 4 de validación
+#######################
+
+# Se importa los nombres de los individuos del cuarto grupo de validación ----
+
+Grup4 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Grup4.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_4 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como taqs ----
+
+gen_imput_4b <- gen_imput_4 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_4c <- gen_imput_4b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup4$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_4d <- cod_geno_2(gen_imput_4c)
+
+save(gen_imput_4d, file = 'single_taqs/Datos/gen_Imput_HD_val4.RData')
+```
+
+<!--
+NOTA:  
+-->
+
+```{r}
+#| label: Hola
+
+# Se carga el objeto de R denominado como "gen_real_4" que anteriormente habia sido guardado ----
+
+load(file = 'single_taqs/Datos/gen_Real.RData') # Este objeto contiene los genotipos reales considerados como taqs y que al momento de imputar habian sido enmascarados, en todos los individuos.
+
+#######################
+# Grupo 1 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_1d" ----
+
+load(file = 'single_taqs/Datos/gen_Imput_HD_val1.RData') # Este objeto contiene los genotipos imputados considerados como taqs y que al momento de imputar habian sido enmascarados, en los individuos del primer grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del primer grupo de valiación ----
+
+gen_real_5 <- gen_real_4 |>
+  filter(ID %in% Grup1$ID)
+
+# ----
+
+## :
+differences <- c()
+
+for (i in 1:dim(gen_imput_1d)[1]) {
+  x <- sum(gen_real_5[i,] != gen_imput_1d[i,], na.rm = TRUE)
+  differences[i] <- x
+  }
+
+## :
+porcentaje_aciertos <- c()
+
+for (i in 1:dim(gen_imput_2d)[1]) {
+  total_elementos <- length(gen_imput_2d[i,])
+  aciertos <- sum(gen_real_5[i,] == gen_imput_2d[i,], na.rm = TRUE)
+  porcentaje_aciertos[i] <- (aciertos / total_elementos) * 100
+  }
+
+#######################
+# Grupo 2 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_2d" ----
+
+load(file = 'single_taqs/Datos/gen_Imput_HD_val2.RData') # Este objeto contiene los genotipos imputados considerados como taqs y que al momento de imputar habian sido enmascarados, en los individuos del segundo grupo de validación.
+
+#######################
+# Grupo 3 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_3d" ----
+
+load(file = 'single_taqs/Datos/gen_Imput_HD_val3.RData') # Este objeto contiene los genotipos imputados considerados como taqs y que al momento de imputar habian sido enmascarados, en los individuos del tercer grupo de validación.
+
+#######################
+# Grupo 4 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_4d" ----
+
+load(file = 'single_taqs/Datos/gen_Imput_HD_val4.RData') # Este objeto contiene los genotipos imputados considerados como taqs y que al momento de imputar habian sido enmascarados, en los individuos del cuarto grupo de validación.
+```
