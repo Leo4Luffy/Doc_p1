@@ -1,0 +1,529 @@
+---
+title: "Parte 1: Consistencia de imputaciones en SNP-tag"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen solo los SNP-tag. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos reales solo con SNP-tag
+
+# Se importa los datos con los nombres de los SNP-tag y se extrae este nombre como un vector ----
+
+dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
+
+gen_enmas <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt', col_names = FALSE, delim = ' ')
+
+# Se importa los datos de genotipos reales ----
+
+gen_real <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como tags ----
+
+gen_real_2 <- gen_real |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_real_3 <- gen_real_2 |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-c(ID_2))
+
+# Se cambia los valores de los genotipos ----
+
+cod_geno_1 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0/0' ~ '0',
+      columna[[i]] == '0/1' ~ '1',
+      columna[[i]] == '1/0' ~ '1',
+      columna[[i]] == '1/1' ~ '2',
+      columna[[i]] == './.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+gen_real_4 <- cod_geno_1(gen_real_3)
+
+save(gen_real_4, file = 'single_tags/Datos/gen_Real.RData')
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) imputados, se extraen solo los tags. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas. Esto para cada grupo de validación.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos imputados solo con tags por grupo de validación
+
+# La función a continuación permite cambiar la codificación de los genotipos ----
+
+cod_geno_2 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+#######################
+# Grupo 1 de validación
+#######################
+
+# Se importa los nombres de los individuos del primer grupo de validación ----
+
+Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Grup1.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_1 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+
+gen_imput_1b <- gen_imput_1 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_1c <- gen_imput_1b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup1$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_1d <- cod_geno_2(gen_imput_1c)
+
+save(gen_imput_1d, file = 'single_tags/Datos/gen_Imput_HD_val1.RData')
+
+#######################
+# Grupo 2 de validación
+#######################
+
+# Se importa los nombres de los individuos del segundo grupo de validación ----
+
+Grup2 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Grup2.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_2 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+
+gen_imput_2b <- gen_imput_2 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_2c <- gen_imput_2b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup2$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_2d <- cod_geno_2(gen_imput_2c)
+
+save(gen_imput_2d, file = 'single_tags/Datos/gen_Imput_HD_val2.RData')
+
+#######################
+# Grupo 3 de validación
+#######################
+
+# Se importa los nombres de los individuos del tercer grupo de validación ----
+
+Grup3 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Grup3.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_3 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+
+gen_imput_3b <- gen_imput_3 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_3c <- gen_imput_3b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup3$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_3d <- cod_geno_2(gen_imput_3c)
+
+save(gen_imput_3d, file = 'single_tags/Datos/gen_Imput_HD_val3.RData')
+
+#######################
+# Grupo 4 de validación
+#######################
+
+# Se importa los nombres de los individuos del cuarto grupo de validación ----
+
+Grup4 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Grup4.txt', , col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_4 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+
+gen_imput_4b <- gen_imput_4 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_4c <- gen_imput_4b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup4$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_4d <- cod_geno_2(gen_imput_4c)
+
+save(gen_imput_4d, file = 'single_tags/Datos/gen_Imput_HD_val4.RData')
+```
+
+<!--
+NOTA: A continuación se evalua la consistencia de los resultados en los SNP tag. Esto es, en dichos marcadores se observa si se imputo bien o no para cada grupo de validación.
+-->
+
+```{r}
+#| label: SNP tag imputados correctamento o incorrectamente
+
+# Se carga el objeto de R denominado como "gen_real_4" que anteriormente habia sido guardado ----
+
+load(file = 'single_tags/Datos/gen_Real.RData') # Este objeto contiene los genotipos reales considerados como tags y que al momento de imputar habian sido enmascarados, en todos los individuos.
+
+#######################
+# Grupo 1 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_1d" ----
+
+load(file = 'single_tags/Datos/gen_Imput_HD_val1.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del primer grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del primer grupo de valiación ----
+
+gen_real_5 <- gen_real_4 |>
+  filter(ID %in% Grup1$ID)
+
+# En el primer grupo de validación, se comparan los dos objetos anteriores ("gen_imput_1d" y "gen_real_5"), valor por valor, para ver si la imputación de genotipos fue correcta o no ----
+
+comp_val1 <- gen_real_5 %>%
+  select(-ID) %>%  # Se excluye la columna ID en la comparación valor por valor.
+  mutate(across(everything(), ~case_when(. == gen_imput_1d[[cur_column()]] ~ 0, TRUE ~ 1))) # En este código, across(everything(), ...) se utiliza para aplicar la comparación a todas las columnas. La función case_when() compara cada par de valores y asigna 0 si son iguales y 1 si son diferentes. La función cur_column() se utiliza dentro del contexto de across(everything(), ...). Dentro de esta operación, cur_column() se refiere a la columna actual en la que se está aplicando la función. Es una manera dinámica de referenciar la columna actual para realizar la comparación con la columna correspondiente en gen_imput_1d.
+
+sum_val1 <- summarise(
+  .data = comp_val1,
+  across(
+    .cols = c(1:81919),
+    .fns = sum
+    )
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+
+sum_val1 |>
+  pivot_longer(
+    cols = c(1:81919),
+    names_to = 'SNP_tag',
+    values_to = 'N_mal_imput'
+    ) |>
+  write_delim(file = 'single_tags/Datos/sum_val1.txt', col_names = TRUE)
+
+#######################
+# Grupo 2 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_2d" ----
+
+load(file = 'single_tags/Datos/gen_Imput_HD_val2.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del segundo grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del segundo grupo de valiación ----
+
+gen_real_6 <- gen_real_4 |>
+  filter(ID %in% Grup2$ID)
+
+# En el segundo grupo de validación, se comparan los dos objetos anteriores ("gen_imput_2d" y "gen_real_6"), valor por valor, para ver si la imputación de genotipos fue correcta o no ----
+
+comp_val2 <- gen_real_6 %>%
+  select(-ID) %>%  # Se excluye la columna ID en la comparación valor por valor.
+  mutate(across(everything(), ~case_when(. == gen_imput_2d[[cur_column()]] ~ 0, TRUE ~ 1))) # En este código, across(everything(), ...) se utiliza para aplicar la comparación a todas las columnas. La función case_when() compara cada par de valores y asigna 0 si son iguales y 1 si son diferentes. La función cur_column() se utiliza dentro del contexto de across(everything(), ...). Dentro de esta operación, cur_column() se refiere a la columna actual en la que se está aplicando la función. Es una manera dinámica de referenciar la columna actual para realizar la comparación con la columna correspondiente en gen_imput_2d.
+
+sum_val2 <- summarise(
+  .data = comp_val2,
+  across(
+    .cols = c(1:81919),
+    .fns = sum
+    )
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+
+sum_val2 |>
+  pivot_longer(
+    cols = c(1:81919),
+    names_to = 'SNP_tag',
+    values_to = 'N_mal_imput'
+    ) |>
+  write_delim(file = 'single_tags/Datos/sum_val2.txt', col_names = TRUE)
+
+#######################
+# Grupo 3 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_3d" ----
+
+load(file = 'single_tags/Datos/gen_Imput_HD_val3.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del tercer grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del tercer grupo de valiación ----
+
+gen_real_7 <- gen_real_4 |>
+  filter(ID %in% Grup3$ID)
+
+# En el tercer grupo de validación, se comparan los dos objetos anteriores ("gen_imput_2d" y "gen_real_6"), valor por valor, para ver si la imputación de genotipos fue correcta o no ----
+
+comp_val3 <- gen_real_7 %>%
+  select(-ID) %>%  # Se excluye la columna ID en la comparación valor por valor.
+  mutate(across(everything(), ~case_when(. == gen_imput_3d[[cur_column()]] ~ 0, TRUE ~ 1))) # En este código, across(everything(), ...) se utiliza para aplicar la comparación a todas las columnas. La función case_when() compara cada par de valores y asigna 0 si son iguales y 1 si son diferentes. La función cur_column() se utiliza dentro del contexto de across(everything(), ...). Dentro de esta operación, cur_column() se refiere a la columna actual en la que se está aplicando la función. Es una manera dinámica de referenciar la columna actual para realizar la comparación con la columna correspondiente en gen_imput_3d.
+
+sum_val3 <- summarise(
+  .data = comp_val3,
+  across(
+    .cols = c(1:81919),
+    .fns = sum
+    )
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+
+sum_val3 |>
+  pivot_longer(
+    cols = c(1:81919),
+    names_to = 'SNP_tag',
+    values_to = 'N_mal_imput'
+    ) |>
+  write_delim(file = 'single_tags/Datos/sum_val3.txt', col_names = TRUE)
+
+#######################
+# Grupo 4 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_4d" ----
+
+load(file = 'single_tags/Datos/gen_Imput_HD_val4.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del cuarto grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del cuarto grupo de valiación ----
+
+gen_real_8 <- gen_real_4 |>
+  filter(ID %in% Grup4$ID)
+
+# En el cuarto grupo de validación, se comparan los dos objetos anteriores ("gen_imput_2d" y "gen_real_6"), valor por valor, para ver si la imputación de genotipos fue correcta o no ----
+
+comp_val4 <- gen_real_8 %>%
+  select(-ID) %>%  # Se excluye la columna ID en la comparación valor por valor.
+  mutate(across(everything(), ~case_when(. == gen_imput_4d[[cur_column()]] ~ 0, TRUE ~ 1))) # En este código, across(everything(), ...) se utiliza para aplicar la comparación a todas las columnas. La función case_when() compara cada par de valores y asigna 0 si son iguales y 1 si son diferentes. La función cur_column() se utiliza dentro del contexto de across(everything(), ...). Dentro de esta operación, cur_column() se refiere a la columna actual en la que se está aplicando la función. Es una manera dinámica de referenciar la columna actual para realizar la comparación con la columna correspondiente en gen_imput_4d.
+
+sum_val4 <- summarise(
+  .data = comp_val4,
+  across(
+    .cols = c(1:81919),
+    .fns = sum
+    )
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+
+sum_val4 |>
+  pivot_longer(
+    cols = c(1:81919),
+    names_to = 'SNP_tag',
+    values_to = 'N_mal_imput'
+    ) |>
+  write_delim(file = 'single_tags/Datos/sum_val4.txt', col_names = TRUE)
+```
+
+<!--
+NOTA: A continuación, se observa la distribución de los tags a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
+-->
+
+```{r}
+#| label: Distribución de los SNP-tag
+
+# Se carga el software PLINK----
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+
+# Función que permite ejecutar PLINK dentro de R ----
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+# Se importa el conjunto de datos con el nombre de los tags con genotipado a alta densidad (HD), en el primer grupo de validación. Luego se exportan estos nombres ----
+
+sum_val1 <- read_delim(file = '../../single_tags/Datos/sum_val1.txt', col_names = TRUE, delim = ' ')
+
+sum_val1 |>
+  select(SNP_tag) |>
+  write_delim(file = '../../single_tags/Datos/id_tags.txt', col_names = FALSE)
+
+# Se usa PLINK para extraer solo los SNP-tag ----
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12 --extract ../../single_tags/Datos/id_tags.txt --make-bed --recode --out ../../single_tags/Datos/paso_1')
+
+# Se realiza el gráfico donde se observará la distribucón de los SNP-tag en cada uno de los 29 cromosomas ----
+
+dat_cromo <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12.bim', col_names = FALSE) |>
+  select(1, 4) |>
+  slice_max(order_by = X4, by = X1) |>
+  rename(
+    Cromosoma = X1,
+    Tamaño = X4
+    ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
+
+dat_tags <- read_table(file = '../../single_tags/Datos/paso_1.bim', col_names = FALSE) |>
+  select(1:2, 4) |>
+  rename(
+    Cromosoma = X1,
+    ID_tags = X2,
+    Posicion = X4
+    ) # Se indica aquí la posición de los SNP-tag en cada uno de los 29 cromosomas
+
+etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', size = 5
+    ) +
+  geom_segment(
+    data = dat_tags,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    size = 0.4, colour = 'orange', alpha = 1.4
+    ) +
+  ggrepel::geom_label_repel(data = dat_tags |> filter(Cromosoma == 29) |> slice_max(order_by = Posicion), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 0.8, direction = 'x') +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los SNP-tag en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los SNP-tag, así por ejemplo, el SNP-tag "BovineHD2900005910" se encuentra en el cromosoma 29 y en la posición 113256327. Se puede observar que los mismos se encuentran distribuidos en todos los cromosomas.') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
+    )
+```
