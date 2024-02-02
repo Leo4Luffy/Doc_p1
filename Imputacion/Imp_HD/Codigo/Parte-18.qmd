@@ -1,5 +1,5 @@
 ---
-title: "Parte 18: Hola"
+title: "Parte 18: Agrupación jerárquica basado en una matriz de disimilitud o de distancia de identidad por estado (IBS) y generación de grupos de validación"
 format: html
 ---
 
@@ -10,11 +10,11 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(here, tidyverse, snpStats)
+pacman::p_load(here, tidyverse, snpStats, ggplot2)
 ```
 
 <!--
-NOTA: Se genera la matriz de disimilitud o de distancia en base a identidad por estado (IBS). Esto para posteriormente realizar con ella el k-means.
+NOTA: Se genera la matriz de disimilitud o de distancia en base a identidad por estado (IBS). Esto para posteriormente realizar con ella la agrupación jerárquica.
 -->
 
 ```{r}
@@ -49,5 +49,114 @@ m_distancia[281:284, 281:284]
 # Se exporta la anterior matriz de distancia genética basada en IBS ---
 
 m_distancia |>
-  saveRDS(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'mDG.RDS')) # Se importa la matriz de distancia genética.
+  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'mDG.RData')) # Se importa la matriz de distancia genética.
+```
+
+<!--
+NOTA: Se realiza una agrupación jerárquica usando la matriz de disimilitud o de distancia en base a identidad por estado (IBS) anterior.
+-->
+
+```{r}
+#| label: Agrupación jerárquica (dendograma) basado en la matriz de distancia genética de identidad por estado (IBS)
+
+# Se carga la anterior matriz de distancia genética  ---
+
+load(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'mDG.RData'))
+
+# Se realizá el gráfico de agrupación jerárquica---
+
+m_distancia <- as.dist(m_distancia) # Se convierte la matriz de distancia a tipo "dist", para que sea compatible con la función a continuación hclust().
+
+res.hc <- hclust(matriz_distancia_genetica, method = 'ward.D2') # Se realiza el custering jerárquico. Para ello, se usa el método "ward.D2", que es un método comúnmente utilizado para minimizar la varianza dentro de los clusters. De esta forma, se cree que sería posible aumentar las relaciones dentro del grupo y disminuir las relaciones entre grupos en base a sus relaciones genéticas.
+
+factoextra::fviz_dend( # Se visualiza el dendrograma usando el paquete "factoextra".
+  x = res.hc,
+  k = 4, # Se indica aquí formar 4 clusters.
+  cex = 0.5, lwd = 0.4,
+  rect = TRUE,
+  k_colors = c('green', 'cyan', 'orange', 'red'),
+  rect_border = 'gray',
+  rect_fill = FALSE
+  ) +
+  coord_cartesian(ylim = c(-0.20, 1.0)) +
+  labs(title = 'Agrupación jerárquica de individuos basada en datos de genotipos (matriz de disimilitud de identidad por estado)', x = ' ', y = 'Altura') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 12, face = 'bold')
+    )
+
+ggsave(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Imagenes', 'dendograma.pdf'), width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se generan cuatro grupos de validación en base a los cuatro grupos generados anteriormente mediante agrupación jerárquica.
+-->
+
+```{r}
+#| label: Generación de grupos de validación.
+
+grup <- cutree(tree = res.hc, k = 4) # Del cluster jerárquico anterior, se extrae la ID de los individuos y el grupo al cual fue clasificado en base la matriz de distancia genética de identidad por estado (IBS).
+
+grup_2 <- tibble(
+  ID = as.character(res.hc$labels),
+  Grupo = as.factor(grup)
+  ) # Se convierte a "tibble" para observar la ID de los individuos y el grupo de clasificación en columnas.
+
+#########
+# Grupo 1
+#########
+
+grup_2 |>
+  mutate(ID_2 = ID) |>
+  unite(
+    col = ID,
+    c(ID,ID_2)
+    ) |>
+  filter(Grupo == 1) |>
+  select(ID) |>
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_1', 'Grup1.txt'), col_names = FALSE)
+
+#########
+# Grupo 2
+#########
+
+grup_2 |>
+  mutate(ID_2 = ID) |>
+  unite(
+    col = ID,
+    c(ID,ID_2)
+    ) |>
+  filter(Grupo == 2) |>
+  select(ID) |>
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_2', 'Grup2.txt'), col_names = FALSE)
+
+#########
+# Grupo 3
+#########
+
+grup_2 |>
+  mutate(ID_2 = ID) |>
+  unite(
+    col = ID,
+    c(ID,ID_2)
+    ) |>
+  filter(Grupo == 3) |>
+  select(ID) |>
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_3', 'Grup3.txt'), col_names = FALSE)
+
+#########
+# Grupo 4
+#########
+
+grup_2 |>
+  mutate(ID_2 = ID) |>
+  unite(
+    col = ID,
+    c(ID,ID_2)
+    ) |>
+  filter(Grupo == 4) |>
+  select(ID) |>
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_4', 'Grup4.txt'), col_names = FALSE)
 ```

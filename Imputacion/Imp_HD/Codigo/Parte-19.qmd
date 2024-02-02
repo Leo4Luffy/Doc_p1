@@ -1,0 +1,53 @@
+---
+title: "Parte 19: evaluación de la precisión de la imputación usando grupos de validación formado mediante agrupación jerárquica con base en la matriz de disimilitud o de distancia de identidad por estado (IBS)- Parte 1"
+format: html
+---
+
+```{r}
+#| label: Directorio de trabajo
+
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
+```
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se identifica a continuación los marcadores con genotipo completo en todos los 284 individuos. Para ello, se utiliza la opción --geno para filtrar los marcadores que tienen tasas de valores faltantes igual a cero.
+-->
+
+```{r}
+#| label: Identificación de marcadores completamente genotipados
+
+# Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_kmeans/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 511184 marcadores en 284 individuos.
+
+# Se exporta el nombre de los marcadores con genotipo completos ----
+
+nomGen <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_kmeans/Paso_1.bim', col_names = FALSE) # Se importa el archivo anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
+
+nomGen %>%
+  select(X2) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_kmeans/nomGen.txt', col_names = FALSE, delim = ' ')
+```
