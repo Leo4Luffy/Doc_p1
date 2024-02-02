@@ -458,6 +458,55 @@ sum_val4 |>
 ```
 
 <!--
+NOTA: 
+-->
+
+```{r}
+#| label: Hola
+
+# Se importan los datos y se cuenta la cantidad de  singletones imputados correctamente por grupo de validación  ----
+
+sum_val1_2 <- read_delim(file = 'single_tags/Datos/sum_val1_2.txt', col_names = TRUE, delim = ' ') |>
+  rename(N_mal_imput_val1 = N_mal_imput)
+
+sum_val1_2 |>
+  filter(N_mal_imput_val1 == 0) |>
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el primer grupo de validación.
+
+sum_val2_2 <- read_delim(file = 'single_tags/Datos/sum_val2_2.txt', col_names = TRUE, delim = ' ') |>
+  rename(N_mal_imput_val2 = N_mal_imput)
+
+sum_val2_2 |>
+  filter(N_mal_imput_val2 == 0) |>
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el segundo grupo de validación.
+
+sum_val3_2 <- read_delim(file = 'single_tags/Datos/sum_val3_2.txt', col_names = TRUE, delim = ' ') |>
+  rename(N_mal_imput_val3 = N_mal_imput)
+
+sum_val3_2 |>
+  filter(N_mal_imput_val3 == 0) |>
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el tercer grupo de validación.
+
+sum_val4_2 <- read_delim(file = 'single_tags/Datos/sum_val4_2.txt', col_names = TRUE, delim = ' ') |>
+  rename(N_mal_imput_val4 = N_mal_imput)
+
+sum_val4_2 |>
+  filter(N_mal_imput_val4 == 0) |>
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el cuarto grupo de validación.
+
+# Se observa e importa el nombre de los SNP-tag que en los cuatros grupos de validación se imputaron bien ----
+
+SNP_sing_imput <- inner_join(x = sum_val1_2, y = sum_val2_2, by = 'SNP_sing') |>
+  inner_join(x = sum_val3_2, by = 'SNP_sing') |>
+  inner_join(y = sum_val4_2, by = 'SNP_sing')
+
+SNP_sing_imput |> filter(N_mal_imput_val1 == 0 & N_mal_imput_val2 == 0 & N_mal_imput_val3 == 0 & N_mal_imput_val4 == 0) |>
+  #count() |>
+  select(SNP_sing) |>
+  write_delim(file = 'single_tags/Datos/sing_imput.txt', col_names = TRUE)
+```
+
+<!--
 NOTA: A continuación, se observa la distribución de los singletones a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
 -->
 
@@ -509,16 +558,16 @@ ggplot() +
   geom_segment(
     data = dat_cromo,
     aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
-    lineend = 'round', color = 'lightgrey', size = 5
+    lineend = 'round', color = 'lightgrey', linewidth = 5
     ) +
   geom_segment(
     data = dat_sing,
     aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
-    size = 0.4, colour = 'orange', alpha = 1.4
+    linewidth = 0.4, colour = 'orange', alpha = 1.4
     ) +
   ggrepel::geom_label_repel(data = dat_sing |> filter(Cromosoma == 29) |> slice_max(order_by = Posicion), aes(x = Cromosoma, y = Posicion, label = ID_sing), box.padding = 0.8, direction = 'x') +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los singletones en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los singletones, así por ejemplo, el singletone "BovineHD2900005911" se encuentra en el cromosoma 29 y en la posición 113257806. Se puede observar que los mismos se encuentran distribuidos en todos los cromosomas.') +
+  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los singletones en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los singletones, así por ejemplo, el singletone "BovineHD2900005911" se encuentra en el cromosoma 29 y en la posición 113257806. Se puede observar que los mismos se encuentran distribuidos\n en todos los cromosomas.') +
   theme_bw() +
   theme(
     plot.title = element_text(size = 12, face = 'bold'),
@@ -526,4 +575,6 @@ ggplot() +
     axis.title = element_text(size = 12, face = 'bold'),
     plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
     )
+
+ggsave('../../single_tags/Imagenes/dis_sing.pdf', width = 40, height = 20, units = 'cm')
 ```
