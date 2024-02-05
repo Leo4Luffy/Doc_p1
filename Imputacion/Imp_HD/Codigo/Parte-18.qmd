@@ -49,7 +49,7 @@ m_distancia[281:284, 281:284]
 # Se exporta la anterior matriz de distancia genética basada en IBS ---
 
 m_distancia |>
-  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'mDG.RData')) # Se importa la matriz de distancia genética.
+  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'mDG.RData')) # Se importa la matriz de distancia genética.
 ```
 
 <!--
@@ -61,7 +61,7 @@ NOTA: Se realiza una agrupación jerárquica usando la matriz de disimilitud o d
 
 # Se carga la anterior matriz de distancia genética  ---
 
-load(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'mDG.RData'))
+load(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'mDG.RData'))
 
 # Se realizá el gráfico de agrupación jerárquica---
 
@@ -87,7 +87,27 @@ factoextra::fviz_dend( # Se visualiza el dendrograma usando el paquete "factoext
     axis.title.y = element_text(size = 12, face = 'bold')
     )
 
-ggsave(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Imagenes', 'dendograma.pdf'), width = 40, height = 20, units = 'cm')
+ggsave(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'Imagenes', 'dendograma.pdf'), width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se crean las distintas carpetas donde se guardaran los resultados de la imputación para los 4 grupos de validación.
+-->
+
+```{r}
+#| label: Subcarpetas de validación
+
+# 1. Se indica la ruta base de la carpeta donde deseas crear las subcarpetas:
+ruta_base <- '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/'
+
+# 2. Se utiliza un bucle for para crear las 4 carpetas:
+for (i in 1:4) {
+  # Se genera el nombre de la carpeta
+  nombre_carpeta <- paste0('Prec_', i)
+  
+  # Se crean la carpetas
+  dir.create(paste0(ruta_base, nombre_carpeta))
+  } # La función paste0() se utiliza para concatenar el nombre de la carpeta con la ruta base. El bucle for recorre los valores de 1 a 4 y en cada iteración crea una nueva carpeta utilizando la función dir.create().
 ```
 
 <!--
@@ -116,7 +136,7 @@ grup_2 |>
     ) |>
   filter(Grupo == 1) |>
   select(ID) |>
-  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_1', 'Grup1.txt'), col_names = FALSE)
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'Prec_1', 'Grup1.txt'), col_names = FALSE)
 
 #########
 # Grupo 2
@@ -130,7 +150,7 @@ grup_2 |>
     ) |>
   filter(Grupo == 2) |>
   select(ID) |>
-  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_2', 'Grup2.txt'), col_names = FALSE)
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'Prec_2', 'Grup2.txt'), col_names = FALSE)
 
 #########
 # Grupo 3
@@ -144,7 +164,7 @@ grup_2 |>
     ) |>
   filter(Grupo == 3) |>
   select(ID) |>
-  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_3', 'Grup3.txt'), col_names = FALSE)
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'Prec_3', 'Grup3.txt'), col_names = FALSE)
 
 #########
 # Grupo 4
@@ -158,5 +178,5 @@ grup_2 |>
     ) |>
   filter(Grupo == 4) |>
   select(ID) |>
-  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_kmeans', 'Prec_4', 'Grup4.txt'), col_names = FALSE)
+  write_delim(here(file = 'Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_IBS', 'Prec_4', 'Grup4.txt'), col_names = FALSE)
 ```
