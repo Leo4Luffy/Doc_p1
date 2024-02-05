@@ -532,7 +532,7 @@ sum_val1 |>
 
 # Se usa PLINK para extraer solo los SNP-tag ----
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12 --extract ../../single_tags/Datos/id_tags.txt --make-bed --recode --out ../../single_tags/Datos/paso_1')
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --extract ../../single_tags/Datos/id_tags.txt --make-bed --recode --out ../../single_tags/Datos/paso_1')
 
 # Se realiza el gráfico donde se observará la distribucón de los SNP-tag en cada uno de los 29 cromosomas ----
 
@@ -567,7 +567,7 @@ ggplot() +
     ) +
   ggrepel::geom_label_repel(data = dat_tags |> filter(Cromosoma == 29) |> slice_max(order_by = Posicion), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 0.8, direction = 'x') +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los SNP-tag en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los SNP-tag, así por ejemplo, el SNP-tag "BovineHD2900005910" se encuentra en el cromosoma 29 y en la posición 113256327. Se puede observar que los mismos se encuentran distribuidos\n en todos los cromosomas.') +
+  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los SNP-tag en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los SNP-tag, así por ejemplo, el SNP-tag "BovineHD2900014967" se encuentra en el cromosoma 29 y en la posición 51475573. Se puede observar que los mismos se encuentran distribuidos\n en todos los cromosomas.') +
   theme_bw() +
   theme(
     plot.title = element_text(size = 12, face = 'bold'),
