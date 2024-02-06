@@ -105,7 +105,7 @@ for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada car
   
   command <- paste0('--cow --allow-extra-chr --bfile ', input_path, ' --extract ', nomGen_path, ' --make-bed --out ', output_path)
   system2('plink', args = command)
-  } # En total, existen 511184 marcadores completamente genotipados en todos los individuos.
+  } # En total, existen 511205 marcadores completamente genotipados en todos los individuos.
 ```
 
 <!--
@@ -150,7 +150,7 @@ colnames(datGen) <- c('IID', paste0('Geno', 1:(ncol(datGen) - 1))) # Para indica
 
 datGen <- datGen %>%
   pivot_longer(
-    cols = c(2:511185),
+    cols = c(2:511205),
     names_to = 'ID genotipos',
     values_to = 'Genotipos reales'
     ) # Se cambia a formato largo, de tal forma que cada columna represente el ID del indivdiuo, el ID del genotipo y el genotipo real (recordar que 0 representa homocigoto para el alelo de referencia 1, 1 representa heterocigoto, 2 representa homocigoto para el alelo alternativo y 9 valor o genotipo ausente).
@@ -201,7 +201,7 @@ datGen1 <- datGen1 %>%
 
 Prec_imput_1 <- datGen1 %>%
   pivot_longer(
-    cols = c(2:511185),
+    cols = c(2:511205),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -257,7 +257,7 @@ datGen2 <- datGen2 %>%
 
 Prec_imput_2 <- datGen2 %>%
   pivot_longer(
-    cols = c(2:511185),
+    cols = c(2:511205),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -313,7 +313,7 @@ datGen3 <- datGen3 %>%
 
 Prec_imput_3 <- datGen3 %>%
   pivot_longer(
-    cols = c(2:511185),
+    cols = c(2:511205),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -369,7 +369,7 @@ datGen4 <- datGen4 %>%
 
 Prec_imput_4 <- datGen4 %>%
   pivot_longer(
-    cols = c(2:511185),
+    cols = c(2:511205),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
