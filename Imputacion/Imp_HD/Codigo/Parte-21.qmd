@@ -1,5 +1,5 @@
 ---
-title: "Parte 10: evaluación de la precisión de la imputación con datos 50k de origen - Parte 3"
+title: "Parte 21: evaluación de la precisión de la imputación usando grupos de validación formado mediante agrupación jerárquica con base en la matriz de disimilitud o de distancia de identidad por estado (IBS)- Parte 3"
 format: html
 ---
 
@@ -42,8 +42,8 @@ NOTA: Usando PLINK, se pasan los archivos VCF que resultaron al imputar los geno
 carpetas <- c('Prec_1', 'Prec_2', 'Prec_3', 'Prec_4')
 
 for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada carpeta.
-  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Res_imputacion_v5.4.vcf')
-  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Beagle_v5.4') # Dentro del bucle, se construyen las rutas de entrada y de salida para cada carpeta, con el nombre del archivo respectivo.
+  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Res_imputacion_v5.4.vcf')
+  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Beagle_v5.4') # Dentro del bucle, se construyen las rutas de entrada y de salida para cada carpeta, con el nombre del archivo respectivo.
   
   command <- paste0('--cow --allow-extra-chr --vcf ', input_path, ' --make-bed --out ', output_path) # Se crea el comando necesario para ejecutar el programa PLINK.
   system2('plink', args = command) # Se utiliza la función system2() para ejecutar el comando.
@@ -60,7 +60,7 @@ NOTA: Del archivo VCF que se uso inicialmente en la imputación (imp_HD_50k.vcf)
 vcf_data <- data.table::fread('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
 
 for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada carpeta.
-  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/aleloALT.txt') # Dentro del bucle, se construye la ruta de salida para cada carpeta.
+  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/aleloALT.txt') # Dentro del bucle, se construye la ruta de salida para cada carpeta.
   
   vcf_data %>%
     select(ID, ALT) %>%
@@ -76,9 +76,9 @@ NOTA: Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indican
 #| label: Paso de genotipos como 0/0, 0/1, 1/1 a genotipos como 0, 1, 2
 
 for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada carpeta.
-  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Beagle_v5.4')
-  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Beagle_v5.4_2')
-  aleloALT_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/aleloALT.txt') # Se utilizan las variables input_path, output_path, y aleloALT_path para construir las rutas de entrada, salida y del archivo "aleloALT.txt" respectivamente, para cada carpeta.
+  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Beagle_v5.4')
+  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Beagle_v5.4_2')
+  aleloALT_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/aleloALT.txt') # Se utilizan las variables input_path, output_path, y aleloALT_path para construir las rutas de entrada, salida y del archivo "aleloALT.txt" respectivamente, para cada carpeta.
   
   command <- paste0('--cow --allow-extra-chr --bfile ', input_path, ' --alt1-allele force ', aleloALT_path, ' --make-bed --out ', output_path) # El comando --alt1-allele force se usa para especificar el archivo aleloALT.txt, y luego se crea el comando necesario para ejecutar plink2 con el archivo binario Beagle_v5.4 como entrada y generar el archivo resultante Beagle_v5.4_2.
   system2('plink2', args = command)
@@ -99,9 +99,9 @@ NOTA: A continuación, en cada una de las subcarpetas (Prec_1, Prec_2, ..., Prec
 #| label: Datos PLINK de marcadores con genotipos completos
 
 for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada carpeta.
-  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Beagle_v5.4_2')
-  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/', carpeta, '/Beagle_v5.4_3')
-  nomGen_path <- '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt' # Se indica la ruta del archivo nomGen.txt, que indica el nombre de los marcadores con genotipos completos.
+  input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Beagle_v5.4_2')
+  output_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/', carpeta, '/Beagle_v5.4_3')
+  nomGen_path <- '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt' # Se indica la ruta del archivo nomGen.txt, que indica el nombre de los marcadores con genotipos completos.
   
   command <- paste0('--cow --allow-extra-chr --bfile ', input_path, ' --extract ', nomGen_path, ' --make-bed --out ', output_path)
   system2('plink', args = command)
@@ -115,34 +115,7 @@ NOTA: A continuación, se generan los distintos conjuntos de datos con los genot
 ```{r}
 #| label: Genotipos reales e imputados
 
-# Se dejan los marcadores con genotipos completos en el archivo de genotipos reales ----
-
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_1 --extract ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt --make-bed --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_2') # Del archivo PLINK binario "Paso_1" dentro del la carpeta "Imp_HD/Datos/Beagle/Precision_origen", que contiene los genotipos reales, se extraen los marcadores con genotipos completos.
-
-# Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
-
-datGen <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_2', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
-
-sum(datGen$extract) # En total, se extrajeron los 59867 SNPs en todos los cromosomas.
-
-tail(datGen$newID) # En el archivo creado se indica el ID de la familia, el ID del individuo y también se asigna una nueva ID del individuo (newID).
-
-# Se importa el archivo .fam  ----
-
-datPed <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_2.fam', col_names = FALSE)
-
-# Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
-
-datGen_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/datGen.txt', col_names = FALSE)
-
-datPed %>%
-  select(X2) %>%
-  rename(ID = X2) %>%
-  bind_cols(datGen_2) %>%
-  select(-X1) %>% # Se elimina aquí la columna X1 ya que el ID del individuo no es igual al ID del pedigrí.
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/datGen.txt', col_names = FALSE, delim = ' ')
-
-# Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna un nombre a las columnas ----
+# Se importa el archivo de genotipos reales y se asigna un nombre a las columnas ----
 
 datGen <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/datGen.txt', col_names = FALSE, delim = ' ')
 
@@ -161,7 +134,7 @@ datGen <- datGen %>%
 # Grupo 1 de validación
 #######################
 
-Grup1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Grup1.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del primer grupo de validación.
+Grup1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Grup1.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del primer grupo de validación.
   separate(
     col = X1,
     into = c('X1', 'X2'),
@@ -171,7 +144,7 @@ Grup1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 # Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
 
-datGen1 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/datGen1_v5.4.txt', method = 'simple', countminor = FALSE)
+datGen1 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/datGen1_v5.4.txt', method = 'simple', countminor = FALSE)
 
 sum(datGen1$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
 
@@ -181,18 +154,18 @@ datPed <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orig
 
 # Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
 
-datGen1_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/datGen1_v5.4.txt', col_names = FALSE)
+datGen1_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/datGen1_v5.4.txt', col_names = FALSE)
 
 datPed %>%
   select(X2) %>%
   rename(ID = X2) %>%
   bind_cols(datGen1_2) %>%
   select(-X1) %>% # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/datGen1_v5.4.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/datGen1_v5.4.txt', col_names = FALSE, delim = ' ')
 
 # Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna un nombre a las columnas ----
 
-datGen1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/datGen1_v5.4.txt', col_names = FALSE, delim = ' ')
+datGen1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/datGen1_v5.4.txt', col_names = FALSE, delim = ' ')
 
 colnames(datGen1) <- c('IID', paste0('Geno', 1:(ncol(datGen1) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "Geno" y un número que va del 1 al número de columnas de genotipos (ncol(datGen) - 1).
 
@@ -211,13 +184,13 @@ Prec_imput_1 <- datGen1 %>%
   )
 
 Prec_imput_1 %>%
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Prec_imput_1.txt', col_names = TRUE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Prec_imput_1.txt', col_names = TRUE, delim = ' ')
 
 #######################
 # Grupo 2 de validación
 #######################
 
-Grup2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Grup2.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del segundo grupo de validación.
+Grup2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/Grup2.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del segundo grupo de validación.
   separate(
     col = X1,
     into = c('X1', 'X2'),
@@ -227,7 +200,7 @@ Grup2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 # Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
 
-datGen2 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/datGen2_v5.4.txt', method = 'simple', countminor = FALSE)
+datGen2 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/datGen2_v5.4.txt', method = 'simple', countminor = FALSE)
 
 sum(datGen2$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
 
@@ -237,18 +210,18 @@ datPed <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orig
 
 # Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
 
-datGen2_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/datGen2_v5.4.txt', col_names = FALSE)
+datGen2_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/datGen2_v5.4.txt', col_names = FALSE)
 
 datPed %>%
   select(X2) %>%
   rename(ID = X2) %>%
   bind_cols(datGen2_2) %>%
   select(-X1) %>% # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/datGen2_v5.4.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/datGen2_v5.4.txt', col_names = FALSE, delim = ' ')
 
 # Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna un nombre a las columnas ----
 
-datGen2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/datGen2_v5.4.txt', col_names = FALSE, delim = ' ')
+datGen2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/datGen2_v5.4.txt', col_names = FALSE, delim = ' ')
 
 colnames(datGen2) <- c('IID', paste0('Geno', 1:(ncol(datGen2) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "Geno" y un número que va del 1 al número de columnas de genotipos (ncol(datGen2) - 1).
 
@@ -267,13 +240,13 @@ Prec_imput_2 <- datGen2 %>%
   )
 
 Prec_imput_2 %>%
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Prec_imput_2.txt', col_names = TRUE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/Prec_imput_2.txt', col_names = TRUE, delim = ' ')
 
 #######################
 # Grupo 3 de validación
 #######################
 
-Grup3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Grup3.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del tercer grupo de validación.
+Grup3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/Grup3.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del tercer grupo de validación.
   separate(
     col = X1,
     into = c('X1', 'X2'),
@@ -283,9 +256,9 @@ Grup3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 # Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
 
-datGen3 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/datGen3_v5.4.txt', method = 'simple', countminor = FALSE)
+datGen3 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/datGen3_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen3$extract) # En total, se extrajeron los 510335 SNPs en todos los cromosomas.
+sum(datGen3$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -293,18 +266,18 @@ datPed <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orig
 
 # Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
 
-datGen3_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/datGen3_v5.4.txt', col_names = FALSE)
+datGen3_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/datGen3_v5.4.txt', col_names = FALSE)
 
 datPed %>%
   select(X2) %>%
   rename(ID = X2) %>%
   bind_cols(datGen3_2) %>%
   select(-X1) %>% # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/datGen3_v5.4.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/datGen3_v5.4.txt', col_names = FALSE, delim = ' ')
 
 # Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna un nombre a las columnas ----
 
-datGen3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/datGen3_v5.4.txt', col_names = FALSE, delim = ' ')
+datGen3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/datGen3_v5.4.txt', col_names = FALSE, delim = ' ')
 
 colnames(datGen3) <- c('IID', paste0('Geno', 1:(ncol(datGen3) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "Geno" y un número que va del 1 al número de columnas de genotipos (ncol(datGen3) - 1).
 
@@ -323,13 +296,13 @@ Prec_imput_3 <- datGen3 %>%
   )
 
 Prec_imput_3 %>%
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Prec_imput_3.txt', col_names = TRUE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/Prec_imput_3.txt', col_names = TRUE, delim = ' ')
 
 #######################
 # Grupo 4 de validación
 #######################
 
-Grup4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Grup4.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del cuarto grupo de validación.
+Grup4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/Grup4.txt', delim = ' ', col_names = FALSE) %>% # Se importa el nombre de los individuos que hacen parte del cuarto grupo de validación.
   separate(
     col = X1,
     into = c('X1', 'X2'),
@@ -339,9 +312,9 @@ Grup4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 # Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
 
-datGen4 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/datGen4_v5.4.txt', method = 'simple', countminor = FALSE)
+datGen4 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/datGen4_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen4$extract) # En total, se extrajeron los 510335 SNPs en todos los cromosomas.
+sum(datGen4$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -349,18 +322,18 @@ datPed <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orig
 
 # Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
 
-datGen4_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/datGen4_v5.4.txt', col_names = FALSE)
+datGen4_2 <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/datGen4_v5.4.txt', col_names = FALSE)
 
 datPed %>%
   select(X2) %>%
   rename(ID = X2) %>%
   bind_cols(datGen4_2) %>%
   select(-X1) %>% # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/datGen4_v5.4.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/datGen4_v5.4.txt', col_names = FALSE, delim = ' ')
 
 # Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna un nombre a las columnas ----
 
-datGen4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/datGen4_v5.4.txt', col_names = FALSE, delim = ' ')
+datGen4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/datGen4_v5.4.txt', col_names = FALSE, delim = ' ')
 
 colnames(datGen4) <- c('IID', paste0('Geno', 1:(ncol(datGen4) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "Geno" y un número que va del 1 al número de columnas de genotipos (ncol(datGen4) - 1).
 
@@ -379,7 +352,7 @@ Prec_imput_4 <- datGen4 %>%
   )
 
 Prec_imput_4 %>%
-  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Prec_imput_4.txt', col_names = TRUE, delim = ' ')
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/Prec_imput_4.txt', col_names = TRUE, delim = ' ')
 ```
 
 <!--
@@ -397,7 +370,7 @@ prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los
 
 for (i in carpetas) { # Se usa un bucle for que itera sobre los números del 1 al 8 (que corresponden a las carpetas y los archivos).
 
-  file_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_', i, '/Prec_imput_', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
+  file_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_', i, '/Prec_imput_', i, '.txt') # En cada iteración, se construye la ruta del archivo utilizando el número de iteración.
     
   prec_imput[[i]] <- read_delim(file = file_path, delim = ' ', col_names = TRUE) # Luego, se importa el archivo utilizando la función read_delim(). El resultado se almacena en la posición correspondiente de la lista "prec_imput".
   }
@@ -423,7 +396,7 @@ cor.Imput %>%
   summarise(
     Promedio = mean(Correlacion),
     Desvio = sd(Correlacion)
-    ) # El resultado fue igual a 0.946 ± 0.00207.
+    ) # El resultado fue igual a 0.940 ± 0.00228.
 
 # Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
 
@@ -441,10 +414,10 @@ por.Imput %>%
 
 tribble(
   ~'Grupo de validación', ~'Proporción (%)',
-  'Primero', 98.0,
-  'Segundo', 97.8,
-  'Tercero', 97.6,
-  'Cuarto', 97.9
+  'Primero', 97.6,
+  'Segundo', 97.4,
+  'Tercero', 97.2,
+  'Cuarto', 97.5
   )
 ```
 
@@ -545,7 +518,7 @@ NOTA: A continuación se evalua también la precisón de la imputación mediante
 
 # Se importa el conjunto de datos con los genotipos reales e imputados y se realiza el cambio de las variables de genotipos (0,1,2 por AA,BB,BB) ----
 
-Prec_imput_1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Prec_imput_1.txt', delim = ' ', col_names = TRUE)
+Prec_imput_1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Prec_imput_1.txt', delim = ' ', col_names = TRUE)
 
 Prec_imput_1 <- Prec_imput_1 %>%
   mutate(
@@ -587,7 +560,7 @@ IQS_imput_1 <- IQS_1 %>%
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    )
+    ) # El resultado fue igual a 0.958 ± 0.0994.
 
 ####################
 # Grupo validación 2
@@ -595,7 +568,7 @@ IQS_imput_1 <- IQS_1 %>%
 
 # Se importa el conjunto de datos con los genotipos reales e imputados y se realiza el cambio de las variables de genotipos (0,1,2 por AA,BB,BB) ----
 
-Prec_imput_2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Prec_imput_2.txt', delim = ' ', col_names = TRUE)
+Prec_imput_2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/Prec_imput_2.txt', delim = ' ', col_names = TRUE)
 
 Prec_imput_2 <- Prec_imput_2 %>%
   mutate(
@@ -637,7 +610,7 @@ IQS_imput_2 <- IQS_2 %>%
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    )
+    ) # El resultado fue igual a  0.952 ± 0.101.
 
 ####################
 # Grupo validación 3
@@ -645,7 +618,7 @@ IQS_imput_2 <- IQS_2 %>%
 
 # Se importa el conjunto de datos con los genotipos reales e imputados y se realiza el cambio de las variables de genotipos (0,1,2 por AA,BB,BB) ----
 
-Prec_imput_3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Prec_imput_3.txt', delim = ' ', col_names = TRUE)
+Prec_imput_3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/Prec_imput_3.txt', delim = ' ', col_names = TRUE)
 
 Prec_imput_3 <- Prec_imput_3 %>%
   mutate(
@@ -687,7 +660,7 @@ IQS_imput_3 <- IQS_3 %>%
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    )
+    ) # El resultado fue igual a 0.948 ±  0.102.
 
 ####################
 # Grupo validación 4
@@ -695,7 +668,7 @@ IQS_imput_3 <- IQS_3 %>%
 
 # Se importa el conjunto de datos con los genotipos reales e imputados y se realiza el cambio de las variables de genotipos (0,1,2 por AA,BB,BB) ----
 
-Prec_imput_4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Prec_imput_4.txt', delim = ' ', col_names = TRUE)
+Prec_imput_4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/Prec_imput_4.txt', delim = ' ', col_names = TRUE)
 
 Prec_imput_4 <- Prec_imput_4 %>%
   mutate(
@@ -737,7 +710,7 @@ IQS_imput_4 <- IQS_4 %>%
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    )
+    ) # El resultado fue igual a 0.954 ± 0.100.
 
 # A continuación, se obtiene la media y el desvió estándar de IQS para cada grupo de validación ----
 
@@ -749,9 +722,9 @@ IQS <- bind_rows(IQS)
 
 tribble(
   ~'Grupo de validación', ~'Promedio', ~'Desvío',
-  'Primero', 0.956, 0.104,
-  'Segundo', 0.950, 0.106,
-  'Tercero', 0.945, 0.108,
-  'Cuarto', 0.952, 0.106
+  'Primero', 0.958, 0.098,
+  'Segundo', 0.953, 0.100,
+  'Tercero', 0.948, 0.101,
+  'Cuarto', 0.955, 0.100
   )
 ```

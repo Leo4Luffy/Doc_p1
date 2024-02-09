@@ -1,5 +1,5 @@
 ---
-title: "Parte 1: Consistencia de SNP-tag imputados formando cuatro grupos de validación de forma aleatoria"
+title: "Parte 3: Consistencia de imputaciones en singletones"
 format: html
 ---
 
@@ -14,15 +14,15 @@ pacman::p_load(tidyverse)
 ```
 
 <!--
-NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen solo los SNP-tag. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas.
+NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen solo los singletones. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas.
 -->
 
 ```{r}
-#| label: Conjuntos de datos de genotipos reales solo con SNP-tag
+#| label: Conjuntos de datos de genotipos reales solo con singletones
 
-# Se importa los datos con los nombres de los SNP-tag y se extrae este nombre como un vector ----
+# Se importa los datos con los nombres de los singletones y se extrae este nombre como un vector ----
 
-dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+dat_sing <- read_delim(file = 'single_taqs/Datos/datPuros/SNP_single_ANI.txt', col_names = FALSE, delim = ' ')
 
 # Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
 
@@ -33,11 +33,11 @@ gen_enmas <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt'
 gen_real <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como tags ----
+# Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como singletones ----
 
 gen_real_2 <- gen_real |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
 
 # Se transpone el conjunto de datos ----
 
@@ -75,15 +75,15 @@ cod_geno_1 <- function(columna) { # Esta función permite cambiar la codificaci�
 
 gen_real_4 <- cod_geno_1(gen_real_3)
 
-save(gen_real_4, file = 'single_tags/Datos/gen_Real.RData')
+save(gen_real_4, file = 'single_taqs/Datos/gen_Real_2.RData')
 ```
 
 <!--
-NOTA: A continuación, de los genotipos a alta densidad (HD) imputados, se extraen solo los tags. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas. Esto para cada grupo de validación.
+NOTA: A continuación, de los genotipos a alta densidad (HD) imputados, se extraen solo los singletones. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas. Esto para cada grupo de validación.
 -->
 
 ```{r}
-#| label: Conjuntos de datos de genotipos imputados solo con tags por grupo de validación
+#| label: Conjuntos de datos de genotipos imputados solo con singletones por grupo de validación
 
 # La función a continuación permite cambiar la codificación de los genotipos ----
 
@@ -119,11 +119,11 @@ Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Grup1.tx
 gen_imput_1 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como singletones ----
 
 gen_imput_1b <- gen_imput_1 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
 
 # Se transpone el conjunto de datos ----
 
@@ -149,7 +149,7 @@ gen_imput_1c <- gen_imput_1b |>
 
 gen_imput_1d <- cod_geno_2(gen_imput_1c)
 
-save(gen_imput_1d, file = 'single_tags/Datos/gen_Imput_HD_val1.RData')
+save(gen_imput_1d, file = 'single_taqs/Datos/gen_Imput_HD_val1_2.RData')
 
 #######################
 # Grupo 2 de validación
@@ -170,11 +170,11 @@ Grup2 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Grup2.tx
 gen_imput_2 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como singletones ----
 
 gen_imput_2b <- gen_imput_2 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
 
 # Se transpone el conjunto de datos ----
 
@@ -200,7 +200,7 @@ gen_imput_2c <- gen_imput_2b |>
 
 gen_imput_2d <- cod_geno_2(gen_imput_2c)
 
-save(gen_imput_2d, file = 'single_tags/Datos/gen_Imput_HD_val2.RData')
+save(gen_imput_2d, file = 'single_taqs/Datos/gen_Imput_HD_val2_2.RData')
 
 #######################
 # Grupo 3 de validación
@@ -221,11 +221,11 @@ Grup3 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Grup3.tx
 gen_imput_3 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como singletones ----
 
 gen_imput_3b <- gen_imput_3 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
 
 # Se transpone el conjunto de datos ----
 
@@ -251,7 +251,7 @@ gen_imput_3c <- gen_imput_3b |>
 
 gen_imput_3d <- cod_geno_2(gen_imput_3c)
 
-save(gen_imput_3d, file = 'single_tags/Datos/gen_Imput_HD_val3.RData')
+save(gen_imput_3d, file = 'single_taqs/Datos/gen_Imput_HD_val3_2.RData')
 
 #######################
 # Grupo 4 de validación
@@ -272,11 +272,11 @@ Grup4 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Grup4.tx
 gen_imput_4 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como singletones ----
 
 gen_imput_4b <- gen_imput_4 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_tags$X1) # Se extrae aquí los marcadores considerados tags.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
 
 # Se transpone el conjunto de datos ----
 
@@ -302,19 +302,19 @@ gen_imput_4c <- gen_imput_4b |>
 
 gen_imput_4d <- cod_geno_2(gen_imput_4c)
 
-save(gen_imput_4d, file = 'single_tags/Datos/gen_Imput_HD_val4.RData')
+save(gen_imput_4d, file = 'single_taqs/Datos/gen_Imput_HD_val4_2.RData')
 ```
 
 <!--
-NOTA: A continuación se evalua la consistencia de los resultados en los SNP tag. Esto es, en dichos marcadores se observa si se imputo bien o no para cada grupo de validación.
+NOTA: A continuación se evalua la consistencia de los resultados en los singletones. Esto es, en dichos marcadores se observa si se imputo bien o no para cada grupo de validación.
 -->
 
 ```{r}
-#| label: SNP tag imputados correctamento o incorrectamente
+#| label: SNP singletones imputados correctamento o incorrectamente
 
 # Se carga el objeto de R denominado como "gen_real_4" que anteriormente habia sido guardado ----
 
-load(file = 'single_tags/Datos/gen_Real.RData') # Este objeto contiene los genotipos reales considerados como tags y que al momento de imputar habian sido enmascarados, en todos los individuos.
+load(file = 'single_taqs/Datos/gen_Real_2.RData') # Este objeto contiene los genotipos reales considerados como singletones y que al momento de imputar habian sido enmascarados, en todos los individuos.
 
 #######################
 # Grupo 1 de validación
@@ -322,7 +322,7 @@ load(file = 'single_tags/Datos/gen_Real.RData') # Este objeto contiene los genot
 
 # Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_1d" ----
 
-load(file = 'single_tags/Datos/gen_Imput_HD_val1.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del primer grupo de validación.
+load(file = 'single_taqs/Datos/gen_Imput_HD_val1_2.RData') # Este objeto contiene los genotipos imputados considerados como singletones y que al momento de imputar habian sido enmascarados, en los individuos del primer grupo de validación.
 
 # Del objeto "gen_real_4" se dejan solo los individuos del primer grupo de valiación ----
 
@@ -338,18 +338,18 @@ comp_val1 <- gen_real_5 %>%
 sum_val1 <- summarise(
   .data = comp_val1,
   across(
-    .cols = c(1:81919),
+    .cols = c(1:89312),
     .fns = sum
     )
-  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP singletones. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP singletones. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val1 |>
   pivot_longer(
-    cols = c(1:81919),
-    names_to = 'SNP_tag',
+    cols = c(1:89312),
+    names_to = 'SNP_sing',
     values_to = 'N_mal_imput'
     ) |>
-  write_delim(file = 'single_tags/Datos/sum_val1.txt', col_names = TRUE)
+  write_delim(file = 'single_taqs/Datos/sum_val1_2.txt', col_names = TRUE)
 
 #######################
 # Grupo 2 de validación
@@ -357,7 +357,7 @@ sum_val1 |>
 
 # Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_2d" ----
 
-load(file = 'single_tags/Datos/gen_Imput_HD_val2.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del segundo grupo de validación.
+load(file = 'single_taqs/Datos/gen_Imput_HD_val2_2.RData') # Este objeto contiene los genotipos imputados considerados como sinletones y que al momento de imputar habian sido enmascarados, en los individuos del segundo grupo de validación.
 
 # Del objeto "gen_real_4" se dejan solo los individuos del segundo grupo de valiación ----
 
@@ -373,18 +373,18 @@ comp_val2 <- gen_real_6 %>%
 sum_val2 <- summarise(
   .data = comp_val2,
   across(
-    .cols = c(1:81919),
+    .cols = c(1:89312),
     .fns = sum
     )
-  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP singletones. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP singletones.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val2 |>
   pivot_longer(
-    cols = c(1:81919),
-    names_to = 'SNP_tag',
+    cols = c(1:89312),
+    names_to = 'SNP_sing',
     values_to = 'N_mal_imput'
     ) |>
-  write_delim(file = 'single_tags/Datos/sum_val2.txt', col_names = TRUE)
+  write_delim(file = 'single_taqs/Datos/sum_val2_2.txt', col_names = TRUE)
 
 #######################
 # Grupo 3 de validación
@@ -392,7 +392,7 @@ sum_val2 |>
 
 # Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_3d" ----
 
-load(file = 'single_tags/Datos/gen_Imput_HD_val3.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del tercer grupo de validación.
+load(file = 'single_taqs/Datos/gen_Imput_HD_val3_2.RData') # Este objeto contiene los genotipos imputados considerados como singletones y que al momento de imputar habian sido enmascarados, en los individuos del tercer grupo de validación.
 
 # Del objeto "gen_real_4" se dejan solo los individuos del tercer grupo de valiación ----
 
@@ -408,18 +408,18 @@ comp_val3 <- gen_real_7 %>%
 sum_val3 <- summarise(
   .data = comp_val3,
   across(
-    .cols = c(1:81919),
+    .cols = c(1:89312),
     .fns = sum
     )
-  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP singletones. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP singletones.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val3 |>
   pivot_longer(
-    cols = c(1:81919),
-    names_to = 'SNP_tag',
+    cols = c(1:89312),
+    names_to = 'SNP_sing',
     values_to = 'N_mal_imput'
     ) |>
-  write_delim(file = 'single_tags/Datos/sum_val3.txt', col_names = TRUE)
+  write_delim(file = 'single_taqs/Datos/sum_val3_2.txt', col_names = TRUE)
 
 #######################
 # Grupo 4 de validación
@@ -427,7 +427,7 @@ sum_val3 |>
 
 # Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_4d" ----
 
-load(file = 'single_tags/Datos/gen_Imput_HD_val4.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del cuarto grupo de validación.
+load(file = 'single_taqs/Datos/gen_Imput_HD_val4_2.RData') # Este objeto contiene los genotipos imputados considerados como singletones y que al momento de imputar habian sido enmascarados, en los individuos del cuarto grupo de validación.
 
 # Del objeto "gen_real_4" se dejan solo los individuos del cuarto grupo de valiación ----
 
@@ -443,75 +443,75 @@ comp_val4 <- gen_real_8 %>%
 sum_val4 <- summarise(
   .data = comp_val4,
   across(
-    .cols = c(1:81919),
+    .cols = c(1:89312),
     .fns = sum
     )
-  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP singletones. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP singletones.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val4 |>
   pivot_longer(
-    cols = c(1:81919),
-    names_to = 'SNP_tag',
+    cols = c(1:89312),
+    names_to = 'SNP_sing',
     values_to = 'N_mal_imput'
     ) |>
-  write_delim(file = 'single_tags/Datos/sum_val4.txt', col_names = TRUE)
+  write_delim(file = 'single_taqs/Datos/sum_val4_2.txt', col_names = TRUE)
 ```
 
 <!--
-NOTA: A continuación, se observa la cantidad de SNP-tag correctamente imputados, por grupo de validación y uniendo dichos grupos.
+NOTA: 
 -->
 
 ```{r}
 #| label: Hola
 
-# Se importan los datos y se cuenta la cantidad de SNP-tag imputados correctamente por grupo de validación  ----
+# Se importan los datos y se cuenta la cantidad de  singletones imputados correctamente por grupo de validación  ----
 
-sum_val1 <- read_delim(file = 'single_tags/Datos/sum_val1.txt', col_names = TRUE, delim = ' ') |>
+sum_val1_2 <- read_delim(file = 'single_tags/Datos/sum_val1_2.txt', col_names = TRUE, delim = ' ') |>
   rename(N_mal_imput_val1 = N_mal_imput)
 
-sum_val1 |>
+sum_val1_2 |>
   filter(N_mal_imput_val1 == 0) |>
-  count() # Se cuenta aquí la cantidad de SNP-tag imputados correctamente en el primer grupo de validación.
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el primer grupo de validación.
 
-sum_val2 <- read_delim(file = 'single_tags/Datos/sum_val2.txt', col_names = TRUE, delim = ' ') |>
+sum_val2_2 <- read_delim(file = 'single_tags/Datos/sum_val2_2.txt', col_names = TRUE, delim = ' ') |>
   rename(N_mal_imput_val2 = N_mal_imput)
 
-sum_val2 |>
+sum_val2_2 |>
   filter(N_mal_imput_val2 == 0) |>
-  count() # Se cuenta aquí la cantidad de SNP-tag imputados correctamente en el segundo grupo de validación.
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el segundo grupo de validación.
 
-sum_val3 <- read_delim(file = 'single_tags/Datos/sum_val3.txt', col_names = TRUE, delim = ' ') |>
+sum_val3_2 <- read_delim(file = 'single_tags/Datos/sum_val3_2.txt', col_names = TRUE, delim = ' ') |>
   rename(N_mal_imput_val3 = N_mal_imput)
 
-sum_val3 |>
+sum_val3_2 |>
   filter(N_mal_imput_val3 == 0) |>
-  count() # Se cuenta aquí la cantidad de SNP-tag imputados correctamente en el tercer grupo de validación.
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el tercer grupo de validación.
 
-sum_val4 <- read_delim(file = 'single_tags/Datos/sum_val4.txt', col_names = TRUE, delim = ' ') |>
+sum_val4_2 <- read_delim(file = 'single_tags/Datos/sum_val4_2.txt', col_names = TRUE, delim = ' ') |>
   rename(N_mal_imput_val4 = N_mal_imput)
 
-sum_val4 |>
-  filter(N_mal_imput_val4 != 0) |>
-  count() # Se cuenta aquí la cantidad de SNP-tag imputados correctamente en el cuarto grupo de validación.
+sum_val4_2 |>
+  filter(N_mal_imput_val4 == 0) |>
+  count() # Se cuenta aquí la cantidad de singletones imputados correctamente en el cuarto grupo de validación.
 
 # Se observa e importa el nombre de los SNP-tag que en los cuatros grupos de validación se imputaron bien ----
 
-SNP_tag_imput <- inner_join(x = sum_val1, y = sum_val2, by = 'SNP_tag') |>
-  inner_join(x = sum_val3, by = 'SNP_tag') |>
-  inner_join(y = sum_val4, by = 'SNP_tag')
+SNP_sing_imput <- inner_join(x = sum_val1_2, y = sum_val2_2, by = 'SNP_sing') |>
+  inner_join(x = sum_val3_2, by = 'SNP_sing') |>
+  inner_join(y = sum_val4_2, by = 'SNP_sing')
 
-SNP_tag_imput |> filter(N_mal_imput_val1 == 0 & N_mal_imput_val2 == 0 & N_mal_imput_val3 == 0 & N_mal_imput_val4 == 0) |>
+SNP_sing_imput |> filter(N_mal_imput_val1 == 0 & N_mal_imput_val2 == 0 & N_mal_imput_val3 == 0 & N_mal_imput_val4 == 0) |>
   #count() |>
-  select(SNP_tag) |>
-  write_delim(file = 'single_tags/Datos/tags_imput.txt', col_names = TRUE)
+  select(SNP_sing) |>
+  write_delim(file = 'single_tags/Datos/sing_imput.txt', col_names = TRUE)
 ```
 
 <!--
-NOTA: A continuación, se observa la distribución de los tags a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
+NOTA: A continuación, se observa la distribución de los singletones a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
 -->
 
 ```{r}
-#| label: Distribución de los SNP-tag
+#| label: Distribución de los singletones
 
 # Se carga el software PLINK----
 
@@ -522,47 +522,35 @@ plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
 
 plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
 
-# Se importa el conjunto de datos con el nombre de los tags con genotipado a alta densidad (HD), en el primer grupo de validación. Luego se exportan estos nombres ----
+# Se importa el conjunto de datos con el nombre de los singletones con genotipado a alta densidad (HD), en el primer grupo de validación. Luego se exportan estos nombres ----
 
-sum_val1 <- read_delim(file = '../../single_tags/Datos/sum_val1.txt', col_names = TRUE, delim = ' ')
+sum_val1_2 <- read_delim(file = '../../single_tags/Datos/sum_val1_2.txt', col_names = TRUE, delim = ' ')
 
-sum_val1 |>
-  select(SNP_tag) |>
-  write_delim(file = '../../single_tags/Datos/id_tags.txt', col_names = FALSE)
+sum_val1_2 |>
+  select(SNP_sing) |>
+  write_delim(file = '../../single_tags/Datos/id_singletones.txt', col_names = FALSE)
 
-# Se usa PLINK para extraer solo los SNP-tag ----
+# Se usa PLINK para extraer solo los singletones ----
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --extract ../../single_tags/Datos/id_tags.txt --make-bed --recode --out ../../single_tags/Datos/paso_1')
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12 --extract ../../single_tags/Datos/id_singletones.txt --make-bed --recode --out ../../single_tags/Datos/paso_2')
 
-# Se realiza el gráfico donde se observará la distribucón de los SNP-tag en cada uno de los 29 cromosomas ----
+# Se realiza el gráfico donde se observará la distribucón de los singletones en cada uno de los 29 cromosomas ----
 
-dat_cromo <- read_table(file = '../../Imputacion/Imp_HD/Datos/datPuros/HD_ARC_UCD12_Illumina.map', col_names = FALSE) |>
+dat_cromo <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_12.bim', col_names = FALSE) |>
   select(1, 4) |>
-  filter(X1 %in% c(1:29)) |>
   slice_max(order_by = X4, by = X1) |>
   rename(
     Cromosoma = X1,
     Tamaño = X4
     ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
 
-tags_imput <- read_delim(file = '../../single_tags/Datos/tags_imput.txt', delim = ' ', col_names = TRUE) |>
-  rename(ID_tags = SNP_tag) |>
-  mutate(`Imputación` = 'Correcta')
-
-dat_tags <- read_table(file = '../../single_tags/Datos/paso_1.bim', col_names = FALSE) |>
+dat_sing <- read_table(file = '../../single_tags/Datos/paso_2.bim', col_names = FALSE) |>
   select(1:2, 4) |>
   rename(
     Cromosoma = X1,
-    ID_tags = X2,
+    ID_sing = X2,
     Posicion = X4
-    ) |> # Se indica aquí la posición de los SNP-tag en cada uno de los 29 cromosomas
-  left_join(y = tags_imput, by = 'ID_tags') |>
-  mutate(
-    `Imputación` = case_when(
-      is.na(`Imputación`) ~ 'Incorrecta',
-      TRUE ~ 'Correcta'
-      )
-    )
+    ) # Se indica aquí la posición de los singletones en cada uno de los 29 cromosomas
 
 etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
 
@@ -573,23 +561,20 @@ ggplot() +
     lineend = 'round', color = 'lightgrey', linewidth = 5
     ) +
   geom_segment(
-    data = dat_tags,
-    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion, color = Imputación),
-    linewidth = 0.4, alpha = 1.4
+    data = dat_sing,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, colour = 'orange', alpha = 1.4
     ) +
-  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'orange')) +  # Define los colores para cada valor de "Imputación"
-  #ggforce::facet_zoom(x = 8, y = 113256327) +
-  ggrepel::geom_label_repel(data = dat_tags |> filter(ID_tags == 'BovineHD2900005910'), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 1.4) +
+  ggrepel::geom_label_repel(data = dat_sing |> filter(Cromosoma == 29) |> slice_max(order_by = Posicion), aes(x = Cromosoma, y = Posicion, label = ID_sing), box.padding = 0.8, direction = 'x') +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)') +
+  labs(y = 'Posición (en pares de bases)', title = 'Distribución de los singletones en cada uno de los cromosomas', caption = 'Información acerca de la figura: En la figura se presentan cada uno de los singletones, así por ejemplo, el singletone "BovineHD2900005911" se encuentra en el cromosoma 29 y en la posición 113257806. Se puede observar que los mismos se encuentran distribuidos\n en todos los cromosomas.') +
   theme_bw() +
   theme(
+    plot.title = element_text(size = 12, face = 'bold'),
     axis.text = element_text(size = 10),
     axis.title = element_text(size = 12, face = 'bold'),
-    legend.text = element_text(size = 10),
-    legend.title = element_text(size = 12, face = 'bold'),
     plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
     )
 
-ggsave('../../single_tags/Imagenes/dis_tags.pdf', width = 40, height = 20, units = 'cm')
+ggsave('../../single_tags/Imagenes/dis_sing.pdf', width = 40, height = 20, units = 'cm')
 ```

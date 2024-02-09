@@ -61,7 +61,7 @@ NOTA: Se identifica a continuación los marcadores con genotipo completo en todo
 
 # Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 511205 marcadores en 284 individuos.
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 598677 marcadores en 284 individuos.
 
 # Se exporta el nombre de los marcadores con genotipo completos ----
 
@@ -73,13 +73,13 @@ nomGen %>%
 ```
 
 <!--
-NOTA: Usando el archivo Paso_13.fam dentro de la carpeta Imp_HD/Datos/datQC_2, se generan distintos archivos con el nombre de los individuos en cada uno de los 4 grupos de validación.
+NOTA: Usando el archivo Paso_14.fam dentro de la carpeta Imp_HD/Datos/datQC_2, se generan distintos archivos con el nombre de los individuos en cada uno de los 4 grupos de validación.
 -->
 
 ```{r}
 #| label: Grupos de validación
 
-nomInd <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13.fam', col_names = FALSE)
+nomInd <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14.fam', col_names = FALSE)
 
 nomInd_2 <- nomInd %>%
   select(X1:X2) %>% # Se dejan las comunas con ID familiar y del individuo.

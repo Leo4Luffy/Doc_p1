@@ -41,11 +41,11 @@ NOTA: Se identifica a continuación los marcadores con genotipo completo en todo
 
 # Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 511205 marcadores en 284 individuos.
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 598677 marcadores en 284 individuos.
 
 # Se exporta el nombre de los marcadores con genotipo completos ----
 
-nomGen <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Paso_1.bim', col_names = FALSE) # Se importa el archivo anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
+nomGen <- read_table(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Paso_1.bim', col_names = FALSE) # Se importa el archivo *.bim anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
 
 nomGen %>%
   select(X2) %>%

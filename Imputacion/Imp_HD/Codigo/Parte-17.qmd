@@ -1,5 +1,5 @@
 ---
-title: "Parte 17: cálculo de IQS para evaluar la precisión de la imputación"
+title: "Parte 17: cálculo de IQS para evaluar la precisión de la imputación con AlphaImpute2"
 format: html
 ---
 

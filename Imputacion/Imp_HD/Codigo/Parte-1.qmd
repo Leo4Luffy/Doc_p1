@@ -377,7 +377,7 @@ NOTA: A continuación, se crea un subconjunto de datos de PLINK donde el genotip
 -->
 
 ```{r}
-#| label: Subconjunto de datos PLINK con marcadores compartidos en el genotipado de media densidad
+#| label: Subconjunto de datos PLINK con marcadores compartidos en el genotipado de media densidad imputados
 
 plink('--cow --allow-extra-chr --vcf ../../Imputacion/Beagle/Datos/Res_imputacion_v5.4.vcf --make-bed --out ../../Imputacion/Imp_HD/Datos/datQC/Paso_6') # Usando PLINK, se pasan el archivo VCF que resultó al imputar los genotipos mediante Beagle v 5.4 a datos PLINK binarios (.bed, .fam y .bim).
 
@@ -530,8 +530,9 @@ snpDupPos_2 <- snpDupPos %>%
 
 snpDupPos_2 %>%
   group_by(Posicion) %>%
-  slice(2) %>% # Se dejo uno de los dos marcadores duplicados por posición.
-  select(Posicion, X2) %>%
+  slice(2) %>% # Se dejo uno de los dos marcadores duplicados por posición, preferiblemente los de la segunda posición, ya que en la primera esta los marcadores nombrados como "Affy-...".
+  ungroup() %>%
+  select(X2) %>%
   write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC/snpDup.txt', col_names = FALSE)
 
 plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_12 --list-duplicate-vars --out ../../Imputacion/Imp_HD/Datos/datQC/dup_HD') # Con PLINK también se pueden identificar los marcadores duplicados.

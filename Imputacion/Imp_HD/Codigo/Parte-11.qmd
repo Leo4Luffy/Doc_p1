@@ -14,7 +14,7 @@ pacman::p_load(Siccuracy, tidyverse)
 ```
 
 <!--
-NOTA: el conjunto de datos (Paso_12.bed, .bim y .fam en la ruta ../../Imputacion/Imp_HD/Datos/datQC_2) comprende 284 individuos (entre machos, hembras y sexo ambiguo). En total, hay 621994 variantes (o SNPs) almacenados en el conjunto de datos de PLINK binario (Paso_12.bed).
+NOTA: el conjunto de datos (Paso_12.bed, .bim y .fam en la ruta ../../Imputacion/Imp_HD/Datos/datQC_4) comprende 284 individuos (entre machos, hembras y sexo ambiguo). En total, hay 719592 variantes (o SNPs) almacenados en el conjunto de datos de PLINK binario (Paso_14.bed).
 
 A continuación, se usa el paquete Siccuracy para obtener un archivo con formato SNP y con extensión .txt.
 -->
@@ -22,9 +22,9 @@ A continuación, se usa el paquete Siccuracy para obtener un archivo con formato
 ```{r}
 #| label: Generación de archivos de genotipos
 
-datGen <- convert_plink('Imputacion/Imp_HD/Datos/datQC_2/Paso_12', outfn = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Por eficiencia, con el argumento method = 'lowmem' se podria dividir el archivo de entrada en fragmentos más pequeños (por ejemplo, por cromosomas), evitando así cargar todo el archivo en memoria a la vez, y luego se puede indicar extraer los SNPs de un determinado cromosoma (en "extract_chr"). Por ejemplo, con method = 'lowmem' y extract_chr = '2', se indica extraer los SNPs del cromosoma 2. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
+datGen <- convert_plink('Imputacion/Imp_HD/Datos/datQC_2/Paso_14', outfn = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Por eficiencia, con el argumento method = 'lowmem' se podria dividir el archivo de entrada en fragmentos más pequeños (por ejemplo, por cromosomas), evitando así cargar todo el archivo en memoria a la vez, y luego se puede indicar extraer los SNPs de un determinado cromosoma (en "extract_chr"). Por ejemplo, con method = 'lowmem' y extract_chr = '2', se indica extraer los SNPs del cromosoma 2. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
 
-sum(datGen$extract) # En total, se extrajeron los 621994 SNPs en todos los cromosomas.
+sum(datGen$extract) # En total, se extrajeron los 719592 SNPs en todos los cromosomas.
 
 head(datGen$newID) # En el archivo creado se indica el ID de la familia, el ID del individuo y también se asigna una nueva ID del individuo (newID).
 ```
@@ -36,7 +36,7 @@ NOTA: Se exporta el archivo de pedigrí para usar en la imputación.
 ```{r}
 #| label: Generación y exportación del archivo de pedigrí
 
-datPed <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_12.fam', delim = ' ', col_select = c(2:4), col_names = FALSE)
+datPed <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.fam', delim = ' ', col_select = c(2:4), col_names = FALSE)
 
 write_delim(x = datPed, file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', col_names = FALSE, delim = ' ')
 ```
