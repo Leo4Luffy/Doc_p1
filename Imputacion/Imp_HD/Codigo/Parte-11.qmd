@@ -14,7 +14,7 @@ pacman::p_load(Siccuracy, tidyverse)
 ```
 
 <!--
-NOTA: el conjunto de datos (Paso_12.bed, .bim y .fam en la ruta ../../Imputacion/Imp_HD/Datos/datQC_4) comprende 284 individuos (entre machos, hembras y sexo ambiguo). En total, hay 719592 variantes (o SNPs) almacenados en el conjunto de datos de PLINK binario (Paso_14.bed).
+NOTA: el conjunto de datos (Paso_14.bed, .bim y .fam en la ruta ../../Imputacion/Imp_HD/Datos/datQC_4) comprende 284 individuos (entre machos, hembras y sexo ambiguo). En total, hay 719592 variantes (o SNPs) almacenados en el conjunto de datos de PLINK binario (Paso_14.bed).
 
 A continuación, se usa el paquete Siccuracy para obtener un archivo con formato SNP y con extensión .txt.
 -->

@@ -1,5 +1,5 @@
 ---
-title: "Parte 21: evaluación de la precisión de la imputación usando grupos de validación formado mediante agrupación jerárquica con base en la matriz de disimilitud o de distancia de identidad por estado (IBS)- Parte 3"
+title: "Parte 21: evaluación de la precisión de la imputación usando grupos de validación formado mediante agrupación jerárquica con base en la matriz de disimilitud o de distancia de identidad por estado (IBS), usando el porgrama Beagle v5.4 - Parte 3"
 format: html
 ---
 

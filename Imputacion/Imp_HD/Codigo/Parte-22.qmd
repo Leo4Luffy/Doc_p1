@@ -1,0 +1,169 @@
+---
+title: "Parte 22: evaluación de la precisión de la imputación con AlphaImpute2, usando información de 50k sin imputar y grupos de validación formados a partir de agrupación jerárquica - Parte 1"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(Siccuracy, tidyverse)
+```
+
+<!--
+NOTA: Usando el archivo de genotipos generado en al imputar a HD con AlphaImpute2, a continuación, se identifican los marcadores (en columnas) completamente genotipados (es decir, con genotipo en todos los individuos).
+-->
+
+```{r}
+#| label: Identificación de marcadores completamente genotipados
+
+# Se importa el archivo de genotipos y se asigna un nombre a las columnas ----
+
+datGen <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datGen.txt', col_names = FALSE, delim = ' ')
+
+colnames(datGen) <- c('IID', paste0('SNP', 1:(ncol(datGen) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(datGen) - 1).
+
+# Se identifica a continuación que marcadores (en columnas) fueron completamente genotipados (sin valor faltante en la columna) ----
+
+columnas_sin_9 <- datGen %>%
+  select(-IID) %>%
+  keep(~ all(.x != 9)) %>% # Se utiliza la función keep() del paquete purrr junto con el operador ~ para mantener solo las columnas en las que todos los valores sean diferentes de 9. El resultado se almacena en el objeto columnas_sin_9.
+  names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 511184 marcadores con genotipo en todos los individuos.
+```
+
+<!--
+NOTA: A continuación, se importan los grupos de validación formados a partir de la agrupación jerárquica en base a IBS.
+-->
+
+```{r}
+#| label: Impotación de grupos de validación
+
+# Se importan los distintos grupos de validación ----
+
+Grup1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into = c('IID', 'IID_2'),
+    sep = '_'
+    ) |>
+  select(IID) |>
+  mutate(Grupos = 1)
+
+Grup2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into = c('IID', 'IID_2'),
+    sep = '_'
+    ) |>
+  select(IID) |>
+  mutate(Grupos = 2)
+
+Grup3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into = c('IID', 'IID_2'),
+    sep = '_'
+    ) |>
+  select(IID) |>
+  mutate(Grupos = 3)
+
+Grup4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into = c('IID', 'IID_2'),
+    sep = '_'
+    ) |>
+  select(IID) |>
+  mutate(Grupos = 4)
+
+# Se unen los objetos anteriores en un solo objeto denominado "Grup" ----
+
+Grup <- bind_rows(Grup1, Grup2, Grup3, Grup4)
+```
+
+<!--
+NOTA: Los marcadores con genotipo anteriormente identificados se "enmascaran" en los individuos de cada grupo. Esto es, se hacen pasar como marcadores no genotipados o ausentes con valor de 9.
+-->
+
+```{r}
+#| label: Enmascaramiento de marcadores
+
+# Se unen los objetos "datGen" y "Grup" para determinar el individuo a que grupo de validación corresponde ----
+
+datGen_2 <- datGen |>
+  inner_join(y = Grup, by = 'IID') |>
+  relocate(Grupos, .after = IID)
+
+table(datGen_2$Grupos) # Se observa el número de individuos por grupo de validación. En total, estos suman 284 individuos.
+
+#################
+# Base de datos 1
+#################
+
+# Se "enmascaran" los marcadores con genotipo en los individuos que hacen parte del grupo 1 ----
+
+datGen_2 %>%
+  mutate_at(
+    .vars = columnas_sin_9,
+    .funs = ~ case_when(
+      Grupos == 1 ~ 9,
+      TRUE ~ .x
+      )
+    ) %>% # Se utiliza la función mutate_at() para aplicar una transformación a las columnas especificadas en el objeto columnas_sin_9. La función .vars se utiliza para especificar las columnas a las que se desea aplicar la transformación. Luego, se utiliza .funs para especificar la operación que se realizará en las columnas seleccionadas. Dentro de mutate_at(), se utiliza case_when() para especificar la lógica de la transformación. La expresión Grupos == 1 ~ 9 indica que para los individuos cuyo grupo es igual a 1, se asignará el valor 9. En caso contrario, se mantendrá el valor original de la columna (.x).
+  select(-Grupos) %>%
+  write_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/Precision_IBS/Prec_1/datGen1.txt', col_names = FALSE, delim = ' ')
+
+#################
+# Base de datos 2
+#################
+
+# Se "enmascaran" los marcadores con genotipo en los individuos que hacen parte del grupo 2 ----
+
+datGen_2 %>%
+  mutate_at(
+    .vars = columnas_sin_9,
+    .funs = ~ case_when(
+      Grupos == 2 ~ 9,
+      TRUE ~ .x
+      )
+    ) %>%
+  select(-Grupos) %>%
+  write_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/Precision_IBS/Prec_2/datGen2.txt', col_names = FALSE, delim = ' ')
+
+#################
+# Base de datos 3
+#################
+
+# Se "enmascaran" los marcadores con genotipo en los individuos que hacen parte del grupo 3 ----
+
+datGen_2 %>%
+  mutate_at(
+    .vars = columnas_sin_9,
+    .funs = ~ case_when(
+      Grupos == 3 ~ 9,
+      TRUE ~ .x
+      )
+    ) %>%
+  select(-Grupos) %>%
+  write_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/Precision_IBS/Prec_3/datGen3.txt', col_names = FALSE, delim = ' ')
+
+#################
+# Base de datos 4
+#################
+
+# Se "enmascaran" los marcadores con genotipo en los individuos que hacen parte del grupo 4 ----
+
+datGen_2 %>%
+  mutate_at(
+    .vars = columnas_sin_9,
+    .funs = ~ case_when(
+      Grupos == 4 ~ 9,
+      TRUE ~ .x
+      )
+    ) %>%
+  select(-Grupos) %>%
+  write_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/Precision_IBS/Prec_4/datGen4.txt', col_names = FALSE, delim = ' ')
+```

@@ -31,7 +31,7 @@ colnames(datGen) <- c('IID', paste0('SNP', 1:(ncol(datGen) - 1))) # Para indicar
 columnas_sin_9 <- datGen %>%
   select(-IID) %>%
   keep(~ all(.x != 9)) %>% # Se utiliza la función keep() del paquete purrr junto con el operador ~ para mantener solo las columnas en las que todos los valores sean diferentes de 9. El resultado se almacena en el objeto columnas_sin_9.
-  names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 511184 marcadores con genotipo en todos los individuos.
+  names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 598677 marcadores con genotipo en todos los individuos.
 ```
 
 <!--
