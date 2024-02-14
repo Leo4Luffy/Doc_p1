@@ -1,0 +1,85 @@
+---
+title: "Parte 23: Hola"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(here, tidyverse, ggplot2)
+```
+
+<!--
+NOTA: Se obtiene la matriz de relaciones aditivas (A) de los individuos genotipados.
+-->
+
+```{r}
+#| label: Matriz A de individuos con genotipos
+
+# Se importa la ID de los individuos genotipados y se indica que estos estan genotipados con TRUE ----
+
+id_geno <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(id = X1) |>
+  mutate(Gen = TRUE)
+
+# Se importa el pedigrí en el que se incluyen individuos genotipados y no genotipados, y se indica mediante FALSE aquellos individuos que no estan genotipados ----
+
+ped <- read_delim(file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    id = X1,
+    sire = X2,
+    dam = X3
+    ) |>
+  mutate_all(~ replace(., . == '0', NA)) |> # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+  full_join(y = id_geno, by = 'id') |>
+  mutate(
+    Gen = case_when(
+        is.na(Gen) ~ FALSE,
+        TRUE ~ TRUE)
+        )
+
+# Mediante la función "fn.mA_geno" se calcula la matriz A de los individuos genotipados ----
+
+fn.mA_geno <- function(ped) { # Esta función recibe como argumentos los datos con estructura id | sire | dam | Gen (TRUE/FALSE).
+  
+  # 1. Se calcula la matriz de relaciones aditivas con base en el pedigrí (A):
+  
+  ped_edit <- pedigreemm::editPed( # Aquí se ordena el pedigrí.
+    sire = ped$sire,
+    dam = ped$dam,
+    label = ped$id
+    )
+  pedi <- pedigreemm::pedigree( # Aquí se usa la salida anterior (ya ordenado) y se crea un objeto de clase pedigree.
+    sire = ped_edit$sire,
+    dam = ped_edit$dam,
+    label = ped_edit$label
+  )
+  mA <- pedigreemm::getA(ped = pedi) # Esto dara la matriz de relaciones aditivas A.
+
+  # 2. Se obtienen la matriz A de los individuos genotipados:
+
+  mA_geno <- mA[ped$Gen == 1, ped$Gen == 1]
+  mA_geno <- as.matrix(mA_geno)
+
+  # 3. Se indica retornar la matriz A de los individuos genotipados:
+
+  return(mA_geno)
+  }
+
+mA_geno <- fn.mA_geno(ped = ped)
+```
+
+<!--
+NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de elementos de la matriz A anterior.
+-->
+
+```{r}
+#| label: Matriz D de disimilitud
+
+# Paquete "optiSel". 
+```

@@ -555,7 +555,7 @@ dat_tags <- read_table(file = '../../single_tags/Datos/paso_1.bim', col_names = 
     Cromosoma = X1,
     ID_tags = X2,
     Posicion = X4
-    ) |> # Se indica aquí la posición de los SNP-tag en cada uno de los 29 cromosomas
+    ) |> # Se indica aquí la posición de los SNP-tag en cada uno de los 29 cromosomas.
   left_join(y = tags_imput, by = 'ID_tags') |>
   mutate(
     `Imputación` = case_when(
@@ -577,7 +577,7 @@ ggplot() +
     aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion, color = Imputación),
     linewidth = 0.4, alpha = 1.4
     ) +
-  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'orange')) +  # Define los colores para cada valor de "Imputación"
+  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'orange')) +
   #ggforce::facet_zoom(x = 8, y = 113256327) +
   ggrepel::geom_label_repel(data = dat_tags |> filter(ID_tags == 'BovineHD2900005910'), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 1.4) +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +

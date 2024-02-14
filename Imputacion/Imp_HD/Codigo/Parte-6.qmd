@@ -302,7 +302,7 @@ plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Pas
 ```
 
 <!--
-NOTA: Se dejan solo los 284 individuos de los datos de alta densidad a continuación.
+NOTA: Se dejan solo los 284 individuos de los datos de alta densidad a continuación. Esto para evaluar la precisión de la imputación en estos individuos.
 -->
 
 ```{r}
@@ -328,4 +328,33 @@ NOTA: Una vez se unen los datos de media y alta densidad se convierte los datos 
 #| label: Paso a formato VCF
 
 plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --recode vcf --alleleACGT --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k --const-fid')
+```
+
+<!--
+NOTA: Para realizar la imputación a alta densidad, se dejan los 2894 individuos individuos que estan presentes en el archivo de genotipos de densidad media (50k). Esto para que al comparar la precisión de la predicción genómica, se compare distintas densidades en los mismos individuos.
+-->
+
+```{r}
+#| label: Datos de densidades combinadas 2
+
+ID_HD <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/Paso_4.fam', col_names = FALSE) %>%
+  select(X2) %>%
+  mutate(ID_fam = X2) %>% # Este corresponderia al ID familiar, que en el caso de los datos de alta densidad es igual a 0 para todos los individuos.
+  relocate(
+    ID_fam,
+    .before = X2
+    ) %>%
+  write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/ID_HD_2.txt', col_names = FALSE, delim = '\t')
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --keep ../../Imputacion/Imp_HD/Datos/datQC_2/ID_HD_2.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15')
+```
+
+<!--
+NOTA: Lo anterior también se convierte a formato VCF, y se guarda en la carpeta Imp_HD/Datos/Beagle con el nombre de "imp_HD_50k_2".
+-->
+
+```{r}
+#| label: Paso a formato VCF
+
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15 --recode vcf --alleleACGT --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2 --const-fid')
 ```

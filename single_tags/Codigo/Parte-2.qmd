@@ -26,11 +26,11 @@ dat_taqs <- read_delim(file = 'single_taqs/Datos/datPuros/SNP_only_tags_ANI.txt'
 
 # Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
 
-gen_enmas <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt', col_names = FALSE, delim = ' ')
+gen_enmas <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt', col_names = FALSE, delim = ' ')
 
 # Se importa los datos de genotipos reales ----
 
-gen_real <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+gen_real <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
 # Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como taqs ----
@@ -106,7 +106,7 @@ cod_geno_2 <- function(columna) { # Esta función permite cambiar la codificaci�
 
 # Se importa los nombres de los individuos del primer grupo de validación ----
 
-Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Grup1.txt', , col_names = FALSE, delim = ' ') |>
+Grup1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
   separate(
     col = X1,
     into =  c('ID', 'ID_2'),
@@ -116,7 +116,7 @@ Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/P
 
 # Se importa los datos de genotipos imputados ----
 
-gen_imput_1 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+gen_imput_1 <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
 # Del archivo anterior con genotipos reales, se extraen los marcadores considerados como taqs ----

@@ -655,7 +655,7 @@ plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_
 ```
 
 <!--
-NOTA: Se dejan solo los 284 individuos de los datos de alta densidad a continuación.
+NOTA: Se dejan solo los 284 individuos de los datos de alta densidad a continuación. Esto para evaluar la precisión de la imputación en estos individuos.
 -->
 
 ```{r}
