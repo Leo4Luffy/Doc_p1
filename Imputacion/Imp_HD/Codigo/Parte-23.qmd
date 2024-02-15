@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(here, tidyverse, ggplot2)
+pacman::p_load(tidyverse, tidyclust, tidymodels, ggplot2)
 ```
 
 <!--
@@ -63,7 +63,7 @@ fn.mA_geno <- function(ped) { # Esta función recibe como argumentos los datos c
 
   # 2. Se obtienen la matriz A de los individuos genotipados:
 
-  mA_geno <- mA[ped$Gen == 1, ped$Gen == 1]
+  mA_geno <- mA[ped$Gen == 1, ped$Gen == 1] # "1" es TRUE como un valor numerico al hacer coerción. Se indica, por tanto, extraer los individuos con valor TRUE en la columna "Gen". 
   mA_geno <- as.matrix(mA_geno)
 
   # 3. Se indica retornar la matriz A de los individuos genotipados:
@@ -75,11 +75,200 @@ mA_geno <- fn.mA_geno(ped = ped)
 ```
 
 <!--
-NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de elementos de la matriz A anterior.
+NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de los elementos de la matriz A anterior.
 -->
 
 ```{r}
-#| label: Matriz D de disimilitud
+#| label: Matriz D de disimilitud 1
 
-# Paquete "optiSel". 
+# Utilizando el paquete "optiSel", se convierte la matriz A anterior en una matriz de disimilitud ---- 
+
+mD <- optiSel::sim2dis(f = mA_geno) |> # En el argumento "f" se indica la matriz de similitud (con valores entre 0 y 1, por ejemplo, la matriz de parentesco basado en el pedigri) que se quiere convertir en una matriz de disimilitud. Los otros argumentos dentro de la función sim2dist() se usaron por defecto, entre ellos, el método (el método 1 tiene la ventaja de que el área refleja de manera más razonable la diversidad de una población).
+  as_tibble()
 ```
+
+<!--
+NOTA: Se observa a continuaicón el número adecuado de clústeres.
+-->
+
+```{r}
+#| label: Número adecuado de clústeres
+
+# NOTA: Me guie de este blog (https://tidyclust.tidymodels.org/articles/k_means.html) para hacer el análisis a continuación.
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se genera un subconjunto de validación mediante validación cruzada k-fold ----
+
+mD_VC <- vfold_cv(data = mD, v = 10) # Se genera un subconjunto de validación usando parámetros predeterminados (v = 10).
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = tune()) |> # Como el objetivo aquí será seleccionar la cantidad adecuada de clúteres, se usa tune().
+  set_engine('stats', algorithm = 'Hartigan-Wong') # Se indica aquí los detalles algorítmicos: implementación stats::kmeans (este sería el motor del modelo)  y "Hartigan-Wong" como algoritmo dentro de esta implementación.
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD) # Se proporciona aquí la formula del modelo. A diferencia del modelado supervisado, la fórmula no debe incluir una variable de respuesta.
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se establece un rango de valores posibles de "num_clusters" ----
+
+clust_num_grid <- grid_regular(num_clusters(), levels = 10) # Se establece en 10 como el rango de valores posibles de "num_clusters".
+
+# Se usa la función tune_cluster() para calcular las métricas en cada división de validación cruzada, para cada posible elección del número de clústeres anterior ----
+
+res <- tune_cluster(
+  k_med_3,
+  resamples = mD_VC,
+  grid = clust_num_grid,
+  control = control_grid(save_pred = TRUE, extract = identity), # control_grid es de tune.
+  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio) # cluster_metric_set es de tidyclust.
+  )
+
+res_metricas <- res |>
+  collect_metrics() # La función collect_metrics() se utiliza para recopilar y resumir las métricas.
+
+# Se observa la cantidad adecuada de clústeres ----
+
+res_metricas |>
+  filter(.metric == 'sse_ratio') |> # Un enfoque común para elegir una cantidad de clústeres adecuado es buscar un “codo”, o curvatura notable, en el gráfico de la relación WSS/TSS por número de conglomerados.
+  ggplot(aes(x = num_clusters, y = mean)) +
+  geom_line(colour = 'black', linewidth = 1.2, alpha = 0.2) +
+  geom_point(size = 2.4, colour = 'orange') +
+  scale_x_continuous(breaks = 1:10) + # Mediante la regla del codo se observa que con cada aumento en el número de clústeres, la relación WSS/TSS disminuye. Se observa también que la disminución del primer al segundo cluśter es muy extrema en relación a las disminución en el resto de clústeres (la cantidad de disminución es menor en estas), por lo que problablemente se deberían elegir dos grupos.
+  labs(x = 'Número de clústeres', y = 'Relación media de WSS/TSS') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
+    )
+
+# NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS . En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
+```
+
+<!--
+NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con dos clústeres.
+-->
+
+```{r}
+#| label: Modelo k-means con dos clústeres
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = 2) |> # Se indica aquí que el número de clústeres adecuados es de 2.
+  set_engine('stats', algorithm = 'Hartigan-Wong')
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD)
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se ajusta el modelo de k-means ----
+
+k_med_4 <- fit(k_med_3, data = mD)
+
+k_med_resumen <- k_med_4 |>
+  extract_fit_summary() # Con la función extract_fit_summary() se produce una lista de información resumida del modelo.
+
+asignacion_grupos <- tibble(
+  Grupos = k_med_resumen$orig_labels,
+  Cluster = k_med_resumen$cluster_assignments
+  ) # El objetivo principal de ajustar un modelo de agrupamiento (k-means) suele ser asignar observaciones (en este caso individuos) a los conglomerados. Aquí se puede observar estas asignaciones.
+
+# Se observan algunas de las métricas para cuantificar la calidad de una partición o estructura de clúster particular ----
+
+k_med_4 |> sse_within_total() # Aquí se calcula la suma del error al cuadrado (SSE) dentro del clúster.
+
+k_med_4 |> sse_total() # Aquí se calcula la SSE total.
+
+k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE total.
+
+# NOTA: Todas estas métricas dependen de la medición de la distancia entre puntos y/o centroides. Por defecto, se utiliza la distancia euclidiana ordinaria. Sin embargo, es posible seleccionar una función de distancia diferente. Se puede consultar el blog (https://tidyclust.tidymodels.org/articles/k_means.html) en caso de que se quiera profundizar más en esto.
+```
+
+<!--
+NOTA: Se obtiene la matriz de relaciones genómicas (G) de los individuos genotipados.
+-->
+
+```{r}
+#| label: Hola
+
+
+mGeno <- optiSel::read_plink()
+
+
+
+# ----
+
+bim <- genio::read_bim('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim')
+fam <- genio::read_fam('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.fam')
+bed <- BEDMatrix::BEDMatrix('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bed', n = length(fam$id), p = length(bim$id), simple_names = FALSE)
+mGeno <- as.matrix(bed)
+
+# ----
+
+mapIBD <- bim |>
+  select(id, chr, pos) |>
+  mutate(pos = pos / 1000000) |>
+  rename(
+    Name = id,
+    Chr = chr,
+    Mb = pos
+    )
+
+# ----
+
+mIBD <- optiSel::segIBD(files = mGeno, map = mapIBD)
+
+
+
+
+
+
+# ----
+
+mG <- AGHmatrix::Gmatrix(SNPmatrix = mGeno, method = 'VanRaden') # Aquí se calculo la matriz de parentesco genómico a partir de lo propuesto por VanRaden (2008).
+
+mG |>
+  saveRDS('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/mG.RDS')
+```
+
+<!--
+NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de los elementos de la matriz G anterior.
+-->
+
+```{r}
+#| label: Matriz D de disimilitud 2
+
+# ----
+
+mG <- readRDS('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/mG.RDS')
+
+# ----
+
+a <- optiSel::segIBD()
+
+
+# ----
+
+library(optiSel)
+
+data(map)
+```
+
