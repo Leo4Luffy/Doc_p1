@@ -14,64 +14,55 @@ pacman::p_load(tidyverse, tidyclust, tidymodels, ggplot2)
 ```
 
 <!--
-NOTA: Se obtiene la matriz de relaciones aditivas (A) de los individuos genotipados.
+NOTA: Se obtiene el parentesco basado en el pedigrí o la coascendencia geneológica, tanto de individuos genotipados como no genotipados.
 -->
 
 ```{r}
-#| label: Matriz A de individuos con genotipos
+#| label: Parentesco basado en el pedigrí
+
+# Se importa la ID de los individuos genotipados y se indica que estos estan genotipados con TRUE ----
+
+# Se importa el pedigrí en el que se incluyen individuos genotipados y no genotipados ----
+
+ped <- read_delim(file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    ID_id = X1,
+    ID_pad = X2,
+    ID_mad = X3
+    ) |>
+  mutate_all(~ replace(., . == '0', NA)) # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+
+# Se prepara el pedigrí para posterior análisis ----
+
+ped_2 <- optiSel::prePed(Pedig = ped) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
+
+# Se calcula el parentesco basado en el pedigrí ----
+
+fped <- optiSel::pedIBD(Pedig = ped_2) # La función pedIBD() permite definir una matriz de relaciones para los fundadores. Por defecto, los fundadores no están relacionados ni son endogámicos.
+```
+
+<!--
+NOTA: Hola
+-->
+
+```{r}
+#| label: Hola
 
 # Se importa la ID de los individuos genotipados y se indica que estos estan genotipados con TRUE ----
 
 id_geno <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
   select(X1) |> # Se extrae la ID de los individuos genotipados.
-  rename(id = X1) |>
-  mutate(Gen = TRUE)
+  rename(ID_id = X1)
 
-# Se importa el pedigrí en el que se incluyen individuos genotipados y no genotipados, y se indica mediante FALSE aquellos individuos que no estan genotipados ----
+#  ----
 
-ped <- read_delim(file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) |>
-  rename(
-    id = X1,
-    sire = X2,
-    dam = X3
-    ) |>
-  mutate_all(~ replace(., . == '0', NA)) |> # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
-  full_join(y = id_geno, by = 'id') |>
-  mutate(
-    Gen = case_when(
-        is.na(Gen) ~ FALSE,
-        TRUE ~ TRUE)
-        )
+id_fped <- tibble(ID_id = colnames(fped)) |>
+  mutate(Indice = row_number()) |> # índices numéricos
+  inner_join(y = id_geno, by = 'ID_id') # Hay 76 individuos (284-208) que han sido genotipados pero que no estan en el pedigrí.
 
-# Mediante la función "fn.mA_geno" se calcula la matriz A de los individuos genotipados ----
+# ----
 
-fn.mA_geno <- function(ped) { # Esta función recibe como argumentos los datos con estructura id | sire | dam | Gen (TRUE/FALSE).
-  
-  # 1. Se calcula la matriz de relaciones aditivas con base en el pedigrí (A):
-  
-  ped_edit <- pedigreemm::editPed( # Aquí se ordena el pedigrí.
-    sire = ped$sire,
-    dam = ped$dam,
-    label = ped$id
-    )
-  pedi <- pedigreemm::pedigree( # Aquí se usa la salida anterior (ya ordenado) y se crea un objeto de clase pedigree.
-    sire = ped_edit$sire,
-    dam = ped_edit$dam,
-    label = ped_edit$label
-  )
-  mA <- pedigreemm::getA(ped = pedi) # Esto dara la matriz de relaciones aditivas A.
-
-  # 2. Se obtienen la matriz A de los individuos genotipados:
-
-  mA_geno <- mA[ped$Gen == 1, ped$Gen == 1] # "1" es TRUE como un valor numerico al hacer coerción. Se indica, por tanto, extraer los individuos con valor TRUE en la columna "Gen". 
-  mA_geno <- as.matrix(mA_geno)
-
-  # 3. Se indica retornar la matriz A de los individuos genotipados:
-
-  return(mA_geno)
-  }
-
-mA_geno <- fn.mA_geno(ped = ped)
+fped_Geno <- fped[id_fped$Indice, id_fped$Indice] # Hola dra, una pregunta porfa. Perdón que este tan tarde. Es que estoy calculando la matriz de parentesco basado en el pedigrí (y luego me quedare solo con esta información en individuos genotipados). También intentare calcular la matriz de parentesco genómico. Comparare el kmeans que obtenga usando ambas matrices. Estoy usando las funciones de este paquete (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2450-5) para obtener ambas matrices y luego calculare la matriz de disimilitud que usare para el kmeans. El problema que estoy viendo es que cuando deseo obtener la
 ```
 
 <!--
