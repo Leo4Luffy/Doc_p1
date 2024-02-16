@@ -22,47 +22,71 @@ NOTA: Se obtiene el parentesco basado en el pedigrí o la coascendencia geneoló
 
 # Se importa la ID de los individuos genotipados y se indica que estos estan genotipados con TRUE ----
 
-# Se importa el pedigrí en el que se incluyen individuos genotipados y no genotipados ----
+# Se importa el pedigrí en el que se incluyen individuos genotipados y no genotipados (que se uso al imputar a media densidad) ----
 
-ped <- read_delim(file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) |>
+ped_1 <- read_delim(file = 'Paternidad/Datos/datPed.txt', delim = ' ', col_names = FALSE) |> # NOTA: En este pedigrí no estan 76 de los 284 individuos genotipados. Por ejemplo, el individuo "ES000803645478". Los pasos a continuaicón (obejtos "ped_2", "ped_3" y "ped_4") permiten incluir estos 76 individuos. 
   rename(
     ID_id = X1,
     ID_pad = X2,
     ID_mad = X3
     ) |>
-  mutate_all(~ replace(., . == '0', NA)) # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+  mutate(
+    ID_pad = replace(ID_pad, ID_pad == 0, NA),
+    ID_mad = replace(ID_mad, ID_mad == 0, NA)
+    ) # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+
+# Se importa el pedigrí en el que se incluyen individuos genotipados (que se uso al imputar a alta densidad) ----
+
+ped_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    ID_id = X1,
+    ID_pad = X2,
+    ID_mad = X3
+    ) |>
+  mutate(
+    ID_pad = replace(ID_pad, ID_pad == 0, NA),
+    ID_mad = replace(ID_mad, ID_mad == 0, NA)
+    ) # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+
+# Se observa a continuación los individuos que estan en el pedigrí "ped_2" pero que no estan presentes en el pedigrí del objeto "ped_1" ----
+
+ped_3 <- anti_join(x = ped_2, y = ped_1, by = 'ID_id')
+
+# Se unen los objetos "ped_1" y "ped_3" para obtener un pedigrí completo en el que se incluyan los 284 individuos genotipados ----
+
+ped_4 <- bind_rows(ped_1, ped_3)
 
 # Se prepara el pedigrí para posterior análisis ----
 
-ped_2 <- optiSel::prePed(Pedig = ped) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
+ped <- optiSel::prePed(Pedig = ped_4) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
 
 # Se calcula el parentesco basado en el pedigrí ----
 
-fped <- optiSel::pedIBD(Pedig = ped_2) # La función pedIBD() permite definir una matriz de relaciones para los fundadores. Por defecto, los fundadores no están relacionados ni son endogámicos.
+fped <- optiSel::pedIBD(Pedig = ped) # La función pedIBD() permite definir una matriz de relaciones para los fundadores. Por defecto, los fundadores no están relacionados ni son endogámicos.
 ```
 
 <!--
-NOTA: Hola
+NOTA: A continuación, de la matriz de parentesco basado en el pedigrí (o matriz A) calculado anteriormente, solo se extrae la parte que corresponde a los 284 individuos genotipados.
 -->
 
 ```{r}
-#| label: Hola
+#| label: Parentesco basado en el pedigrí de individuos genotipados
 
-# Se importa la ID de los individuos genotipados y se indica que estos estan genotipados con TRUE ----
+# Se importa la ID de los individuos genotipados ----
 
 id_geno <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
   select(X1) |> # Se extrae la ID de los individuos genotipados.
   rename(ID_id = X1)
 
-#  ----
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco calculado anteriormente ----
 
 id_fped <- tibble(ID_id = colnames(fped)) |>
   mutate(Indice = row_number()) |> # índices numéricos
-  inner_join(y = id_geno, by = 'ID_id') # Hay 76 individuos (284-208) que han sido genotipados pero que no estan en el pedigrí.
+  inner_join(x = id_geno, by = 'ID_id')
 
-# ----
+# Se extrae la matriz de parentesco (o matriz A) de los 284 indivdiuos genotipados ----
 
-fped_Geno <- fped[id_fped$Indice, id_fped$Indice] # Hola dra, una pregunta porfa. Perdón que este tan tarde. Es que estoy calculando la matriz de parentesco basado en el pedigrí (y luego me quedare solo con esta información en individuos genotipados). También intentare calcular la matriz de parentesco genómico. Comparare el kmeans que obtenga usando ambas matrices. Estoy usando las funciones de este paquete (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2450-5) para obtener ambas matrices y luego calculare la matriz de disimilitud que usare para el kmeans. El problema que estoy viendo es que cuando deseo obtener la
+mA_Geno <- fped[id_fped$Indice, id_fped$Indice]
 ```
 
 <!--
@@ -74,7 +98,7 @@ NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipado
 
 # Utilizando el paquete "optiSel", se convierte la matriz A anterior en una matriz de disimilitud ---- 
 
-mD <- optiSel::sim2dis(f = mA_geno) |> # En el argumento "f" se indica la matriz de similitud (con valores entre 0 y 1, por ejemplo, la matriz de parentesco basado en el pedigri) que se quiere convertir en una matriz de disimilitud. Los otros argumentos dentro de la función sim2dist() se usaron por defecto, entre ellos, el método (el método 1 tiene la ventaja de que el área refleja de manera más razonable la diversidad de una población).
+mD <- optiSel::sim2dis(f = mA_Geno) |> # En el argumento "f" se indica la matriz de similitud (con valores entre 0 y 1, por ejemplo, la matriz de parentesco basado en el pedigri) que se quiere convertir en una matriz de disimilitud. Los otros argumentos dentro de la función sim2dist() se usaron por defecto, entre ellos, el método (el método 1 tiene la ventaja de que el área refleja de manera más razonable la diversidad de una población).
   as_tibble()
 ```
 
@@ -85,7 +109,7 @@ NOTA: Se observa a continuaicón el número adecuado de clústeres.
 ```{r}
 #| label: Número adecuado de clústeres
 
-# NOTA: Me guie de este blog (https://tidyclust.tidymodels.org/articles/k_means.html) para hacer el análisis a continuación.
+# NOTA: Me guie de estos blogs (https://tidyclust.tidymodels.org/articles/k_means.html y https://tidyclust.tidymodels.org/articles/tuning_and_metrics.html) para hacer el análisis a continuación.
 
 set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
 
@@ -110,7 +134,7 @@ k_med_3 <- workflow() |>
 
 # Se establece un rango de valores posibles de "num_clusters" ----
 
-clust_num_grid <- grid_regular(num_clusters(), levels = 10) # Se establece en 10 como el rango de valores posibles de "num_clusters".
+clust_num_grid <- grid_regular(num_clusters(range = c(1L, 20L)), levels = 20) # Se establece en 20 como el rango de valores posibles de "num_clusters".  La función grid_regular() genera una cuadrícula de valores distribuidos uniformemente dentro de un rango especificado. En este caso, se está especificando que el número de clústeres puede variar entre 1 y 20, con un total de 20 niveles (o valores). Entonces, clust_num_grid contendrá una secuencia de valores del 1 al 20, que serán utilizados para ajustar el modelo de k-means con diferentes números de clústeres y evaluar su desempeño utilizando validación cruzada.
 
 # Se usa la función tune_cluster() para calcular las métricas en cada división de validación cruzada, para cada posible elección del número de clústeres anterior ----
 
@@ -118,8 +142,8 @@ res <- tune_cluster(
   k_med_3,
   resamples = mD_VC,
   grid = clust_num_grid,
-  control = control_grid(save_pred = TRUE, extract = identity), # control_grid es de tune.
-  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio) # cluster_metric_set es de tidyclust.
+  control = control_grid(save_pred = TRUE, extract = identity), # La función control_grid() es del paquete "tune".
+  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio) # La función cluster_metric_set() es del paquete "tidyclust".
   )
 
 res_metricas <- res |>
@@ -132,7 +156,7 @@ res_metricas |>
   ggplot(aes(x = num_clusters, y = mean)) +
   geom_line(colour = 'black', linewidth = 1.2, alpha = 0.2) +
   geom_point(size = 2.4, colour = 'orange') +
-  scale_x_continuous(breaks = 1:10) + # Mediante la regla del codo se observa que con cada aumento en el número de clústeres, la relación WSS/TSS disminuye. Se observa también que la disminución del primer al segundo cluśter es muy extrema en relación a las disminución en el resto de clústeres (la cantidad de disminución es menor en estas), por lo que problablemente se deberían elegir dos grupos.
+  scale_x_continuous(breaks = 1:20) + # Mediante la regla del codo se observa que con cada aumento en el número de clústeres, la relación WSS/TSS disminuye. Se observa también que la disminución del primer al segundo cluśter es muy extrema en relación a las disminución en el resto de clústeres (la cantidad de disminución es menor en estas), por lo que problablemente se deberían elegir dos grupos.
   labs(x = 'Número de clústeres', y = 'Relación media de WSS/TSS') +
   theme_bw() +
   theme(
@@ -141,9 +165,9 @@ res_metricas |>
     legend.text = element_text(size = 10),
     legend.title = element_text(size = 12, face = 'bold'),
     plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
-    )
+    ) # Es común observar la forma del gráfico de la "Relación media de WSS/TSS" (Within-Cluster Sum of Squares / Total Sum of Squares) en función del número de clústeres y buscar un punto donde se observe un cambio notable o una "curva de codo". Este cambio puede indicar un punto de disminución significativamente menor en la relación WSS/TSS, lo que sugiere que agregar más clústeres no proporciona una mejora sustancial en la capacidad del modelo para explicar la varianza en los datos.
 
-# NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS . En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
+# NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS. En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
 ```
 
 <!--
@@ -151,13 +175,13 @@ NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el model
 -->
 
 ```{r}
-#| label: Modelo k-means con dos clústeres
+#| label: Modelo k-means con diez clústeres
 
 set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
 
 # Se especifica el modelo de k-means ----
 
-k_med_1 <- k_means(num_clusters = 2) |> # Se indica aquí que el número de clústeres adecuados es de 2.
+k_med_1 <- k_means(num_clusters = 10) |> # Se indica aquí que el número de clústeres adecuados es de 10. NOTA: Si bien aquí se indica como 10, en el gráfico anterior no se pudo observar un punto claro de codo lo que hizo que la elección del número óptimo de clústeres fuera más difícil.
   set_engine('stats', algorithm = 'Hartigan-Wong')
 
 # Se ajusta el modelo de k-means ----
@@ -201,65 +225,4 @@ NOTA: Se obtiene la matriz de relaciones genómicas (G) de los individuos genoti
 #| label: Hola
 
 
-mGeno <- optiSel::read_plink()
-
-
-
-# ----
-
-bim <- genio::read_bim('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim')
-fam <- genio::read_fam('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.fam')
-bed <- BEDMatrix::BEDMatrix('Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bed', n = length(fam$id), p = length(bim$id), simple_names = FALSE)
-mGeno <- as.matrix(bed)
-
-# ----
-
-mapIBD <- bim |>
-  select(id, chr, pos) |>
-  mutate(pos = pos / 1000000) |>
-  rename(
-    Name = id,
-    Chr = chr,
-    Mb = pos
-    )
-
-# ----
-
-mIBD <- optiSel::segIBD(files = mGeno, map = mapIBD)
-
-
-
-
-
-
-# ----
-
-mG <- AGHmatrix::Gmatrix(SNPmatrix = mGeno, method = 'VanRaden') # Aquí se calculo la matriz de parentesco genómico a partir de lo propuesto por VanRaden (2008).
-
-mG |>
-  saveRDS('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/mG.RDS')
 ```
-
-<!--
-NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de los elementos de la matriz G anterior.
--->
-
-```{r}
-#| label: Matriz D de disimilitud 2
-
-# ----
-
-mG <- readRDS('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/mG.RDS')
-
-# ----
-
-a <- optiSel::segIBD()
-
-
-# ----
-
-library(optiSel)
-
-data(map)
-```
-
