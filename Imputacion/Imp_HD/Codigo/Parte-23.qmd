@@ -14,7 +14,7 @@ pacman::p_load(tidyverse, tidyclust, tidymodels, ggplot2)
 ```
 
 <!--
-NOTA: Se obtiene el parentesco basado en el pedigrí o la coascendencia geneológica, tanto de individuos genotipados como no genotipados.
+NOTA: Se estima el parentesco a partir de la información del pedigrí (coascendencia geneológica), tanto de individuos genotipados como no genotipados.
 -->
 
 ```{r}
@@ -81,7 +81,7 @@ id_geno <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', 
 # Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco calculado anteriormente ----
 
 id_fped <- tibble(ID_id = colnames(fped)) |>
-  mutate(Indice = row_number()) |> # índices numéricos
+  mutate(Indice = row_number()) |>
   inner_join(x = id_geno, by = 'ID_id')
 
 # Se extrae la matriz de parentesco (o matriz A) de los 284 indivdiuos genotipados ----
@@ -168,6 +168,8 @@ res_metricas |>
     ) # Es común observar la forma del gráfico de la "Relación media de WSS/TSS" (Within-Cluster Sum of Squares / Total Sum of Squares) en función del número de clústeres y buscar un punto donde se observe un cambio notable o una "curva de codo". Este cambio puede indicar un punto de disminución significativamente menor en la relación WSS/TSS, lo que sugiere que agregar más clústeres no proporciona una mejora sustancial en la capacidad del modelo para explicar la varianza en los datos.
 
 # NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS. En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Imagenes/kmeans_ped.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 <!--
@@ -218,11 +220,141 @@ k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE tot
 ```
 
 <!--
-NOTA: Se obtiene la matriz de relaciones genómicas (G) de los individuos genotipados.
+NOTA: A continuación, se obtiene el parentesco de los individuos genotipados (o matriz G) a partir de estimaciones basadas en segmentos (o datos de genotipos).
 -->
 
 ```{r}
 #| label: Hola
 
+# NOTA: Las estimaciones anteriores basadas en el pedigrí tienen la desventaja de que el muestreo mendeliano en todos los ancestros se considera aleatorio, por lo que no se puede explicar los alelos que los ancestros realmente heredaron de sus padres. En general, se recomienda el uso de estimaciones basadas en segmentos para tener en cuenta el muestreo mendeliano.
 
+# ----
+
+plink <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/plink', PLINKopciones)) # Esto permitirá ejecutar PLINK dentro de R.
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --recode vcf --alleleACGT --out Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_1 --const-fid')
+
+# ----
+
+system("sed 's/_ES[0-9]\\{12\\}//g' 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_1.vcf' > 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_2.vcf'")
+
+# A continuación, para cada cromosoma, se obteinen los genotipos en fase (como 0/1, 0/0, 1/0 y ./., este último en caso de missing) ----
+
+datos_vcf <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+ruta_base <- 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr' # Esta es la ruta base para guardar los archivos de genotipos.
+
+for (cromosoma in 1:29) { # Este bucle itera sobre los cromosomas, filtra los datos del VCF para cada cromosoma y escribe los archivos de genotipos.
+  
+  # Filtrar los datos del VCF para el cromosoma actual:
+  datos_cromosoma <- datos_vcf |>
+    filter(`#CHROM` == cromosoma) |>
+    select(-c(4:9))
+  
+  # Escribir los datos del cromosoma en un archivo:
+  ruta_archivo <- paste0(ruta_base, cromosoma)
+  write_delim(datos_cromosoma, file = ruta_archivo, col_names = TRUE, delim = ' ')
+  }
+
+# ----
+
+bim <- read_table(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim', col_names = FALSE) |>
+  select(X2, X1, X4) |>
+  rename(
+    Name = X2,
+    Chr = X1,
+    Mb = X4
+    ) |>
+  mutate(Mb = Mb / 1000000) # .
+
+# ----
+
+files <-paste0('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr', 1:29)
+
+mG <- optiSel::segIBD(files = files, map = bim)
+```
+
+<!--
+NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipados a partir de los elementos de la matriz G anterior.
+-->
+
+```{r}
+#| label: Matriz D de disimilitud 2
+
+# Utilizando el paquete "optiSel", se convierte la matriz G anterior en una matriz de disimilitud ---- 
+
+mD <- optiSel::sim2dis(f = mG) |>
+  as_tibble()
+```
+
+<!--
+NOTA: Se observa a continuaicón el número adecuado de clústeres.
+-->
+
+```{r}
+#| label: Número adecuado de clústeres
+
+# NOTA: Me guie de estos blogs (https://tidyclust.tidymodels.org/articles/k_means.html y https://tidyclust.tidymodels.org/articles/tuning_and_metrics.html) para hacer el análisis a continuación.
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se genera un subconjunto de validación mediante validación cruzada k-fold ----
+
+mD_VC <- vfold_cv(data = mD, v = 10) # Se genera un subconjunto de validación usando parámetros predeterminados (v = 10).
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = tune()) |> # Como el objetivo aquí será seleccionar la cantidad adecuada de clúteres, se usa tune().
+  set_engine('stats', algorithm = 'Hartigan-Wong') # Se indica aquí los detalles algorítmicos: implementación stats::kmeans (este sería el motor del modelo)  y "Hartigan-Wong" como algoritmo dentro de esta implementación.
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD) # Se proporciona aquí la formula del modelo. A diferencia del modelado supervisado, la fórmula no debe incluir una variable de respuesta.
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se establece un rango de valores posibles de "num_clusters" ----
+
+clust_num_grid <- grid_regular(num_clusters(range = c(1L, 20L)), levels = 20) # Se establece en 20 como el rango de valores posibles de "num_clusters".  La función grid_regular() genera una cuadrícula de valores distribuidos uniformemente dentro de un rango especificado. En este caso, se está especificando que el número de clústeres puede variar entre 1 y 20, con un total de 20 niveles (o valores). Entonces, clust_num_grid contendrá una secuencia de valores del 1 al 20, que serán utilizados para ajustar el modelo de k-means con diferentes números de clústeres y evaluar su desempeño utilizando validación cruzada.
+
+# Se usa la función tune_cluster() para calcular las métricas en cada división de validación cruzada, para cada posible elección del número de clústeres anterior ----
+
+res <- tune_cluster(
+  k_med_3,
+  resamples = mD_VC,
+  grid = clust_num_grid,
+  control = control_grid(save_pred = TRUE, extract = identity), # La función control_grid() es del paquete "tune".
+  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio) # La función cluster_metric_set() es del paquete "tidyclust".
+  )
+
+res_metricas <- res |>
+  collect_metrics() # La función collect_metrics() se utiliza para recopilar y resumir las métricas.
+
+# Se observa la cantidad adecuada de clústeres ----
+
+res_metricas |>
+  filter(.metric == 'sse_ratio') |> # Un enfoque común para elegir una cantidad de clústeres adecuado es buscar un “codo”, o curvatura notable, en el gráfico de la relación WSS/TSS por número de conglomerados.
+  ggplot(aes(x = num_clusters, y = mean)) +
+  geom_line(colour = 'black', linewidth = 1.2, alpha = 0.2) +
+  geom_point(size = 2.4, colour = 'orange') +
+  scale_x_continuous(breaks = 1:20) + # Mediante la regla del codo se observa que con cada aumento en el número de clústeres, la relación WSS/TSS disminuye. Se observa también que la disminución del primer al segundo cluśter es muy extrema en relación a las disminución en el resto de clústeres (la cantidad de disminución es menor en estas), por lo que problablemente se deberían elegir dos grupos.
+  labs(x = 'Número de clústeres', y = 'Relación media de WSS/TSS') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
+    ) # Es común observar la forma del gráfico de la "Relación media de WSS/TSS" (Within-Cluster Sum of Squares / Total Sum of Squares) en función del número de clústeres y buscar un punto donde se observe un cambio notable o una "curva de codo". Este cambio puede indicar un punto de disminución significativamente menor en la relación WSS/TSS, lo que sugiere que agregar más clústeres no proporciona una mejora sustancial en la capacidad del modelo para explicar la varianza en los datos.
+
+# NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS. En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Imagenes/kmeans_gen.pdf', width = 40, height = 20, units = 'cm')
 ```
