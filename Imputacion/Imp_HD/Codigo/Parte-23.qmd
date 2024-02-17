@@ -98,8 +98,7 @@ NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipado
 
 # Utilizando el paquete "optiSel", se convierte la matriz A anterior en una matriz de disimilitud ---- 
 
-mD <- optiSel::sim2dis(f = mA_Geno) |> # En el argumento "f" se indica la matriz de similitud (con valores entre 0 y 1, por ejemplo, la matriz de parentesco basado en el pedigri) que se quiere convertir en una matriz de disimilitud. Los otros argumentos dentro de la función sim2dist() se usaron por defecto, entre ellos, el método (el método 1 tiene la ventaja de que el área refleja de manera más razonable la diversidad de una población).
-  as_tibble()
+mD <- optiSel::sim2dis(f = mA_Geno) # En el argumento "f" se indica la matriz de similitud (con valores entre 0 y 1, por ejemplo, la matriz de parentesco basado en el pedigri) que se quiere convertir en una matriz de disimilitud. Los otros argumentos dentro de la función sim2dist() se usaron por defecto, entre ellos, el método (el método 1 tiene la ventaja de que el área refleja de manera más razonable la diversidad de una población).
 ```
 
 <!--
@@ -220,15 +219,15 @@ k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE tot
 ```
 
 <!--
-NOTA: A continuación, se obtiene el parentesco de los individuos genotipados (o matriz G) a partir de estimaciones basadas en segmentos (o datos de genotipos).
+NOTA: A continuación, se obtiene el parentesco de los individuos genotipados a partir de estimaciones basadas en segmentos (o datos de genotipos). NOTA: Recordar que a diferencia de la matriz A que puede representar el parentesco entre individuos dado un pedigrí, la matriz G no representa el parentesco entre individuos dado los genotipos.
 -->
 
 ```{r}
-#| label: Hola
+#| label: Parentesco basado en segmentos
 
 # NOTA: Las estimaciones anteriores basadas en el pedigrí tienen la desventaja de que el muestreo mendeliano en todos los ancestros se considera aleatorio, por lo que no se puede explicar los alelos que los ancestros realmente heredaron de sus padres. En general, se recomienda el uso de estimaciones basadas en segmentos para tener en cuenta el muestreo mendeliano.
 
-# ----
+# Usando PLINK se obtiene el archivo *.vcf con el fin de obtener los genotipos en fase ----
 
 plink <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/plink', PLINKopciones)) # Esto permitirá ejecutar PLINK dentro de R.
 
@@ -236,15 +235,15 @@ plink() # Al correr esta línea de código aparecen las opciones de PLINK, la ve
 
 plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --recode vcf --alleleACGT --out Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_1 --const-fid')
 
-# ----
+# Se elimina del encabezado (ID de los individuos) la parte repetida ----
 
 system("sed 's/_ES[0-9]\\{12\\}//g' 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_1.vcf' > 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_2.vcf'")
 
-# A continuación, para cada cromosoma, se obteinen los genotipos en fase (como 0/1, 0/0, 1/0 y ./., este último en caso de missing) ----
+# A continuación, para cada cromosoma, se extraen los genotipos en fase (como 0/1, 0/0, 1/0 y ./., este último en caso de missing). Así lo requiere el paquete optiSel ----
 
 datos_vcf <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
 
-ruta_base <- 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr' # Esta es la ruta base para guardar los archivos de genotipos.
+ruta_base <- 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr' # Esta es la ruta base para guardar los archivos de genotipos. El nombre de estos archivos debe contener la palabra .Chr*, donde * corresponde al número de cromosoma.
 
 for (cromosoma in 1:29) { # Este bucle itera sobre los cromosomas, filtra los datos del VCF para cada cromosoma y escribe los archivos de genotipos.
   
@@ -258,7 +257,7 @@ for (cromosoma in 1:29) { # Este bucle itera sobre los cromosomas, filtra los da
   write_delim(datos_cromosoma, file = ruta_archivo, col_names = TRUE, delim = ' ')
   }
 
-# ----
+# Se obtiene la información de mapa (map) como lo requiere el paquete optiSel ----
 
 bim <- read_table(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim', col_names = FALSE) |>
   select(X2, X1, X4) |>
@@ -269,11 +268,11 @@ bim <- read_table(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim', col_name
     ) |>
   mutate(Mb = Mb / 1000000) # .
 
-# ----
+# Se leen los archivos (files) con la información de los genotipos en cada uno de los 29 cromosomas del bovino, y se cálcula el parentesco basado en segmentos con el paquete optiSel ----
 
 files <-paste0('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr', 1:29)
 
-mG <- optiSel::segIBD(files = files, map = bim)
+fseg <- optiSel::segIBD(files = files, map = bim)
 ```
 
 <!--
@@ -285,8 +284,7 @@ NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipado
 
 # Utilizando el paquete "optiSel", se convierte la matriz G anterior en una matriz de disimilitud ---- 
 
-mD <- optiSel::sim2dis(f = mG) |>
-  as_tibble()
+mD <- optiSel::sim2dis(f = fseg)
 ```
 
 <!--
@@ -357,4 +355,61 @@ res_metricas |>
 # NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS. En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
 
 ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Imagenes/kmeans_gen.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con seis clústeres.
+-->
+
+```{r}
+#| label: Modelo k-means con seis clústeres
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = 6) |> # Se indica aquí que el número de clústeres adecuados es de 6.
+  set_engine('stats', algorithm = 'Hartigan-Wong')
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD)
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se ajusta el modelo de k-means ----
+
+k_med_4 <- fit(k_med_3, data = mD)
+
+k_med_resumen <- k_med_4 |>
+  extract_fit_summary() # Con la función extract_fit_summary() se produce una lista de información resumida del modelo.
+
+# Se observan algunas de las métricas para cuantificar la calidad de una partición o estructura de clúster particular ----
+
+k_med_4 |> sse_within_total() # Aquí se calcula la suma del error al cuadrado (SSE) dentro del clúster.
+
+k_med_4 |> sse_total() # Aquí se calcula la SSE total.
+
+k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE total.
+
+# NOTA: Todas estas métricas dependen de la medición de la distancia entre puntos y/o centroides. Por defecto, se utiliza la distancia euclidiana ordinaria. Sin embargo, es posible seleccionar una función de distancia diferente. Se puede consultar el blog (https://tidyclust.tidymodels.org/articles/k_means.html) en caso de que se quiera profundizar más en esto.
+```
+
+<!--
+NOTA: 
+-->
+
+```{r}
+
+Grupos <- tibble(
+  ID_id = colnames(mD),
+  Grupos = k_med_resumen$cluster_assignments
+  ) # El objetivo principal de ajustar un modelo de agrupamiento (k-means) suele ser asignar observaciones (en este caso individuos) a los conglomerados. Aquí se puede observar estas asignaciones cada uno de los 284 individuos.
+
+Grupos |>
+  count(Grupos)
 ```
