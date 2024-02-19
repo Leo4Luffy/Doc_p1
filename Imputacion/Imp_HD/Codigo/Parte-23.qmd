@@ -570,28 +570,26 @@ fseg_6 <- fseg[Grup_6$Indice, Grup_6$Indice]
 ```
 
 <!--
-NOTA: A continuación, se calcula el coeficiente de relación máximo (amax). Esta medida se refiere al valor más alto de coeficiente de relación genética entre un animal y todos los demás individuos en un grupo particular. Este coeficiente de relación genética se calcula utilizando la matriz de parentesco genómico entre los animales. Se  calcula típicamente como el doble del coeficiente de parentesco genómico entre dos individuos, que a menudo se representa como 2 × ϕij, donde ϕij es el coeficiente de parentesco genómico entre los individuos i y j. Por lo tanto, el amax se calcula dentro de cada grupo y proporciona una medida de la relación genética máxima entre un individuo y los demás individuos dentro del mismo grupo. Esto es útil para evaluar la similitud genética dentro de cada grupo específico de individuos.
+NOTA: A continuación, se calcula el coeficiente de relación máximo (amax) dentro de cada grupo de validación. Esta medida se refiere al valor más alto del coeficiente de relación genético entre un individuo y todos los demás individuos. Este coeficiente se obtiene utilizando la matriz de parentesco basado en segmentos previamente calculada. Por lo tanto, el amax se calcula dentro de cada grupo y proporciona una medida de la relación genética máxima entre un individuo y los demás individuos dentro del mismo grupo. Esto es útil para evaluar la similitud genética dentro de cada grupo específico de individuos.
 -->
 
 ```{r}
-#| label: Calculo del coeficiente de relación máximo (amax)
+#| label: Coeficiente de relación máximo (amax) dentro del grupo
 
-# Mediante una lista se guarda la matriz de parentesco para cada grupo de validación, para posteriormente calcular en ellas el coeficiente de relación máximo (amax) ----
+# Mediante una lista se guarda la matriz de parentesco basado en segmentos para cada grupo de validación, para posteriormente calcular en ellas el coeficiente de relación máximo (amax) dentro del grupo ----
 
 fseg_grupos <- list(fseg_1, fseg_2, fseg_3, fseg_4, fseg_5, fseg_6)
 
-# Se define una función para calcular el coeficiente de relación máximo para un individuo en un grupo específico ----
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
 
-calcular_amax <- function(matrices_fseg) { 
-  # Esta función calcula el coeficiente de relación máximo para cada individuo en un grupo específico. 
-  # Itera sobre cada matriz de parentesco genómico en la lista anterior, calcula el coeficiente de relación máximo (amax) para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+amax <- function(matrices_fseg) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
 
   # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (fseg_grupos).
   lista_amax <- map(matrices_fseg, ~ {
     
-    # Dentro de cada iteración, se calcula el coeficiente de relación máximo (amax) para cada individuo en la matriz de parentesco.
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
     amax_grupo <- apply(.x, 1, function(row) {
-      max(row[row != 1]) # Se calcula el máximo valor en cada fila de la matriz, excluyendo el valor 1 (correspondiente al auto-parentesco).
+      max(row[row != 1]) # Se obtiene el máximo valor en cada fila de la matriz, excluyendo el valor 1 (correspondiente al auto-parentesco).
       })
     # Se devuelve el vector de amax para el grupo actual.
     amax_grupo
@@ -601,12 +599,69 @@ calcular_amax <- function(matrices_fseg) {
   return(lista_amax)
   }
 
-# Se calcula el coeficiente de relación máximo (amax) para cada individuo en cada grupo de validación ----
-amax_grupos <- calcular_amax(fseg_grupos)
+# Se obtiene el amax para cada individuo en cada grupo de validación ----
 
-# se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+amax_grupos <- amax(fseg_grupos)
 
-res_1 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x)))
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
 
-res_1 <- mutate(res_1, Grupo = row_number()) # Se agrega una columna que indica el número de grupo de validación.
+res_1 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x))) |>
+  mutate(Grupo = row_number()) # Se agrega una columna que indica el número de grupo de validación.
+```
+
+<!--
+NOTA: 
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre grupos
+
+# ----
+
+fseg_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 1')
+
+# ----
+
+fseg_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 2')
+
+# ----
+
+fseg_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 3')
+
+# ----
+
+fseg_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 4')
+
+# ----
+
+fseg_g5 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 5')
+
+# ----
+
+fseg_g6 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 6')
+
+# ----
+
+graf_fseg <- bind_rows(fseg_g1, fseg_g2, fseg_g3, fseg_g4, fseg_g5, fseg_g6) |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
 ```
