@@ -172,7 +172,7 @@ ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Imagenes/k
 ```
 
 <!--
-NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con dos clústeres.
+NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con diez clústeres.
 -->
 
 ```{r}
@@ -273,6 +273,9 @@ bim <- read_table(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim', col_name
 files <-paste0('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/genotipos.Chr', 1:29)
 
 fseg <- optiSel::segIBD(files = files, map = bim)
+
+fseg |>
+  save(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/fseg.RData')
 ```
 
 <!--
@@ -282,7 +285,11 @@ NOTA: Se calcula la matriz de disimilitud (matriz D) entre individuos genotipado
 ```{r}
 #| label: Matriz D de disimilitud 2
 
-# Utilizando el paquete "optiSel", se convierte la matriz G anterior en una matriz de disimilitud ---- 
+# Se carga la anterior matriz de parentesco basado en segmentos  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/fseg.RData')
+
+# Utilizando el paquete "optiSel", se convierte la matriz de parentesco basado en segmentos anterior en una matriz de disimilitud ---- 
 
 mD <- optiSel::sim2dis(f = fseg)
 ```
@@ -400,10 +407,13 @@ k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE tot
 ```
 
 <!--
-NOTA: 
+NOTA: A partir del modelo de k-means con seis clúster, se observa y extrae a continuación en que grupo se clasificaron los distintos individuos. 
 -->
 
 ```{r}
+#| label: Grupos a partir del modelo de k-means
+
+# Se crea un "tibble" donde se indique a que grupo (o clúster) pertenece cada uno de los individuos----
 
 Grupos <- tibble(
   ID_id = colnames(mD),
@@ -411,5 +421,192 @@ Grupos <- tibble(
   ) # El objetivo principal de ajustar un modelo de agrupamiento (k-means) suele ser asignar observaciones (en este caso individuos) a los conglomerados. Aquí se puede observar estas asignaciones cada uno de los 284 individuos.
 
 Grupos |>
-  count(Grupos)
+  count(Grupos) # Se observa el número de individuos en cada uno de los grupos o clústeres.
+
+#######################
+# Grupo de validación 1
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_1') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Grup1.txt', col_names = FALSE)
+
+#######################
+# Grupo de validación 2
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_2') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_2/Grup2.txt', col_names = FALSE)
+
+#######################
+# Grupo de validación 3
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_3') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_3/Grup3.txt', col_names = FALSE)
+
+#######################
+# Grupo de validación 4
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_4') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_4/Grup4.txt', col_names = FALSE)
+
+#######################
+# Grupo de validación 5
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_5') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_5/Grup5.txt', col_names = FALSE)
+
+#######################
+# Grupo de validación 6
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_6') |>
+  select(ID_id) |>
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_6/Grup6.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco basado en segmentos para cada grupo de validación.
+-->
+
+```{r}
+#| label: Hola
+
+# Se carga de nuevo la matriz de parentesco basado en segmentos  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/fseg.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco basado en segmentos ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+#######################
+# Grupo de validación 1
+#######################
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del primer grupo de validación ----
+
+fseg_1 <- fseg[Grup_1$Indice, Grup_1$Indice]
+
+#######################
+# Grupo de validación 2
+#######################
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del segundo grupo de validación ----
+
+fseg_2 <- fseg[Grup_2$Indice, Grup_2$Indice]
+
+#######################
+# Grupo de validación 3
+#######################
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del tercer grupo de validación ----
+
+fseg_3 <- fseg[Grup_3$Indice, Grup_3$Indice]
+
+#######################
+# Grupo de validación 4
+#######################
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del cuarto grupo de validación ----
+
+fseg_4 <- fseg[Grup_4$Indice, Grup_4$Indice]
+
+#######################
+# Grupo de validación 5
+#######################
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del quinto grupo de validación ----
+
+fseg_5 <- fseg[Grup_5$Indice, Grup_5$Indice]
+
+#######################
+# Grupo de validación 6
+#######################
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco basado en segmentos de los individuos del sexto grupo de validación ----
+
+fseg_6 <- fseg[Grup_6$Indice, Grup_6$Indice]
+```
+
+<!--
+NOTA: A continuación, se calcula el coeficiente de relación máximo (amax). Esta medida se refiere al valor más alto de coeficiente de relación genética entre un animal y todos los demás individuos en un grupo particular. Este coeficiente de relación genética se calcula utilizando la matriz de parentesco genómico entre los animales. Se  calcula típicamente como el doble del coeficiente de parentesco genómico entre dos individuos, que a menudo se representa como 2 × ϕij, donde ϕij es el coeficiente de parentesco genómico entre los individuos i y j. Por lo tanto, el amax se calcula dentro de cada grupo y proporciona una medida de la relación genética máxima entre un individuo y los demás individuos dentro del mismo grupo. Esto es útil para evaluar la similitud genética dentro de cada grupo específico de individuos.
+-->
+
+```{r}
+#| label: Calculo del coeficiente de relación máximo (amax)
+
+# Mediante una lista se guarda la matriz de parentesco para cada grupo de validación, para posteriormente calcular en ellas el coeficiente de relación máximo (amax) ----
+
+fseg_grupos <- list(fseg_1, fseg_2, fseg_3, fseg_4, fseg_5, fseg_6)
+
+# Se define una función para calcular el coeficiente de relación máximo para un individuo en un grupo específico ----
+
+calcular_amax <- function(matrices_fseg) { 
+  # Esta función calcula el coeficiente de relación máximo para cada individuo en un grupo específico. 
+  # Itera sobre cada matriz de parentesco genómico en la lista anterior, calcula el coeficiente de relación máximo (amax) para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (fseg_grupos).
+  lista_amax <- map(matrices_fseg, ~ {
+    
+    # Dentro de cada iteración, se calcula el coeficiente de relación máximo (amax) para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, function(row) {
+      max(row[row != 1]) # Se calcula el máximo valor en cada fila de la matriz, excluyendo el valor 1 (correspondiente al auto-parentesco).
+      })
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se calcula el coeficiente de relación máximo (amax) para cada individuo en cada grupo de validación ----
+amax_grupos <- calcular_amax(fseg_grupos)
+
+# se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+res_1 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x)))
+
+res_1 <- mutate(res_1, Grupo = row_number()) # Se agrega una columna que indica el número de grupo de validación.
 ```
