@@ -1,5 +1,5 @@
 ---
-title: "Parte 23: Hola"
+title: "Parte 23: Formación de grupos de validación mediante k-means y, verificación de parentesco basado en segmentos dentro de grupos de validación y entre grupos de validación"
 format: html
 ---
 
@@ -266,7 +266,7 @@ bim <- read_table(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.bim', col_name
     Chr = X1,
     Mb = X4
     ) |>
-  mutate(Mb = Mb / 1000000) # .
+  mutate(Mb = Mb / 1000000) # Se pasa a Mb.
 
 # Se leen los archivos (files) con la información de los genotipos en cada uno de los 29 cromosomas del bovino, y se cálcula el parentesco basado en segmentos con el paquete optiSel ----
 
@@ -508,6 +508,30 @@ Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Pre
 
 fseg_1 <- fseg[Grup_1$Indice, Grup_1$Indice]
 
+# ----
+
+t_fseg_1 <- fseg_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(fseg_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:48),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos)
+
+t_fseg_1 |> count(Individuos)
+
+t_fseg_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4)
+    )
+
 #######################
 # Grupo de validación 2
 #######################
@@ -605,7 +629,7 @@ amax_grupos <- amax(fseg_grupos)
 
 # Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
 
-res_1 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x))) |>
+res <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x))) |>
   mutate(Grupo = row_number()) # Se agrega una columna que indica el número de grupo de validación.
 
 # Para cada grupo de validación se extrae el amax ----
@@ -666,6 +690,29 @@ Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Pre
 # Se extrae la matriz de parentesco basado en segmentos de los individuos del primer y segundo grupo de validación ----
 
 fseg_1_2 <- fseg[Grup_1$Indice, Grup_2$Indice] # Este es una matriz de dimensión 47x32 (47 individuos del primer grupo de validación y 32 idnivdiuos del segundo grupo de validación).
+
+# ----
+
+t_fseg_1_2 <- fseg_1_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(fseg_1_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:33),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_fseg_1_2 |> count(Individuos)
+
+t_fseg_1_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4)
+    )
 
 ############################
 # Grupos de validación 1 y 3
