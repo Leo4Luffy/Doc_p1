@@ -1,0 +1,97 @@
+---
+title: "Parte 24: Evaluación de la precisión de la imputación usando grupos de validación formado mediante k-means a partir del parentesco entre individuos basado en segmentos, imputación que se realizará utilizando el programa Beagle v5.4 - Parte 1"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Se identifica a continuación los marcadores con genotipo completo en todos los 284 individuos. Para ello, se utiliza la opción --geno para filtrar los marcadores que tienen tasas de valores faltantes igual a cero.
+-->
+
+```{r}
+#| label: Identificación de marcadores completamente genotipados
+
+# Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
+
+plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_3') # Luego se obtiene como resultado (que se indica en Paso_3.log) un archivo con 598677 marcadores en 284 individuos.
+
+# Se exporta el nombre de los marcadores con genotipo completos ----
+
+nomGen <- read_table(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_3.bim', col_names = FALSE) # Se importa el archivo *.bim anteriormente generado con PLINK con el nombre de los marcadores con genotipo completos.
+
+nomGen %>%
+  select(X2) %>%
+  write_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/nomGen.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: Se modifica el archivo VCF que se uso inicialmente en la imputación (imp_HD_50k.vcf), para enmascarar los genotipos de los marcadores para cada uno de los grupos de validación, y luego se exportan en cada una de las subcarpetas.
+-->
+
+```{r}
+#| label: Genotipos enmascarados
+
+# Se indica la ruta del archivo vcf y del archivo donde estan los nombres de los marcadores ----
+
+vcf_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf"
+marcadores_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt"
+
+# Se lee el archivo VCF ----
+
+vcf_data <- data.table::fread(vcf_file, sep = "\t", skip = "#CHROM", header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+#######################################
+# Precisión en el grupo de validación 1
+#######################################
+
+# ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Grup1.txt')
+
+# Se indica la ruta de los archivos donde esta los nombres de los individuos del primer grupo de validación y donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+individuos_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Grup1.txt"
+output_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Grup1.vcf"
+
+# Se leen los nombres de los individuos y de los marcadores ----
+
+individuos <- readLines(individuos_file) # Son 47 individuos en total.
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_1 <- vcf_data %>%
+  mutate_at(vars(one_of(individuos)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+vcf_data_1 %>% 
+  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
+  select(ES090808212283_ES090808212283, ES060807310727_ES060807310727, ES030807662849_ES030807662849, ES030812075281_ES030812075281) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_1, output_file, sep = "\t", quote = FALSE) # Se mira el numero de filas y de columnas mediante la terminal de linux: awk '{print NR}' Grup1.vcf | tail -n 1 && awk '{print NF; exit}' Grup1.vcf.
+```

@@ -1,0 +1,53 @@
+---
+title: "Parte 23: Formación de grupos de validación mediante k-means y, verificación de parentesco genomico dentro de grupos de validación y entre grupos de validación usando una matriz de identidad por estado (IBS)"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(here, tidyverse, snpStats, ggplot2)
+```
+
+<!--
+NOTA: Se genera la matriz de disimilitud o de distancia en base a identidad por estado (IBS). Esto para posteriormente realizar con ella la agrupación jerárquica.
+-->
+
+```{r}
+#| label: Matriz de disimilitud o de distancia genética en base a identidad por estado (IBS)
+
+# Se importa los archivos *.bed, *.bim y *.fam de PLINK ---
+
+dat_Geno <- read.plink(
+  bed = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.bed'),
+  bim = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.bim'),
+  fam = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.fam')
+  ) # Al importar los archivos de PLINK con la función anterior read.plink(), se crea un objeto (lista) con tres elementos.
+
+mGeno <- dat_Geno$genotypes # Aquí se extrae la matriz de genotipos (con marcadores en columnas e individuos en filas).
+
+head(dat_Geno$fam) # Se observa aquí el archivo de texto *.fam que contiene información sobre los individuos.
+
+head(dat_Geno$map) # Se observa aquí el archivo de texto *.map que contiene información sobre los marcadores genéticos. 
+
+# A continuación se cuenta, para todos los pares de individuos y en todos los SNP, el número total de alelos que son identicos por estado (IBS) ---
+
+al_ibs <- ibsCount(snps = mGeno) # Esta función, ibsCount(), cuenta para cada par de individuos el número total de alelos que son IBS.
+
+# Se obtiene a continuación la matriz de distancia ---
+
+al_dist <- ibsDist(counts = al_ibs) # La función ibsDist() genera una matriz de distancia genética entre individuos basada en la información de IBS. Valores más bajos indican mayor similitud genética, mientras que valores más altos indican mayor diferencia genética.
+
+m_distancia <- as.matrix(al_dist) # En lugar de mostrar una matriz completa, la función anterior, ibsDist(), devuelve un vector que contiene las distancias entre pares únicos de individuos. De esta forma se obtiene la matriz completa que se observa a continuación que es simetrica.
+
+m_distancia[281:284, 281:284]
+
+# Se exporta la anterior matriz de distancia genética basada en IBS ---
+
+m_distancia |>
+  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'mDG.RData')) # Se importa la matriz de distancia genética.
+```
