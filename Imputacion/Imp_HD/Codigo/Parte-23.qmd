@@ -219,7 +219,7 @@ k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE tot
 ```
 
 <!--
-NOTA: A continuación, se obtiene el parentesco de los individuos genotipados a partir de estimaciones basadas en segmentos (o datos de genotipos). NOTA: Recordar que a diferencia de la matriz A que puede representar el parentesco entre individuos dado un pedigrí, la matriz G no representa el parentesco entre individuos dado los genotipos.
+NOTA: A continuación, se obtiene el parentesco de los individuos genotipados a partir de estimaciones basadas en segmentos.
 -->
 
 ```{r}
@@ -738,7 +738,7 @@ fseg_grupos <- list(fseg_1, fseg_2, fseg_3, fseg_4, fseg_5, fseg_6)
 
 # Se define una función para obtener el amax de un individuo en un grupo específico ----
 
-amax <- function(matrices_fseg) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+amax <- function(matrices_fseg) { # Esta función itera sobre cada matriz de parentesco en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
 
   # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (fseg_grupos).
   lista_amax <- map(matrices_fseg, ~ {
