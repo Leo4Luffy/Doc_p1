@@ -1,0 +1,4 @@
+---
+title: "Parte 26: evaluación de la precisión de la imputación usando grupos de validación formado mediante k-means con base en parentesco basado en segmentos, usando el programa Beagle v5.4 - Parte 3"
+format: html
+---

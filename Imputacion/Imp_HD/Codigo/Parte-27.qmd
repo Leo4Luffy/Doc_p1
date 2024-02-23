@@ -1,0 +1,3875 @@
+---
+title: "Parte 27: Formación de grupos de validación mediante k-means y, verificación de parentesco genomico dentro de grupos de validación y entre grupos de validación usando una matriz de identidad por estado (IBS)"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(here, tidyverse, ggplot2, tidyclust, tidymodels)
+```
+
+<!--
+NOTA: A continuación, se obtiene el parentesco de los individuos genotipados a partir de identidad por estado (IBS).
+-->
+
+```{r}
+#| label: Parentesco basado en identidad por estado IBS
+
+# Se importa los archivos *.bed, *.bim y *.fam de PLINK ---
+
+dat_Geno <- snpStats::read.plink(
+  bed = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.bed'),
+  bim = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.bim'),
+  fam = here('Imputacion', 'Imp_HD', 'Datos', 'datQC_2', 'Paso_14.fam')
+  ) # Al importar los archivos de PLINK con la función anterior read.plink(), se crea un objeto (lista) con tres elementos.
+
+mGeno <- dat_Geno$genotypes # Aquí se extrae la matriz de genotipos (con marcadores en columnas e individuos en filas).
+
+head(dat_Geno$fam) # Se observa aquí el archivo de texto *.fam que contiene información sobre los individuos.
+
+head(dat_Geno$map) # Se observa aquí el archivo de texto *.map que contiene información sobre los marcadores genéticos. 
+
+# A continuación se cuenta, para todos los pares de individuos y en todos los SNP, el número total de alelos que son identicos por estado (IBS) ---
+
+al_ibs <- snpStats::ibsCount(snps = mGeno) # Esta función, ibsCount(), cuenta para cada par de individuos el número total de alelos que son IBS.
+
+# Se exporta la anterior matriz ---
+
+al_ibs |>
+  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'al_ibs.RData'))
+```
+
+<!--
+NOTA: Se genera la matriz de disimilitud o de distancia en base a identidad por estado (IBS). Esto para posteriormente realizar con ella el k-means. NOTA: Recordar que a diferencia de la matriz A que puede representar el parentesco entre individuos dado un pedigrí, la matriz G no representa el parentesco entre individuos dado los genotipos.
+-->
+
+```{r}
+#| label: Matriz de disimilitud o de distancia genética en base a identidad por estado (IBS)
+
+# Se carga la anterior matriz de parentesco basado en IBS
+
+load(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'al_ibs.RData'))
+
+# Se obtiene a continuación la matriz de distancia ---
+
+al_dist <- snpStats::ibsDist(counts = al_ibs) # La función ibsDist() genera una matriz de distancia genética entre individuos basada en la información de IBS. Valores más bajos indican mayor similitud genética, mientras que valores más altos indican mayor diferencia genética.
+
+mD <- as.matrix(al_dist) # En lugar de mostrar una matriz completa, la función anterior, ibsDist(), devuelve un vector que contiene las distancias entre pares únicos de individuos. De esta forma se obtiene la matriz completa que se observa a continuación que es simetrica.
+
+mD[281:284, 281:284]
+```
+
+<!--
+NOTA: Se observa a continuaicón el número adecuado de clústeres.
+-->
+
+```{r}
+#| label: Número adecuado de clústeres
+
+# NOTA: Me guie de estos blogs (https://tidyclust.tidymodels.org/articles/k_means.html y https://tidyclust.tidymodels.org/articles/tuning_and_metrics.html) para hacer el análisis a continuación.
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se genera un subconjunto de validación mediante validación cruzada k-fold ----
+
+mD_VC <- vfold_cv(data = mD, v = 10) # Se genera un subconjunto de validación usando parámetros predeterminados (v = 10).
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = tune()) |> # Como el objetivo aquí será seleccionar la cantidad adecuada de clúteres, se usa tune().
+  set_engine('stats', algorithm = 'Hartigan-Wong') # Se indica aquí los detalles algorítmicos: implementación stats::kmeans (este sería el motor del modelo)  y "Hartigan-Wong" como algoritmo dentro de esta implementación.
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD) # Se proporciona aquí la formula del modelo. A diferencia del modelado supervisado, la fórmula no debe incluir una variable de respuesta.
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se establece un rango de valores posibles de "num_clusters" ----
+
+clust_num_grid <- grid_regular(num_clusters(range = c(1L, 20L)), levels = 20) # Se establece en 20 como el rango de valores posibles de "num_clusters".  La función grid_regular() genera una cuadrícula de valores distribuidos uniformemente dentro de un rango especificado. En este caso, se está especificando que el número de clústeres puede variar entre 1 y 20, con un total de 20 niveles (o valores). Entonces, clust_num_grid contendrá una secuencia de valores del 1 al 20, que serán utilizados para ajustar el modelo de k-means con diferentes números de clústeres y evaluar su desempeño utilizando validación cruzada.
+
+# Se usa la función tune_cluster() para calcular las métricas en cada división de validación cruzada, para cada posible elección del número de clústeres anterior ----
+
+res <- tune_cluster(
+  k_med_3,
+  resamples = mD_VC,
+  grid = clust_num_grid,
+  control = control_grid(save_pred = TRUE, extract = identity), # La función control_grid() es del paquete "tune".
+  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio) # La función cluster_metric_set() es del paquete "tidyclust".
+  )
+
+res_metricas <- res |>
+  collect_metrics() # La función collect_metrics() se utiliza para recopilar y resumir las métricas.
+
+# Se observa la cantidad adecuada de clústeres ----
+
+res_metricas |>
+  filter(.metric == 'sse_ratio') |> # Un enfoque común para elegir una cantidad de clústeres adecuado es buscar un “codo”, o curvatura notable, en el gráfico de la relación WSS/TSS por número de conglomerados.
+  ggplot(aes(x = num_clusters, y = mean)) +
+  geom_line(colour = 'black', linewidth = 1.2, alpha = 0.2) +
+  geom_point(size = 2.4, colour = 'orange') +
+  scale_x_continuous(breaks = 1:20) + # Mediante la regla del codo se observa que con cada aumento en el número de clústeres, la relación WSS/TSS disminuye. Se observa también que la disminución del primer al segundo cluśter es muy extrema en relación a las disminución en el resto de clústeres (la cantidad de disminución es menor en estas), por lo que problablemente se deberían elegir dos grupos.
+  labs(x = 'Número de clústeres', y = 'Relación media de WSS/TSS') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
+    ) # Es común observar la forma del gráfico de la "Relación media de WSS/TSS" (Within-Cluster Sum of Squares / Total Sum of Squares) en función del número de clústeres y buscar un punto donde se observe un cambio notable o una "curva de codo". Este cambio puede indicar un punto de disminución significativamente menor en la relación WSS/TSS, lo que sugiere que agregar más clústeres no proporciona una mejora sustancial en la capacidad del modelo para explicar la varianza en los datos.
+
+# NOTA: Una métrica simple es el error de suma de cuadrados (WSS) dentro del grupo , que mide la suma de todas las distancias desde las observaciones hasta el centro del grupo. A veces esto se escala con el error total de suma de cuadrados (TSS) , la distancia desde todas las observaciones hasta el centroide global; en particular, a menudo se calcula la relación WSS/TSS. En principio, valores pequeños de WSS o de la relación WSS/TSS sugieren que las observaciones dentro de los conglomerados son más cercanas (más similares) entre sí que con los otros conglomerados.
+
+ggsave(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Imagenes', 'kmeans_gen.pdf'), width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con cinco clústeres.
+-->
+
+```{r}
+#| label: Modelo k-means con cinco clústeres
+
+set.seed(1234) # Se establece una semilla para garantizar que los resultados sean reproducibles.
+
+# Se especifica el modelo de k-means ----
+
+k_med_1 <- k_means(num_clusters = 8) |> # Se indica aquí que el número de clústeres adecuados es de 6.
+  set_engine('stats', algorithm = 'Hartigan-Wong')
+
+# Se ajusta el modelo de k-means ----
+
+k_med_2 <- recipe(formula = ~ ., data = mD)
+
+# Se combinan los dos pasos anteriores mediante un flujo de trabajo ----
+
+k_med_3 <- workflow() |>
+  add_model(k_med_1) |>
+  add_recipe(k_med_2)
+
+# Se ajusta el modelo de k-means ----
+
+k_med_4 <- fit(k_med_3, data = mD)
+
+k_med_resumen <- k_med_4 |>
+  extract_fit_summary() # Con la función extract_fit_summary() se produce una lista de información resumida del modelo.
+
+# Se observan algunas de las métricas para cuantificar la calidad de una partición o estructura de clúster particular ----
+
+k_med_4 |> sse_within_total() # Aquí se calcula la suma del error al cuadrado (SSE) dentro del clúster.
+
+k_med_4 |> sse_total() # Aquí se calcula la SSE total.
+
+k_med_4 |> sse_ratio() # Aquí se calcula la relación entre el WSS y el SSE total.
+
+# NOTA: Todas estas métricas dependen de la medición de la distancia entre puntos y/o centroides. Por defecto, se utiliza la distancia euclidiana ordinaria. Sin embargo, es posible seleccionar una función de distancia diferente. Se puede consultar el blog (https://tidyclust.tidymodels.org/articles/k_means.html) en caso de que se quiera profundizar más en esto.
+```
+
+<!--
+NOTA: A partir del modelo de k-means con cinco clúster, se observa y extrae a continuación en que grupo se clasificaron los distintos individuos. 
+-->
+
+```{r}
+#| label: Grupos a partir del modelo de k-means
+
+# Se crea un "tibble" donde se indique a que grupo (o clúster) pertenece cada uno de los individuos----
+
+Grupos <- tibble(
+  ID_id = colnames(mD),
+  Grupos = k_med_resumen$cluster_assignments
+  ) # El objetivo principal de ajustar un modelo de agrupamiento (k-means) suele ser asignar observaciones (en este caso individuos) a los conglomerados. Aquí se puede observar estas asignaciones cada uno de los 284 individuos.
+
+Grupos |>
+  count(Grupos) # Se observa el número de individuos en cada uno de los grupos o clústeres. NOTA: Preguntar a las dras.
+
+#######################
+# Grupo de validación 1
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_1') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_1', 'Grup1.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 2
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_2') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_2', 'Grup2.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 3
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_3') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_3', 'Grup3.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 4
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_4') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_4', 'Grup4.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 5
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_5') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_5', 'Grup5.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 6
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_6') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_6', 'Grup6.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 7
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_7') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_7', 'Grup7.txt'), col_names = FALSE)
+
+#######################
+# Grupo de validación 8
+#######################
+
+Grupos |>
+  filter(Grupos == 'Cluster_8') |>
+  select(ID_id) |>
+  write_delim(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'Prec_8', 'Grup8.txt'), col_names = FALSE)
+```
+
+<!--
+NOTA: El objeto "al_ibs" calculado con la función ibsCount() del paquete "snpStats", corresponde a una matriz de dimensión 284 x 284 (284 son el numero de individuos con genotipos). El triángulo inferior contiene el número total de comparaciones y el triángulo superior contiene el número de loci con alelos IBS. Para obtener el parentesco genómico calculado SNP a SNP (F_snp), se realiza a continuación el cociente (o división) del triángulo superior entre el triángulo inferior (F_snp = número de loci con alelos IBS / número total de loci).
+-->
+
+```{r}
+#| label: Parentesco genómico SNP a SNP (F_snp)
+
+# Se crea una matriz de ceros con las mismas dimensiones de la matriz del objeto "al_ibs" (es decir, 284 x 284). Esta matriz será utilizada para almacenar el parentesco genómico producto de la división ente los elementos del triangulo superior de la matriz por los elementos del triangulo inferior ----
+
+F_snp <- matrix(0, nrow = nrow(al_ibs), ncol = ncol(al_ibs))
+
+# Se realiza a continuación la división (o cociente) del triángulo superior entre el triángulo inferior ----
+
+for (i in 1:(nrow(al_ibs) - 1)) {
+  for (j in (i + 1):ncol(al_ibs)) {
+    F_snp[i, j] <- al_ibs[i, j] / al_ibs[j, i]
+    }
+  } # Se utiliza un bucle for doble para iterar sobre los elementos de la parte superior de la matriz al_ibs. Dentro del bucle, se calcula el cociente de cada elemento del triángulo superior dividiendo el valor correspondiente en al_ibs[i, j] por el valor simétrico en el triángulo inferior, al_ibs[j, i]. Estos cocientes se almacenan luego en la matriz F_snp anterior.
+
+# Para hacer la matriz resultante simétrica, se suma la matriz resultante F_snp con su traspuesta (t(F_snp)) ----
+
+F_snp <- F_snp + t(F_snp) # Aquí se obtiene la matriz con el parentesco genómico SNP a SNP entre individuos.
+
+all.equal(F_snp, t(F_snp)) # Al comparar la matriz F_snp con su transpuesta se indica TRUE, lo que quiere decir que esta matriz es simétrica.
+
+sum(diag(F_snp)) # La traza de esta matriz (o la suma de los elementos de la diagonal principal) es igual a cero.
+
+# Se asigna nombres de columnas y filas a la matriz con el parentesco genómico SNP a SNP entre individuos ----
+
+colnames(F_snp) <- rownames(F_snp) <- colnames(al_ibs)
+
+F_snp |>
+  save(file = here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Precision_KM_2', 'F_snp.RData'))
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico cada grupo de validación.
+-->
+
+```{r}
+#| label: Matriz de parentesco genómico en cada grupo de validación
+
+# Se carga la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+#######################
+# Grupo de validación 1
+#######################
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1 <- F_snp[Grup_1$Indice, Grup_1$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_1 <- F_snp_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_1 |> count(Individuos)
+
+t_snp_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 2
+#######################
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2 <- F_snp[Grup_2$Indice, Grup_2$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_2 <- F_snp_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_2 |> count(Individuos)
+
+t_snp_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 3
+#######################
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3 <- F_snp[Grup_3$Indice, Grup_3$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_3 <- F_snp_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_3 |> count(Individuos)
+
+t_snp_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 4
+#######################
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4 <- F_snp[Grup_4$Indice, Grup_4$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_4 <- F_snp_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_4 |> count(Individuos)
+
+t_snp_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 5
+#######################
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5 <- F_snp[Grup_5$Indice, Grup_5$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_5 <- F_snp_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_5 |> count(Individuos)
+
+t_snp_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 6
+#######################
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6 <- F_snp[Grup_6$Indice, Grup_6$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_6 <- F_snp_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_6 |> count(Individuos)
+
+t_snp_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 7
+#######################
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7 <- F_snp[Grup_7$Indice, Grup_7$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_7 <- F_snp_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_7 |> count(Individuos)
+
+t_snp_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+#######################
+# Grupo de validación 8
+#######################
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8 <- F_snp[Grup_8$Indice, Grup_8$Indice]
+
+# Se calcula el parentesco promedio dentro del grupo ----
+
+t_snp_8 <- F_snp_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = colnames(F_snp_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    ) |>
+  filter(`Individuos 2` != Individuos) # Se quita el auto-parentesco.
+
+t_snp_8 |> count(Individuos)
+
+t_snp_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+```
+
+<!--
+NOTA: A continuación, se obtiene el coeficiente de relación máximo (amax) dentro de cada grupo de validación. Esta medida se refiere al valor más alto del coeficiente de relación genético entre un individuo y todos los demás individuos. Este coeficiente se obtiene utilizando la matriz de parentesco genómico previamente calculada. El amax proporciona una medida de la relación genética máxima entre un individuo y los demás individuos dentro del mismo grupo. Esto es útil para evaluar la similitud genética dentro de cada grupo específico de individuos.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) dentro del grupo
+
+# Mediante una lista se guarda la matriz de parentesco genómico para cada grupo de validación, para posteriormente calcular en ellas el coeficiente de relación máximo (amax) dentro del grupo ----
+
+F_snp_grupos <- list(F_snp_1, F_snp_2, F_snp_3, F_snp_4, F_snp_5, F_snp_6, F_snp_7, F_snp_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    diag(.x) <- 0 # Los valores de la diagonal, que corresponden al auto-parentesco, se colocan en 0. De esta forma, se excluye el auto-parentesco antes de calcular el máximo en cada fila
+    amax_grupo <- apply(.x, 1, max) # Se obtiene el máximo valor en cada fila de la matriz.
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada grupo de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+res <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(Grupo = row_number()) # Se agrega una columna que indica el número de grupo de validación.
+
+# Para cada grupo de validación se extrae el amax ----
+
+F_snp_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 1') # Primer grupo de validación.
+
+F_snp_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 2') # Segundo grupo de validación.
+
+F_snp_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 3') # Tercer grupo de validación.
+
+F_snp_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 4') # Cuarto grupo de validación.
+
+F_snp_g5 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 5') # Quinto grupo de validación.
+
+F_snp_g6 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 6') # Sexto grupo de validación.
+
+F_snp_g7 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 7') # Septimo grupo de validación.
+
+F_snp_g8 <- as_tibble(amax_grupos[[8]]) |>
+  mutate(Grup_val = 'Grupo 8') # Octavo grupo de validación.
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el primer grupo de validación con el resto de grupos (2, 3, 4, 5, 6, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 1 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 1 y 2
+############################
+
+# Se importan los individuos del primer y segundo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_2 <- F_snp[Grup_1$Indice, Grup_2$Indice] # Este es una matriz de dimensión 54x79 (54 individuos del primer grupo de validación y 79 idnivdiuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_2 <- F_snp_1_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_2 |> count(Individuos)
+
+t_F_snp_1_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 3
+############################
+
+# Se importan los individuos del primer y tercer grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_3 <- F_snp[Grup_1$Indice, Grup_3$Indice] # Este es una matriz de dimensión 54x45 (54 individuos del primer grupo de validación y 45 idnivdiuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_3 <- F_snp_1_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_3 |> count(Individuos)
+
+t_F_snp_1_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 4
+############################
+
+# Se importan los individuos del primer y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_4 <- F_snp[Grup_1$Indice, Grup_4$Indice] # Este es una matriz de dimensión 54x16 (54 individuos del primer grupo de validación y 16 idnivdiuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_4 <- F_snp_1_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_4 |> count(Individuos)
+
+t_F_snp_1_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 5
+############################
+
+# Se importan los individuos del primer y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_5 <- F_snp[Grup_1$Indice, Grup_5$Indice] # Este es una matriz de dimensión 54x38 (54 individuos del primer grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_5 <- F_snp_1_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_5 |> count(Individuos)
+
+t_F_snp_1_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 6
+############################
+
+# Se importan los individuos del primer y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_6 <- F_snp[Grup_1$Indice, Grup_6$Indice] # Este es una matriz de dimensión 54x38 (54 individuos del primer grupo de validación y 38 idnivdiuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_6 <- F_snp_1_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_6 |> count(Individuos)
+
+t_F_snp_1_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 7
+############################
+
+# Se importan los individuos del primer y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_7 <- F_snp[Grup_1$Indice, Grup_7$Indice] # Este es una matriz de dimensión 54x10 (54 individuos del primer grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_7 <- F_snp_1_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_7 |> count(Individuos)
+
+t_F_snp_1_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 1 y 8
+############################
+
+# Se importan los individuos del primer y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_1_8 <- F_snp[Grup_1$Indice, Grup_8$Indice] # Este es una matriz de dimensión 54x4 (54 individuos del primer grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_1_8 <- F_snp_1_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_1_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_1_8 |> count(Individuos)
+
+t_F_snp_1_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_1_2, F_snp_1_3, F_snp_1_4, F_snp_1_5, F_snp_1_6, F_snp_1_7, F_snp_1_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_1 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_1_2', 'Grup_1_3', 'Grup_1_4', 'Grup_1_5', 'Grup_1_6', 'Grup_1_7', 'Grup_1_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 1 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g1_g2 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 1_2') # Primer y segundo grupo de validación.
+
+F_snp_g1_g3 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 1_3') # Primer y tercer grupo de validación.
+
+F_snp_g1_g4 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 1_4') # Primer y cuarto grupo de validación.
+
+F_snp_g1_g5 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 1_5') # Primer y quinto grupo de validación.
+
+F_snp_g1_g6 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 1_6') # Primer y sexto grupo de validación.
+
+F_snp_g1_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 1_7') # Primer y septimo grupo de validación.
+
+F_snp_g1_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 1_8') # Primer y octavo grupo de validación.
+
+F_snp_Grup1 <- bind_rows(F_snp_g1, F_snp_g1_g2, F_snp_g1_g3, F_snp_g1_g4, F_snp_g1_g5, F_snp_g1_g6, F_snp_g1_g7, F_snp_g1_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup1 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup1.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el segundo grupo de validación con el resto de grupos (1, 3, 4, 5, 6, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 2 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 2 y 1
+############################
+
+# Se importan los individuos del primer y segundo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_1 <- F_snp[Grup_2$Indice, Grup_1$Indice] # Este es una matriz de dimensión 79x54 (79 idnivdiuos del segundo grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_1 <- F_snp_2_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_1 |> count(Individuos)
+
+t_F_snp_2_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 3
+############################
+
+# Se importan los individuos del segundo y tercer grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_3 <- F_snp[Grup_2$Indice, Grup_3$Indice] # Este es una matriz de dimensión 79x45 (79 individuos del primer grupo de validación y 45 idnivdiuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_3 <- F_snp_2_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_3 |> count(Individuos)
+
+t_F_snp_2_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 4
+############################
+
+# Se importan los individuos del segundo y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_4 <- F_snp[Grup_2$Indice, Grup_4$Indice] # Este es una matriz de dimensión 79x16 (79 individuos del segundo grupo de validación y 16 idnivdiuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_4 <- F_snp_2_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_4 |> count(Individuos)
+
+t_F_snp_2_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 5
+############################
+
+# Se importan los individuos del segundo y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_5 <- F_snp[Grup_2$Indice, Grup_5$Indice] # Este es una matriz de dimensión 79x38 (79 individuos del segundo grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_5 <- F_snp_2_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_5 |> count(Individuos)
+
+t_F_snp_2_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 6
+############################
+
+# Se importan los individuos del segundo y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_6 <- F_snp[Grup_2$Indice, Grup_6$Indice] # Este es una matriz de dimensión 79x38 (79 individuos del segundo grupo de validación y 38 idnivdiuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_6 <- F_snp_2_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_6 |> count(Individuos)
+
+t_F_snp_2_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 7
+############################
+
+# Se importan los individuos del segundo y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_7 <- F_snp[Grup_2$Indice, Grup_7$Indice] # Este es una matriz de dimensión 79x10 (79 individuos del segundo grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_7 <- F_snp_2_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_7 |> count(Individuos)
+
+t_F_snp_2_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 2 y 8
+############################
+
+# Se importan los individuos del segundo y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_2_8 <- F_snp[Grup_2$Indice, Grup_8$Indice] # Este es una matriz de dimensión 79x4 (79 individuos del segundo grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_2_8 <- F_snp_2_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_2_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_2_8 |> count(Individuos)
+
+t_F_snp_2_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_2_1, F_snp_2_3, F_snp_2_4, F_snp_2_5, F_snp_2_6, F_snp_2_7, F_snp_2_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_2 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_2_1', 'Grup_2_3', 'Grup_2_4', 'Grup_2_5', 'Grup_2_6', 'Grup_2_7', 'Grup_2_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 2 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g2_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 2_1')
+
+F_snp_g2_g3 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 2_3')
+
+F_snp_g2_g4 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 2_4')
+
+F_snp_g2_g5 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 2_5')
+
+F_snp_g2_g6 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 2_6')
+
+F_snp_g2_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 2_7')
+
+F_snp_g2_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 2_8')
+
+F_snp_Grup2 <- bind_rows(F_snp_g2, F_snp_g2_g1, F_snp_g2_g3, F_snp_g2_g4, F_snp_g2_g5, F_snp_g2_g6, F_snp_g2_g7, F_snp_g2_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup2 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup2.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el tercer grupo de validación con el resto de grupos (1, 2, 4, 5, 6, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 3 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 3 y 1
+############################
+
+# Se importan los individuos del primer y segundo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_1 <- F_snp[Grup_3$Indice, Grup_1$Indice] # Este es una matriz de dimensión 45x54 (45 idnivdiuos del tercer grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_1 <- F_snp_3_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_1 |> count(Individuos)
+
+t_F_snp_3_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 2
+############################
+
+# Se importan los individuos del segundo y tercer grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_2 <- F_snp[Grup_3$Indice, Grup_2$Indice] # Este es una matriz de dimensión 79x45 (45 idnivdiuos del tercer grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_2 <- F_snp_3_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_2 |> count(Individuos)
+
+t_F_snp_3_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 4
+############################
+
+# Se importan los individuos del tercer y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_4 <- F_snp[Grup_3$Indice, Grup_4$Indice] # Este es una matriz de dimensión 45x16 (45 individuos del tercer grupo de validación y 16 idnivdiuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_4 <- F_snp_3_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_4 |> count(Individuos)
+
+t_F_snp_3_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 5
+############################
+
+# Se importan los individuos del tercer y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_5 <- F_snp[Grup_3$Indice, Grup_5$Indice] # Este es una matriz de dimensión 45x38 (45 individuos del tercer grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_5 <- F_snp_3_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_5 |> count(Individuos)
+
+t_F_snp_3_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 6
+############################
+
+# Se importan los individuos del tercer y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_6 <- F_snp[Grup_3$Indice, Grup_6$Indice] # Este es una matriz de dimensión 45x38 (45 individuos del tercer grupo de validación y 38 idnivdiuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_6 <- F_snp_3_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_6 |> count(Individuos)
+
+t_F_snp_3_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 7
+############################
+
+# Se importan los individuos del tercer y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_7 <- F_snp[Grup_3$Indice, Grup_7$Indice] # Este es una matriz de dimensión 45x10 (45 individuos del tercer grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_7 <- F_snp_3_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_7 |> count(Individuos)
+
+t_F_snp_3_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 3 y 8
+############################
+
+# Se importan los individuos del tercer y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_3_8 <- F_snp[Grup_3$Indice, Grup_8$Indice] # Este es una matriz de dimensión 45x4 (45 individuos del tercer grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_3_8 <- F_snp_3_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_3_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_3_8 |> count(Individuos)
+
+t_F_snp_3_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_3_1, F_snp_3_2, F_snp_3_4, F_snp_3_5, F_snp_3_6, F_snp_3_7, F_snp_3_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_3 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_3_1', 'Grup_3_2', 'Grup_3_4', 'Grup_3_5', 'Grup_3_6', 'Grup_3_7', 'Grup_3_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 3 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g3_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 3_1')
+
+F_snp_g3_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 3_2')
+
+F_snp_g3_g4 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 3_4')
+
+F_snp_g3_g5 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 3_5')
+
+F_snp_g3_g6 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 3_6')
+
+F_snp_g3_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 3_7')
+
+F_snp_g3_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 3_8')
+
+F_snp_Grup3 <- bind_rows(F_snp_g3, F_snp_g3_g1, F_snp_g3_g2, F_snp_g3_g4, F_snp_g3_g5, F_snp_g3_g6, F_snp_g3_g7, F_snp_g3_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup3 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup3.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el cuarto grupo de validación con el resto de grupos (1, 2, 3, 5, 6, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 4 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 4 y 1
+############################
+
+# Se importan los individuos del primer y segundo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_1 <- F_snp[Grup_4$Indice, Grup_1$Indice] # Este es una matriz de dimensión 16x54 (16 idnivdiuos del cuarto grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_1 <- F_snp_4_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_1 |> count(Individuos)
+
+t_F_snp_4_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 2
+############################
+
+# Se importan los individuos del segundo y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_2 <- F_snp[Grup_4$Indice, Grup_2$Indice] # Este es una matriz de dimensión 16x79 (16 idnivdiuos del cuarto grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_2 <- F_snp_4_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_2 |> count(Individuos)
+
+t_F_snp_4_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 3
+############################
+
+# Se importan los individuos del tercer y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_3 <- F_snp[Grup_4$Indice, Grup_3$Indice] # Este es una matriz de dimensión 16x45 (16 idnivdiuos del cuarto grupo de validación y 45 individuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_3 <- F_snp_4_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_3 |> count(Individuos)
+
+t_F_snp_4_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 5
+############################
+
+# Se importan los individuos del cuarto y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_5 <- F_snp[Grup_4$Indice, Grup_5$Indice] # Este es una matriz de dimensión 16x38 (16 individuos del cuarto grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_5 <- F_snp_4_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_5 |> count(Individuos)
+
+t_F_snp_4_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 6
+############################
+
+# Se importan los individuos del cuarto y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_6 <- F_snp[Grup_4$Indice, Grup_6$Indice] # Este es una matriz de dimensión 16x38 (16 individuos del cuarto grupo de validación y 38 idnivdiuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_6 <- F_snp_4_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_6 |> count(Individuos)
+
+t_F_snp_4_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 7
+############################
+
+# Se importan los individuos del cuarto y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_7 <- F_snp[Grup_4$Indice, Grup_7$Indice] # Este es una matriz de dimensión 16x10 (16 individuos del cuarto grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_7 <- F_snp_4_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_7 |> count(Individuos)
+
+t_F_snp_4_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 4 y 8
+############################
+
+# Se importan los individuos del cuarto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_4_8 <- F_snp[Grup_4$Indice, Grup_8$Indice] # Este es una matriz de dimensión 16x4 (16 individuos del cuarto grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_4_8 <- F_snp_4_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_4_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_4_8 |> count(Individuos)
+
+t_F_snp_4_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_4_1, F_snp_4_2, F_snp_4_3, F_snp_4_5, F_snp_4_6, F_snp_4_7, F_snp_4_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_4 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_4_1', 'Grup_4_2', 'Grup_4_3', 'Grup_4_5', 'Grup_4_6', 'Grup_4_7', 'Grup_4_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 4 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g4_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 4_1')
+
+F_snp_g4_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 4_2')
+
+F_snp_g4_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 4_3')
+
+F_snp_g4_g5 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 4_5')
+
+F_snp_g4_g6 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 4_6')
+
+F_snp_g4_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 4_7')
+
+F_snp_g4_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 4_8')
+
+F_snp_Grup4 <- bind_rows(F_snp_g4, F_snp_g4_g1, F_snp_g4_g2, F_snp_g4_g3, F_snp_g4_g5, F_snp_g4_g6, F_snp_g4_g7, F_snp_g4_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup4 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup4.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el quinto grupo de validación con el resto de grupos (1, 2, 3, 4, 6, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 5 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 5 y 1
+############################
+
+# Se importan los individuos del primer y segundo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_1 <- F_snp[Grup_5$Indice, Grup_1$Indice] # Este es una matriz de dimensión 38x54 (38 idnivdiuos del quinto grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_1 <- F_snp_5_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_1 |> count(Individuos)
+
+t_F_snp_5_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 2
+############################
+
+# Se importan los individuos del segundo y cuarto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_2 <- F_snp[Grup_5$Indice, Grup_2$Indice] # Este es una matriz de dimensión 38x79 (38 idnivdiuos del quinto grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_2 <- F_snp_5_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_2 |> count(Individuos)
+
+t_F_snp_5_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 3
+############################
+
+# Se importan los individuos del tercer y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_3 <- F_snp[Grup_5$Indice, Grup_3$Indice] # Este es una matriz de dimensión 38x45 (38 idnivdiuos del quinto grupo de validación y 45 individuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_3 <- F_snp_5_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_3 |> count(Individuos)
+
+t_F_snp_5_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 4
+############################
+
+# Se importan los individuos del cuarto y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_4 <- F_snp[Grup_5$Indice, Grup_4$Indice] # Este es una matriz de dimensión 38x16 (38 idnivdiuos del quinto grupo de validación y 16 individuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_4 <- F_snp_5_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_4 |> count(Individuos)
+
+t_F_snp_5_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 6
+############################
+
+# Se importan los individuos del cuarto y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_6 <- F_snp[Grup_5$Indice, Grup_6$Indice] # Este es una matriz de dimensión 38x38 (38 individuos del quinto grupo de validación y 38 idnivdiuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_6 <- F_snp_5_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_6 |> count(Individuos)
+
+t_F_snp_5_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 7
+############################
+
+# Se importan los individuos del quinto y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_7 <- F_snp[Grup_5$Indice, Grup_7$Indice] # Este es una matriz de dimensión 38x10 (38 individuos del quinto grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_7 <- F_snp_5_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_7 |> count(Individuos)
+
+t_F_snp_5_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 5 y 8
+############################
+
+# Se importan los individuos del cuarto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_5_8 <- F_snp[Grup_5$Indice, Grup_8$Indice] # Este es una matriz de dimensión 38x4 (38 individuos del quinto grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_5_8 <- F_snp_5_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_5_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_5_8 |> count(Individuos)
+
+t_F_snp_5_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_5_1, F_snp_5_2, F_snp_5_3, F_snp_5_4, F_snp_5_6, F_snp_5_7, F_snp_5_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_5 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_5_1', 'Grup_5_2', 'Grup_5_3', 'Grup_5_4', 'Grup_5_6', 'Grup_5_7', 'Grup_5_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 5 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g5_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 5_1')
+
+F_snp_g5_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 5_2')
+
+F_snp_g5_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 5_3')
+
+F_snp_g5_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 5_4')
+
+F_snp_g5_g6 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 5_6')
+
+F_snp_g5_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 5_7')
+
+F_snp_g5_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 5_8')
+
+F_snp_Grup5 <- bind_rows(F_snp_g5, F_snp_g5_g1, F_snp_g5_g2, F_snp_g5_g3, F_snp_g5_g4, F_snp_g5_g6, F_snp_g5_g7, F_snp_g5_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup5 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup5.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el sexto grupo de validación con el resto de grupos (1, 2, 3, 4, 5, 7 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 6 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 6 y 1
+############################
+
+# Se importan los individuos del primer y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_1 <- F_snp[Grup_6$Indice, Grup_1$Indice] # Este es una matriz de dimensión 38x54 (38 idnivdiuos del sexto grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_1 <- F_snp_6_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_1 |> count(Individuos)
+
+t_F_snp_6_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 2
+############################
+
+# Se importan los individuos del segundo y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_2 <- F_snp[Grup_6$Indice, Grup_2$Indice] # Este es una matriz de dimensión 38x79 (38 idnivdiuos del sexto grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_2 <- F_snp_6_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_2 |> count(Individuos)
+
+t_F_snp_6_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 3
+############################
+
+# Se importan los individuos del tercer y quinto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_3 <- F_snp[Grup_6$Indice, Grup_3$Indice] # Este es una matriz de dimensión 38x45 (38 idnivdiuos del sexto grupo de validación y 45 individuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_3 <- F_snp_6_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_3 |> count(Individuos)
+
+t_F_snp_6_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 4
+############################
+
+# Se importan los individuos del cuarto y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_4 <- F_snp[Grup_6$Indice, Grup_4$Indice] # Este es una matriz de dimensión 38x16 (38 idnivdiuos del sexto grupo de validación y 16 individuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_4 <- F_snp_6_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_4 |> count(Individuos)
+
+t_F_snp_6_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 5
+############################
+
+# Se importan los individuos del quinto y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_5 <- F_snp[Grup_6$Indice, Grup_5$Indice] # Este es una matriz de dimensión 38x38 (38 individuos del sexto grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_5 <- F_snp_6_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_5 |> count(Individuos)
+
+t_F_snp_6_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 7
+############################
+
+# Se importan los individuos del sexto y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_7 <- F_snp[Grup_6$Indice, Grup_7$Indice] # Este es una matriz de dimensión 38x10 (38 individuos del sexto grupo de validación y 10 idnivdiuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_7 <- F_snp_6_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_7 |> count(Individuos)
+
+t_F_snp_6_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 6 y 8
+############################
+
+# Se importan los individuos del sexto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_6_8 <- F_snp[Grup_6$Indice, Grup_8$Indice] # Este es una matriz de dimensión 38x4 (38 individuos del sexto grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_6_8 <- F_snp_6_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_6_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_6_8 |> count(Individuos)
+
+t_F_snp_6_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_6_1, F_snp_6_2, F_snp_6_3, F_snp_6_4, F_snp_6_6, F_snp_6_7, F_snp_6_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_6 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_6_1', 'Grup_6_2', 'Grup_6_3', 'Grup_6_4', 'Grup_6_5', 'Grup_6_7', 'Grup_6_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 6 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g6_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 6_1')
+
+F_snp_g6_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 6_2')
+
+F_snp_g6_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 6_3')
+
+F_snp_g6_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 6_4')
+
+F_snp_g6_g5 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 6_5')
+
+F_snp_g6_g7 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 6_7')
+
+F_snp_g6_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 6_8')
+
+F_snp_Grup6 <- bind_rows(F_snp_g6, F_snp_g6_g1, F_snp_g6_g2, F_snp_g6_g3, F_snp_g6_g4, F_snp_g6_g5, F_snp_g6_g7, F_snp_g6_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup6 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup6.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el septimo grupo de validación con el resto de grupos (1, 2, 3, 4, 5, 6 y 8). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 7 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 7 y 1
+############################
+
+# Se importan los individuos del primer y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_1 <- F_snp[Grup_7$Indice, Grup_1$Indice] # Este es una matriz de dimensión 10x54 (10 idnivdiuos del septimo grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_1 <- F_snp_7_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_1 |> count(Individuos)
+
+t_F_snp_7_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 2
+############################
+
+# Se importan los individuos del segundo y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_2 <- F_snp[Grup_7$Indice, Grup_2$Indice] # Este es una matriz de dimensión 10x79 (10 idnivdiuos del septimo grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_2 <- F_snp_7_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_2 |> count(Individuos)
+
+t_F_snp_7_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 3
+############################
+
+# Se importan los individuos del tercer y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_3 <- F_snp[Grup_7$Indice, Grup_3$Indice] # Este es una matriz de dimensión 10x45 (10 idnivdiuos del septimo grupo de validación y 45 individuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_3 <- F_snp_7_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_3 |> count(Individuos)
+
+t_F_snp_7_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 4
+############################
+
+# Se importan los individuos del cuarto y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_4 <- F_snp[Grup_7$Indice, Grup_4$Indice] # Este es una matriz de dimensión 10x16 (10 idnivdiuos del septimo grupo de validación y 16 individuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_4 <- F_snp_7_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_4 |> count(Individuos)
+
+t_F_snp_7_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 5
+############################
+
+# Se importan los individuos del quinto y sexto grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_5 <- F_snp[Grup_7$Indice, Grup_5$Indice] # Este es una matriz de dimensión 10x38 (10 individuos del septimo grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_5 <- F_snp_7_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_5 |> count(Individuos)
+
+t_F_snp_7_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 6
+############################
+
+# Se importan los individuos del sexto y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_6 <- F_snp[Grup_7$Indice, Grup_6$Indice] # Este es una matriz de dimensión 10x38 (10 idnivdiuos del septimo grupo de validación y 38 individuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_6 <- F_snp_7_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_6 |> count(Individuos)
+
+t_F_snp_7_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 8
+############################
+
+# Se importan los individuos del septimo y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_7_8 <- F_snp[Grup_7$Indice, Grup_8$Indice] # Este es una matriz de dimensión 10x4 (10 individuos del septimo grupo de validación y 4 idnivdiuos del octavo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_7_8 <- F_snp_7_8 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_7_8)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000810941801'
+    ) |>
+  pivot_longer(
+    cols = c(2:5),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_7_8 |> count(Individuos)
+
+t_F_snp_7_8 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del primer grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_7_1, F_snp_7_2, F_snp_7_3, F_snp_7_4, F_snp_7_5, F_snp_7_6, F_snp_7_8)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_7 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_7_1', 'Grup_7_2', 'Grup_7_3', 'Grup_7_4', 'Grup_7_5', 'Grup_7_6', 'Grup_7_8')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 7 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g7_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 7_1')
+
+F_snp_g7_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 7_2')
+
+F_snp_g7_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 7_3')
+
+F_snp_g7_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 7_4')
+
+F_snp_g7_g5 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 7_5')
+
+F_snp_g7_g6 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 7_6')
+
+F_snp_g7_g8 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 7_8')
+
+F_snp_Grup7 <- bind_rows(F_snp_g7, F_snp_g7_g1, F_snp_g7_g2, F_snp_g7_g3, F_snp_g7_g4, F_snp_g7_g5, F_snp_g7_g6, F_snp_g7_g8)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup7 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup7.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: A continuaicón, se obtiene la matriz de parentesco genómico entre el octavo grupo de validación con el resto de grupos (1, 2, 3, 4, 5, 6 y 7). Luego con estos, se obtiene el coeficiente de relación máximo (amax) entre dichos grupos de validación.
+-->
+
+```{r}
+#| label: Coeficiente de relación máximo (amax) entre el grupo 7 con el resto de grupos
+
+# Se carga  de nuevo la matriz de parentesco genómico  ---
+
+load(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/F_snp.RData')
+
+# Se crea el objeto "id_fped" en el que se indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+id_fped <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datPed.txt', delim = ' ', col_names = FALSE) |>
+  select(X1) |> # Se extrae la ID de los individuos genotipados.
+  rename(ID_id = X1) |>
+  mutate(Indice = row_number())
+
+############################
+# Grupos de validación 8 y 1
+############################
+
+# Se importan los individuos del primer y septimo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_1 <- F_snp[Grup_8$Indice, Grup_1$Indice] # Este es una matriz de dimensión 4x54 (4 idnivdiuos del octavo grupo de validación y 54 individuos del primer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_1 <- F_snp_8_1 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_1)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802524910'
+    ) |>
+  pivot_longer(
+    cols = c(2:55),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_1 |> count(Individuos)
+
+t_F_snp_8_1 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 8 y 2
+############################
+
+# Se importan los individuos del segundo y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_2 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_2/Grup2.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_2 <- F_snp[Grup_8$Indice, Grup_2$Indice] # Este es una matriz de dimensión 4x79 (4 idnivdiuos del octavo grupo de validación y 79 individuos del segundo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_2 <- F_snp_8_2 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_2)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000802935597'
+    ) |>
+  pivot_longer(
+    cols = c(2:80),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_2 |> count(Individuos)
+
+t_F_snp_8_2 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 8 y 3
+############################
+
+# Se importan los individuos del tercer y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_3 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_3/Grup3.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_3 <- F_snp[Grup_8$Indice, Grup_3$Indice] # Este es una matriz de dimensión 4x45 (4 idnivdiuos del octavo grupo de validación y 45 individuos del tercer grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_3 <- F_snp_8_3 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_3)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000803645478'
+    ) |>
+  pivot_longer(
+    cols = c(2:46),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_3 |> count(Individuos)
+
+t_F_snp_8_3 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 7 y 4
+############################
+
+# Se importan los individuos del cuarto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_4 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_4/Grup4.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_4 <- F_snp[Grup_8$Indice, Grup_4$Indice] # Este es una matriz de dimensión 4x16 (4 idnivdiuos del octavo grupo de validación y 16 individuos del cuarto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_4 <- F_snp_8_4 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_4)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806582398'
+    ) |>
+  pivot_longer(
+    cols = c(2:17),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_4 |> count(Individuos)
+
+t_F_snp_8_4 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 8 y 5
+############################
+
+# Se importan los individuos del quinto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_5 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_5/Grup5.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_5 <- F_snp[Grup_8$Indice, Grup_5$Indice] # Este es una matriz de dimensión 4x38 (4 individuos del octavo grupo de validación y 38 idnivdiuos del quinto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_5 <- F_snp_8_5 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_5)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000806949713'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_5 |> count(Individuos)
+
+t_F_snp_8_5 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 8 y 6
+############################
+
+# Se importan los individuos del sexto y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_6 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_6/Grup6.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_6 <- F_snp[Grup_8$Indice, Grup_6$Indice] # Este es una matriz de dimensión 4x38 (4 idnivdiuos del octavo grupo de validación y 38 individuos del sexto grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_6 <- F_snp_8_6 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_6)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000807681669'
+    ) |>
+  pivot_longer(
+    cols = c(2:39),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_6 |> count(Individuos)
+
+t_F_snp_8_6 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+############################
+# Grupos de validación 8 y 7
+############################
+
+# Se importan los individuos del septimo y octavo grupo de validación y se unen con el objeto "id_fped" que indica la posición (o índice numérico) que cada individuo genotipado ocupa en la matriz de parentesco genómico ----
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+Grup_8 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Prec_8/Grup8.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID_id = X1) |>
+  inner_join(y = id_fped, by = 'ID_id')
+
+# Se extrae la matriz de parentesco genómico ----
+
+F_snp_8_7 <- F_snp[Grup_8$Indice, Grup_7$Indice] # Este es una matriz de dimensión 4x10 (4 idnivdiuos del octavo grupo de validación y 10 individuos del septimo grupo de validación).
+
+# Se calcula el parentesco promedio ----
+
+t_F_snp_8_7 <- F_snp_8_7 |>
+  as_tibble() |>
+  mutate('Individuos 2' = rownames(F_snp_8_7)) |>
+  relocate(
+    `Individuos 2`,
+    .before = 'ES000809138043'
+    ) |>
+  pivot_longer(
+    cols = c(2:11),
+    names_to = 'Individuos',
+    values_to = 'Parentesco'
+    )
+
+t_F_snp_8_7 |> count(Individuos)
+
+t_F_snp_8_7 |>
+  summarise(
+    prom_par = round(mean(Parentesco), digits = 4),
+    desv_par = round(sd(Parentesco), digits = 4),
+    min = min(Parentesco),
+    max = max(Parentesco)
+    )
+
+# Se crea una lista con la matriz de parentesco genómico del octavo grupo de validación con el resto de grupos de validación ----
+
+F_snp_grupos <- list(F_snp_8_1, F_snp_8_2, F_snp_8_3, F_snp_8_4, F_snp_8_5, F_snp_8_6, F_snp_8_7)
+
+# Se define una función para obtener el amax de un individuo en un grupo específico ----
+
+amax <- function(matrices_F_snp) { # Esta función itera sobre cada matriz de parentesco genómico en la lista anterior, obtiene elamax para cada individuo en esa matriz y devuelve una lista con los resultados para cada grupo.
+
+  # Se aplica la función map para iterar sobre cada matriz de parentesco en la lista de matrices de parentesco (F_snp_grupos).
+  lista_amax <- map(matrices_F_snp, ~ {
+    
+    # Dentro de cada iteración, se obtiene el amax para cada individuo en la matriz de parentesco.
+    amax_grupo <- apply(.x, 1, max)
+    
+    # Se devuelve el vector de amax para el grupo actual.
+    amax_grupo
+    })
+  
+  # Se devuelve una lista que contiene los vectores de amax para cada grupo de validación.
+  return(lista_amax)
+  }
+
+# Se obtiene el amax para cada individuo en cada combinación de grupos de validación ----
+
+amax_grupos <- amax(F_snp_grupos)
+
+# Se calcula el valor medio y la desviación estándar del amax para cada grupo ----
+
+Grup_8 <- map_dfr(amax_grupos, ~ tibble(Valor_Medio = mean(.x), Desviacion_Estandar = sd(.x), min = min(.x), max = max(.x))) |>
+  mutate(
+    Grupo = c('Grup_8_1', 'Grup_8_2', 'Grup_8_3', 'Grup_8_4', 'Grup_8_5', 'Grup_8_6', 'Grup_8_7')
+    ) # Se agrega una columna que indica la combinación del primer grupo de validación con el resto.
+
+# Para cada combinación de grupo de validación 8 con el resto de grupos de validación se extrae el amax ----
+
+F_snp_g8_g1 <- as_tibble(amax_grupos[[1]]) |>
+  mutate(Grup_val = 'Grupo 8_1')
+
+F_snp_g8_g2 <- as_tibble(amax_grupos[[2]]) |>
+  mutate(Grup_val = 'Grupo 8_2')
+
+F_snp_g8_g3 <- as_tibble(amax_grupos[[3]]) |>
+  mutate(Grup_val = 'Grupo 8_3')
+
+F_snp_g8_g4 <- as_tibble(amax_grupos[[4]]) |>
+  mutate(Grup_val = 'Grupo 8_4')
+
+F_snp_g8_g5 <- as_tibble(amax_grupos[[5]]) |>
+  mutate(Grup_val = 'Grupo 8_5')
+
+F_snp_g8_g6 <- as_tibble(amax_grupos[[6]]) |>
+  mutate(Grup_val = 'Grupo 8_6')
+
+F_snp_g8_g7 <- as_tibble(amax_grupos[[7]]) |>
+  mutate(Grup_val = 'Grupo 8_7')
+
+F_snp_Grup8 <- bind_rows(F_snp_g8, F_snp_g8_g1, F_snp_g8_g2, F_snp_g8_g3, F_snp_g8_g4, F_snp_g8_g5, F_snp_g8_g6, F_snp_g8_g7)
+
+# Se realiza un gráfico donde se observe la distribución de densidad de las relaciones genéticas basada en parentescos genómicos máximos (amax) entre cada individuo en un grupo particular y todos los individuos en el mismo o en diferentes grupos formados por agrupamiento de kmeans ----
+
+F_snp_Grup8 |>
+  ggplot(aes(x = value, colour = Grup_val, fill = Grup_val)) +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ Grup_val, ncol = 3) +
+  scale_color_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  scale_fill_manual(values = c('yellow', 'cyan', 'orange', 'green', 'black', 'red', 'brown', 'aquamarine')) +
+  labs(x = 'Coeficiente de relación máximo', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.position = 'none',
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 12, colour = 'black', face = 'bold')
+    )
+
+ggsave('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM_2/Imagenes/F_snp_Grup8.pdf', width = 40, height = 20, units = 'cm')
+```

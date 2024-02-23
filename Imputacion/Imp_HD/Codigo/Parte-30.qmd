@@ -1,0 +1,4 @@
+---
+title: "Parte 30: evaluación de la precisión de la imputación usando grupos de validación formado mediante k-means con base en parentesco genómico con IBS, usando el programa Beagle v5.4 - Parte 3"
+format: html
+---
