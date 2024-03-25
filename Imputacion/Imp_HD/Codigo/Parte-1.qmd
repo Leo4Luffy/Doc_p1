@@ -75,7 +75,7 @@ bim_ARS <- read_table(file = '../../Imputacion/Imp_HD/Datos/datQC/Paso_2.bim', c
 map_ARS %>%
   filter(X2 %in% bim_ARS) %>%
   select(X2, X4) %>%
-  write_delim('../../Imputacion/Imp_HD/Datos/datQC/pos_Mar_ARS.txt', col_names = FALSE) # Se genera el archivo "nomb_Mar_ARS.txt" con dos columnas: el nombre del marcador y la nueva posición correspondiente en pares de bases.
+  write_delim('../../Imputacion/Imp_HD/Datos/datQC/pos_Mar_ARS.txt', col_names = FALSE)
 ```
 
 <!--

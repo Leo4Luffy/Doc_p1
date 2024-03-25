@@ -1,0 +1,128 @@
+---
+title: "Parte 6: Edición en los datos de genotipos imputados a HD con Beagle v. 5.4 y que corresponden a SNP-tags"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, conflicted)
+conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
+# Error:
+# ! [conflicted] filter found in 2 packages.
+# Either pick the one you want with `::`:
+# dplyr::filter
+# stats::filter
+conflicts_prefer(dplyr::select)
+```
+
+<!--
+NOTA: A continuación se seleccionan de los genotipos en HD imputados, los marcadores que corresponden a SNP-tags.
+-->
+
+```{r}
+#| label: Selección de tags en los datos de genotipos en HD
+
+# Se importa los datos de genotipos imputados en HD ----
+
+resHD <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |> # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Se importa los datos con los nombres de los SNP-tags y se extrae este nombre como un vector ----
+
+dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se observa cuales SNP-tags aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun <- read_delim(file = 'Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_tags, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_tags <- marc_comun |>
+  full_join(x = dat_tags, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el nombre de los SNP-tags como se quería.
+
+dim_desc(dat_tags) # Hay en total 103080 SNP-tags.
+
+# Se dejan los marcadores considerados tags ----
+
+SNP_tag <- resHD |>
+  filter(ID %in% dat_tags$X3)
+
+dim_desc(SNP_tag) # 103080-102554 = 526 SNP-tags se eliminaron, pueden que al hacer el control de calidad.
+```
+
+<!--
+NOTA: A continuación se genera el conjunto de datos de SNP-tags editados.
+-->
+
+```{r}
+#| label: Edición de SNP-tags
+
+# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
+
+cod_geno <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna, ya que la primera corresponde a la ID de los individuos.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+# Se transpone el objeto "SNP_tag" ----
+
+SNP_tag_2 <- SNP_tag |>
+  pivot_longer(
+    cols = c(2:2971),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-c(ID_2))
+
+dim_desc(SNP_tag_2)
+
+SNP_tag_2 |> select(1:4) |> slice_head(n = 8) # Los individuos quedaron en filas y los marcadores en columnas.
+
+# Se editan los SNP-tags y posteriormente se exporta dicha edición ----
+
+SNP_tag_3 <- cod_geno(SNP_tag_2) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los SNP-tags (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
+
+dim_desc(SNP_tag_3) # En los datos de SNP-tags hay 2970 indivdiuos y 102554 SNP-tags.
+
+SNP_tag_3 |> select(1:4) |> slice_head(n = 8) # Se observa aquí si se logro cambiar la codificación de los SNP-tags.
+
+SNP_tag_3 |>
+  unite(
+    col = 'Geno', 
+    2:ncol(SNP_tag_3),
+    sep = '',
+    remove = TRUE
+    ) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/resSNP_tags.txt', col_names = FALSE)
+```

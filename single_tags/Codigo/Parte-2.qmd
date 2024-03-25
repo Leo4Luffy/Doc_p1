@@ -24,6 +24,24 @@ NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen 
 
 dat_taqs <- read_delim(file = 'single_taqs/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
 
+# Se observa cuales SNP-tags aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_tags, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_tags <- marc_comun |>
+  full_join(x = dat_tags, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el nombre de los SNP-tags como se quería.
+
 # Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
 
 gen_enmas <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt', col_names = FALSE, delim = ' ')
@@ -37,7 +55,7 @@ gen_real <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_o
 
 gen_real_2 <- gen_real |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+  filter(ID %in% dat_taqs$X3) # Se extrae aquí los marcadores considerados taqs.
 
 # Se transpone el conjunto de datos ----
 
@@ -123,7 +141,7 @@ gen_imput_1 <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precisio
 
 gen_imput_1b <- gen_imput_1 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+  filter(ID %in% dat_taqs$X3) # Se extrae aquí los marcadores considerados taqs.
 
 # Se transpone el conjunto de datos ----
 
@@ -174,7 +192,7 @@ gen_imput_2 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Pr
 
 gen_imput_2b <- gen_imput_2 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+  filter(ID %in% dat_taqs$X3) # Se extrae aquí los marcadores considerados taqs.
 
 # Se transpone el conjunto de datos ----
 
@@ -225,7 +243,7 @@ gen_imput_3 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Pr
 
 gen_imput_3b <- gen_imput_3 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+  filter(ID %in% dat_taqs$X3) # Se extrae aquí los marcadores considerados taqs.
 
 # Se transpone el conjunto de datos ----
 
@@ -276,7 +294,7 @@ gen_imput_4 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Pr
 
 gen_imput_4b <- gen_imput_4 |>
   filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
-  filter(ID %in% dat_taqs$X1) # Se extrae aquí los marcadores considerados taqs.
+  filter(ID %in% dat_taqs$X3) # Se extrae aquí los marcadores considerados taqs.
 
 # Se transpone el conjunto de datos ----
 
@@ -338,14 +356,14 @@ comp_val1 <- gen_real_5 %>%
 sum_val1 <- summarise(
   .data = comp_val1,
   across(
-    .cols = c(1:82293),
+    .cols = c(1:86050),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP taq. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP taq. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val1 |>
   pivot_longer(
-    cols = c(1:82293),
+    cols = c(1:86050),
     names_to = 'SNP_taq',
     values_to = 'N_mal_imput'
     ) |>
@@ -373,14 +391,14 @@ comp_val2 <- gen_real_6 %>%
 sum_val2 <- summarise(
   .data = comp_val2,
   across(
-    .cols = c(1:82293),
+    .cols = c(1:86050),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP taq. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP taq.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val2 |>
   pivot_longer(
-    cols = c(1:82293),
+    cols = c(1:86050),
     names_to = 'SNP_taq',
     values_to = 'N_mal_imput'
     ) |>
@@ -408,14 +426,14 @@ comp_val3 <- gen_real_7 %>%
 sum_val3 <- summarise(
   .data = comp_val3,
   across(
-    .cols = c(1:82293),
+    .cols = c(1:86050),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP taq. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP taq.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val3 |>
   pivot_longer(
-    cols = c(1:82293),
+    cols = c(1:86050),
     names_to = 'SNP_taq',
     values_to = 'N_mal_imput'
     ) |>
@@ -443,14 +461,14 @@ comp_val4 <- gen_real_8 %>%
 sum_val4 <- summarise(
   .data = comp_val4,
   across(
-    .cols = c(1:82293),
+    .cols = c(1:86050),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP taq. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP taq.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val4 |>
   pivot_longer(
-    cols = c(1:82293),
+    cols = c(1:86050),
     names_to = 'SNP_taq',
     values_to = 'N_mal_imput'
     ) |>
@@ -462,7 +480,7 @@ NOTA: A continuación, se observa la cantidad de SNP-tag correctamente imputados
 -->
 
 ```{r}
-#| label: Hola
+#| label: Número de SNP-tag imputados correctamente
 
 # Se importan los datos y se cuenta la cantidad de SNP-tag imputados correctamente por grupo de validación  ----
 

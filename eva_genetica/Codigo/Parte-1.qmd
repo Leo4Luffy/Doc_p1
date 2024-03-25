@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse, tidymodels)
+pacman::p_load(tidyverse)
 ```
 
 <!--
@@ -22,25 +22,25 @@ NOTA: Se importan los conjuntos de datos para todos los caracteres a considerar.
 
 # Se importa los datos de los caracteres peso y crecimiento a los 365 día de edad ----
 
-dat_pc365 <- read_delim(file = 'eva_genetica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
+dat_pc305 <- read_delim(file = 'eva_genetica/Datos/datPuros/AnimalesDatoPURO.txt', col_names = FALSE, delim = ' ') |>
   rename(
     P365 = X1,
     C365 = X2,
     Peso_ent = X3,
     Dia_cebo = X4,
-    Edad_pc365 = X5,
-    GC_pc365 = X6,
+    Edad_pc305 = X5,
+    GC_pc305 = X6,
     ID = X7
     ) # En este conjunto de datos, la primera columna representa el peso a los 365 días, la segunda columna al crecimiento a los 365 días, la tercera columna al peso de entrada, la cuarta columna a los días de cebo, la quinta columna al grupo de edad, la sexta columna al grupo de comparación y la sexta columna corresponde a la ID del animal.
 
-dat_pc365 %>%
+dat_pc305 %>%
   summarise_all(~n_distinct(.)) # Se cuenta aquí el número de niveles de cada columna.
 
-# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pc365):
+# NOTA: A continuación de describen algunas de las variables del objeto anterior (dat_pc305):
 #
-# 1. Grupos de comparación (GC_pc365): Estos se difinieron dentro del cebadero como cebadero - año - mes de entrada al cebadero. El número mínimo de animales exigido por grupo de comparación fue de cinco observaciones.
+# 1. Grupos de comparación (GC_pc305): Estos se difinieron dentro del cebadero como cebadero - año - mes de entrada al cebadero. El número mínimo de animales exigido por grupo de comparación fue de cinco observaciones.
 #
-# 2. Grupo de edad (GC_pc365): Se difinieron dos grupos de edades en función de si tenían menos de 247 días a la entrada en el cebadero o si su edad era mayor.
+# 2. Grupo de edad (GC_pc305): Se difinieron dos grupos de edades en función de si tenían menos de 247 días a la entrada en el cebadero o si su edad era mayor.
 
 # Se importa los datos del caracter peso al destete ----
 
@@ -133,6 +133,10 @@ datPed <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv',
   relocate(
     sire,
     .after = dam
+    ) |>
+  mutate(
+    sire = replace(sire, sire == 0, NA),
+    dam = replace(dam, dam == 0, NA)
     )
 ```
 
@@ -193,7 +197,7 @@ ID_Pad <- datPed_3 |>
 # Se seleccionan las columnas que corresponden a la ID del individuos, del madre y del padre ----
 
 datPed_4 <- ID_Pad |>
-  dplyr::select(id_renum, dam_renum, sire_renum) # Este conjunto de datos se usara más adelante para "prunear" o podar y generar un pedigrí basado en individuos con fenotipos.
+  dplyr::select(id, dam, sire) # Este conjunto de datos se usara más adelante para "prunear" o podar y generar un pedigrí basado en individuos con fenotipos.
 ```
 
 <!--
@@ -203,9 +207,9 @@ NOTA: Se unen los conjuntos de datos de caracteres anteriormente importados.
 ```{r}
 #| label: Unión de conjuntos de datos
 
-# Se unen los conjuntos de de todos los caracteres ----
+# Se unen los conjuntos de datos de todos los caracteres ----
 
-datProd <- full_join(x = dat_pc365, y = dat_pdtte, by = 'ID') |>
+datProd <- full_join(x = dat_pc305, y = dat_pdtte, by = 'ID') |>
   full_join(y = dat_prc, by = 'ID') |>
   full_join(y = dat_EPP_IEP, by = 'ID')
 
@@ -213,7 +217,7 @@ datProd |>
   summarise(n = n(), .by = ID) |>
   filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
 
-# Se une el objeto anterior (datProd) con el objeto con las identificaciones renumeradas (ID_Pad) para que quede el conjunto de datos de los caracetres con la identificación renumerada ----
+# Se une el objeto anterior (ID_Pad) con el objeto "datProd" ----
 
 datProd_2 <- ID_Pad |>
   dplyr::select(id, id_renum) |>
@@ -228,7 +232,7 @@ datProd_2 <- ID_Pad |>
     .after = ID)
 
 datProd_2 |>
-  summarise(n = n(), .by = id_renum) |>
+  summarise(n = n(), .by = ID) |>
   filter(n > 1) # Se comprueba y aquí la id_renum del individuo no se repite.
 ```
 
@@ -243,13 +247,15 @@ NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
 
 ped <- nadiv::prepPed(pedigree = datPed_4, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
 
-datPed_4 |> filter(sire_renum == 42507) # Al ver los primeros diez individuos en el objeto anterior (slice_head(ped, n = 10)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
+slice_head(ped, n = 10)
+
+datPed_4 |> filter(sire == '5S-88337C') # Al ver los primeros diez individuos en el objeto anterior, el "id" 5S-88337C tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 5S-88337C aparece como padre, por lo que parece que es un individuo fundador.
 
 # Se genera el pedigrí con base en información fenotípica ----
 
-pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$id_renum) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
+pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$ID) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
 
-pedPrune |> filter(sire_renum == 42507) # Se observa de nuevo el mismo individuo 42507 como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
+pedPrune |> filter(sire == '5S-88337C') # Se observa de nuevo el mismo individuo 5S-88337C como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
 ```
 
 <!--

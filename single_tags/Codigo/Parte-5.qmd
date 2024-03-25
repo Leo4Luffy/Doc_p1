@@ -1,0 +1,153 @@
+---
+title: "Parte 4: Consistencia de singletones imputados formando cuatro grupos de validación en base a agrupación jerárquica usando una matriz de disimilitud de IBS"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) reales, se extraen solo los singletones. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos reales solo con singletones
+
+# Se importa los datos con los nombres de los singletones y se extrae este nombre como un vector ----
+
+dat_sing <- read_delim(file = 'single_tags/Datos/datPuros/SNP_single_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
+
+gen_enmas <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt', col_names = FALSE, delim = ' ')
+
+# Se importa los datos de genotipos reales ----
+
+gen_real <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como singletones ----
+
+gen_real_2 <- gen_real |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
+
+# Se transpone el conjunto de datos ----
+
+gen_real_3 <- gen_real_2 |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-c(ID_2))
+
+# Se cambia los valores de los genotipos ----
+
+cod_geno_1 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0/0' ~ '0',
+      columna[[i]] == '0/1' ~ '1',
+      columna[[i]] == '1/0' ~ '1',
+      columna[[i]] == '1/1' ~ '2',
+      columna[[i]] == './.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+gen_real_4 <- cod_geno_1(gen_real_3)
+
+save(gen_real_4, file = 'single_tags/Datos/gen_Real_4.RData')
+```
+
+<!--
+NOTA: A continuación, de los genotipos a alta densidad (HD) imputados, se extraen solo los singletones. Luego se cambia la estructura de los datos, para que la identificación de los individuos quede en filas y la de los marcadores en columnas. Esto para cada grupo de validación.
+-->
+
+```{r}
+#| label: Conjuntos de datos de genotipos imputados solo con singletones por grupo de validación
+
+# La función a continuación permite cambiar la codificación de los genotipos ----
+
+cod_geno_2 <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+#######################
+# Grupo 1 de validación
+#######################
+
+# Se importa los nombres de los individuos del primer grupo de validación ----
+
+Grup1 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/Prec_1/Grup1.txt', col_names = FALSE, delim = ' ') |>
+  separate(
+    col = X1,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_1 <- data.table::fread(file = 'Imputacion/Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como singletones ----
+
+gen_imput_1b <- gen_imput_1 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_sing$X1) # Se extrae aquí los marcadores considerados singletones.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_1c <- gen_imput_1b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup1$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_1d <- cod_geno_2(gen_imput_1c)
+
+save(gen_imput_1d, file = 'single_tags/Datos/gen_Imput_HD_val1_4.RData')
+```
