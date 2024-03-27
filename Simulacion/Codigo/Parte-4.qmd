@@ -1,0 +1,381 @@
+---
+title: "Distribución de toros"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, pedantics)
+```
+
+<!--
+NOTA: A continuaición, se renumera el pedigrí.
+-->
+
+```{r}
+#| label: Importación y renumeración del pedigrí
+
+# Se importa los datos donde se extraera la genealogía (pedigrí) ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
+  rename(
+    id = Animal,
+    sire = Padre,
+    dam = Madre
+    ) |>
+  relocate(
+    sire,
+    .after = dam
+    ) |>
+  dplyr::select('id':'sire') |>
+  mutate(
+    sire = replace(sire, sire == 0, NA),
+    dam = replace(dam, dam == 0, NA)
+    ) # Se cambian los valores de 0 a NA, ya que así lo requiere los paquetes pedantics y nadiv.
+
+# Se usa la función fixPedigree() del paquete pedantics para reordenar los datos del pedigrí ----
+
+datPed_2 <- pedantics::fixPedigree(datPed) |> # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "datPed") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas.
+  mutate(id_renum = row_number()) |> # Se crea una columna denominada "id_renum", que corresponde a una nueva numeración de acuerdo al orden generado con la función fixPedigree().
+  dplyr::select(id, id_renum) # Se elogen estas dos columnas con el id original y el id renumerado (id_renum).
+
+# Se unen ambos conjuntos de datos (datPed y datPed_2) para obtener un conjunto de datos con individuos renumerados ----
+
+ID_Ped <- left_join(x = datPed, y = datPed_2, by = 'id') |>
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+# Se unen distintos conjuntos de datos para obtener un conjunto de datos con padres y madres renumerados ----
+
+ID_Mad <- datPed_2 |>
+  rename(
+    dam = id,
+    dam_renum = id_renum
+    ) |>
+  right_join(y = ID_Ped, by = 'dam')
+
+ID_Pad <- datPed_2 |>
+  rename(
+    sire = id,
+    sire_renum = id_renum
+    ) |>
+  right_join(y = ID_Mad, by = 'sire') |>
+  relocate(
+    id,
+    .before = sire
+    ) |>
+  relocate(
+    id_renum,
+    .after = id
+    ) # Este correspondería al pedigri con la ID del individuo, del padre y de la madre original y renumerada.
+```
+
+<!--
+NOTA: A continuación se observa la distribución de los toros y vacas en el pedigrí completo.
+-->
+
+```{r}
+#| label: Distribución del pedigrí 1
+
+# Distribución de los toros ----
+
+dis_Pad <- ID_Pad |>
+  filter(!is.na(sire)) |>
+  summarise(n = n(), .by = 'sire') |>
+  arrange(n)
+
+dim(dis_Pad) # En total hay 3400 toros.
+
+dis_Pad |>
+  slice_max(n) # El toro "R-EJ-12036" es el que tiene más crias con 811.
+
+dis_Pad |>
+  slice_min(n) # Hay 166 toros con una sola cria.
+
+dis_Pad_2 <- dis_Pad |>
+  summarise(Conteo = n(), .by = 'n') # Se realiza un conteo para ver, por ejemplo, cuantas toros tienen una cria.
+
+dis_Pad_3 <- dis_Pad_2 |>
+  arrange(desc(n))
+
+dis_Pad_2 |>
+  mutate(
+    Conteo = as.factor(Conteo)
+    ) |>
+  ggplot(aes(x = Conteo, y = n)) +
+  geom_point(colour = 'orange', fill = 'orange', alpha = 0.4, size = 1.4) +
+  scale_y_continuous(breaks = seq(min(dis_Pad_2$n), max(dis_Pad_2$n), by = 50)) +  # Establece el incremento deseado en el eje y
+  labs(x = 'Cantidad de toros', y = 'Cantidad de crías') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_toros.pdf', width = 40, height = 20, units = 'cm')
+
+dis_Pad_2 |>
+  ggplot(aes(x = n)) +
+  geom_density(colour = 'orange', fill = 'orange', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_toros_2.pdf', width = 40, height = 20, units = 'cm')
+
+# Se observan aquí los toros con más de 300 crías ----
+
+dis_Pad_4 <- dis_Pad |>
+  filter(n >= 300) |>
+  #pull(sire) |>
+  write_delim(file = 'Simulacion/Datos/Ped_completo.txt', col_names = TRUE, delim = ' ')
+
+# Distribución de las vacas ----
+
+dis_Mad <- ID_Pad |>
+  filter(!is.na(dam)) |>
+  summarise(n = n(), .by = 'dam') |>
+  arrange(n)
+
+dim(dis_Mad) # En total hay 74746 vacas.
+
+dis_Mad |>
+  slice_max(n) # La vaca "AG-94004" es la que tiene más crias con 21.
+
+dis_Mad |>
+  slice_min(n) # Hay 24233 vacas con una sola cria.
+
+dis_Mad_2 <- dis_Mad |>
+  summarise(Conteo = n(), .by = 'n') # Se realiza un conteo para ver, por ejemplo, cuantas vacas tienen una cria.
+
+dis_Mad_2 |>
+  ggplot(aes(x = n)) +
+  geom_density(colour = 'orange', fill = 'orange', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_vacas_2.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se genera a continuación un pedigrí con base en los fenotipos.
+-->
+
+```{r}
+#| label: Generación de pedigrí con base en información fenotípica
+
+# Se importa el conjuntos de datos de fenotipos ----
+
+datProd <- read_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ') # La segunda columna corresponde a la ID renumerada, que es la que se usara más adelante con el paquete "nadiv".
+
+# Se genera el pedigrí incluyendo indviduos fundadores ----
+
+ped <- ID_Pad |>
+  dplyr::select(id_renum, sire_renum, dam_renum) # De ID_Pad se extrae las columnas con ID del individuo, de la madre y del padre, todas ellas renumeradas.
+
+ped_2 <- nadiv::prepPed(pedigree = ped, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
+
+ped |> filter(sire_renum == 42507) # Al ver los primeros diez individuos en el objeto anterior (slice_head(ped_2, n = 10)), el "id_renum" 42507 tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 42507 aparece como padre, por lo que parece que es un individuo fundador.
+
+# Se genera el pedigrí con base en información fenotípica ----
+
+pedPrune <- nadiv::prunePed(pedigree = ped_2, phenotyped = datProd$X2) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
+
+pedPrune |> filter(sire_renum == 42507) # Se observa de nuevo el mismo individuo 42507 como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped_2" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
+```
+
+<!--
+NOTA: A continuación se observa la distribución de los toros y vacas en el pedigrí gerenado a partir de la información fenotípica.
+-->
+
+```{r}
+#| label: Distribución del pedigrí 2
+
+# Distribución de los toros ----
+
+dis_Pad_b <- pedPrune |>
+  filter(!is.na(sire_renum)) |>
+  summarise(n = n(), .by = 'sire_renum') |>
+  arrange(n)
+
+dim(dis_Pad_b) # En total hay 2763 toros.
+
+dis_Pad_b |>
+  slice_max(n) # El toro "EJ-12036" (con ID renumerada "224551") es el que tiene más crias con 491.
+
+dis_Pad_b |>
+  slice_min(n) # Hay 182 toros con una sola cria.
+
+dis_Pad_2_b <- dis_Pad_b |>
+  summarise(Conteo = n(), .by = 'n') # Se realiza un conteo para ver, por ejemplo, cuantas toros tienen una cria.
+
+dis_Pad_3_b <- dis_Pad_2_b |>
+  arrange(desc(n))
+
+dis_Pad_2_b |>
+  mutate(
+    Conteo = as.factor(Conteo)
+    ) |>
+  ggplot(aes(x = Conteo, y = n)) +
+  geom_point(colour = 'cyan', fill = 'cyan', alpha = 0.4, size = 1.4) +
+  scale_y_continuous(breaks = seq(min(dis_Pad_2$n), max(dis_Pad_2$n), by = 50)) + # Establece el incremento deseado en el eje y
+  labs(x = 'Cantidad de toros', y = 'Cantidad de crías') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_toros_3.pdf', width = 40, height = 20, units = 'cm')
+
+dis_Pad_2_b |>
+  ggplot(aes(x = n)) +
+  geom_density(colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_toros_4.pdf', width = 40, height = 20, units = 'cm')
+
+# Se observa en un mismo gráfico la distribución de los toros tanto en el pedigrí completo como en el generado a partir de los fenotipos ----
+
+dis_Pad_2 |>
+  ggplot() +
+  geom_density(aes(x = n), colour = 'orange', fill = 'orange', alpha = 0.2) +
+  geom_density(data = dis_Pad_2_b, aes(x = n), colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_toros_5.pdf', width = 40, height = 20, units = 'cm')
+
+# Se observan aquí los toros con más de 300 crías ----
+
+dis_Pad_4_b <- dis_Pad_b |>
+  filter(n >= 300) |> # Se observan aquí los toros con más de 300 crías.
+  mutate(sire_renum = as.integer(as.character(sire_renum)))
+
+dis_Pad_4_b <- ID_Pad |>
+  distinct(sire_renum, .keep_all = TRUE) |>
+  dplyr::select(sire, sire_renum) |>
+  left_join(x = dis_Pad_4_b, by = 'sire_renum') |>
+  dplyr::select(sire, n) |>
+  #pull(sire) |>
+  write_delim(file = 'Simulacion/Datos/Ped_datos.txt', col_names = TRUE, delim = ' ')
+
+# Distribución de las vacas ----
+
+dis_Mad_b <- pedPrune |>
+  filter(!is.na(dam_renum)) |>
+  summarise(n = n(), .by = 'dam_renum') |>
+  arrange(n)
+
+dim(dis_Mad_b) # En total hay 45263 vacas.
+
+dis_Mad_b |>
+  slice_max(n) # El toro "CA-85015" (con ID renumerada "63238") es el que tiene más crias con 491.
+
+dis_Mad_b |>
+  slice_min(n) # Hay 18432 vacas con una sola cria.
+
+dis_Mad_2_b <- dis_Mad_b |>
+  summarise(Conteo = n(), .by = 'n') # Se realiza un conteo para ver, por ejemplo, cuantas vacas tienen una cria.
+
+dis_Mad_2_b |>
+  ggplot(aes(x = n)) +
+  geom_density(colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_vacas_4.pdf', width = 40, height = 20, units = 'cm')
+
+# Se observa en un mismo gráfico la distribución de los toros tanto en el pedigrí completo como en el generado a partir de los fenotipos ----
+
+dis_Mad_2 |>
+  ggplot() +
+  geom_density(aes(x = n), colour = 'orange', fill = 'orange', alpha = 0.2) +
+  geom_density(data = dis_Mad_2_b, aes(x = n), colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  labs(x = 'Crías', y = 'Densidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold')
+    )
+
+ggsave('Simulacion/Imagenes/Dist_vacas_5.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: 
+-->
+
+```{r}
+#| label: Hola
+
+# Se importa los datos de genotipos ----
+
+dat_VCF <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+# Se transpone y se asigna un nombre a las columnas ----
+
+dat_VCF_b <- dat_VCF |>
+  dplyr::select(-c(1:2, 4:9)) |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (IID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into = c('ID_ofi', 'IID_2'),
+    sep = '_'
+    ) |>
+  dplyr::select(ID_ofi)
+
+# Se importa nuevamente los datos en el que se extrajo la genealogía (pedigrí) ----
+
+datPed <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_select = c(1, 6)) |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  rename(
+    id = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(x = ID_Pad, by = 'id') # Se unen los objetos con el fin de obtener un conjunto de datos con las tres identificaciones: id | id_renum | ID_ofi.
+
+datPed |>
+  summarise(n = n(), .by = id) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+inner_join(x = dat_VCF_b, y = datPed, by = 'ID_ofi') |> # Se observa aquí que individuos en el pedigrí estan genotipados. De 284 individuos en total, hay 278 indivdiuos tanto en el pedigrí como genotipados.
+  dplyr::select(ID_ofi, id) |>
+  write_delim(file = 'Simulacion/Datos/Ped_geno.txt', col_names = TRUE, delim = ' ')
+
+anti_join(x = dat_VCF_b, y = datPed, by = 'ID_ofi') # Aquí se observa los seis individuos que estan genotipados pero no estan en el pedigrí.
+```

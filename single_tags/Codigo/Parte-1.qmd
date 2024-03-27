@@ -533,7 +533,7 @@ NOTA: A continuación, se observa la distribución de los tags a lo largo del ge
 
 # Se carga el software PLINK----
 
-setwd('/home/leo/Escritorio/Doc_p1/Plink/Datos/')
+setwd('/home/leonardo/Escritorio/Doc_p1/Plink/Datos/')
 
 # Función que permite ejecutar PLINK dentro de R ----
 plink <- function(PLINKopciones = '') system(paste('./plink', PLINKopciones))
@@ -595,13 +595,14 @@ ggplot() +
     aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion, color = Imputación),
     linewidth = 0.4, alpha = 1.4
     ) +
-  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'orange')) +
+  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'white')) +
   #ggforce::facet_zoom(x = 8, y = 113256327) +
   ggrepel::geom_label_repel(data = dat_tags |> filter(ID_tags == 'BovineHD2900005910'), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 1.4) +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)') +
+  labs(y = 'Posición (en pares de bases)', title = 'Aleatorio') +
   theme_bw() +
   theme(
+    plot.title = element_text(size = 12),
     axis.text = element_text(size = 10),
     axis.title = element_text(size = 12, face = 'bold'),
     legend.text = element_text(size = 10),
@@ -609,5 +610,5 @@ ggplot() +
     plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
     )
 
-ggsave('../../single_tags/Imagenes/dis_tags.pdf', width = 40, height = 20, units = 'cm')
+ggsave('../../single_tags/Imagenes/dis_tags_mod.pdf', width = 40, height = 20, units = 'cm')
 ```

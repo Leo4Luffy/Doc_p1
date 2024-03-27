@@ -1,0 +1,280 @@
+---
+title: "Parte 2: Generación de archivos de genotipos, de mapas, de pedigrí y de fenotipos para probar el programa de simulación modificado"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, pedantics, conflicted) # El paquete conflicted permite dar prioridad a algunas funciones en caso de que se genere conflictos entre funciones con un mismo nombre en distintos paquetes. Estos conflictos, si se generan, se pueden ver con la función conflict_scout().
+conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
+# Error:
+# ! [conflicted] filter found in 2 packages.
+# Either pick the one you want with `::`:
+# dplyr::filter
+# stats::filter
+conflicts_prefer(dplyr::select)
+```
+
+<!--
+NOTA: A continuación, se generan los datos de genotipos en los cromosomas 1 al 29, de acuerdo a como lo requiere el programa de simulación de Varona et al. modificado (según la salida del programa FImpute).
+-->
+
+```{r}
+#| label: Generación de datos de genotipos
+
+# Se crea una función que permitirá clasificar los habplotipos como lo requiere el programa de simulación ----
+
+cod_haplo <- function(columna) { # Esta función permite cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute (0: A1A1 | 1: heterocigoto con fase desconocida | 2: A2A2 | 3: A1A2 | 4:A2A1... el primer alelo es el paterno y el segundo es el materno).
+  columna <- case_when(
+    columna == '0|0' ~ '0',
+    columna == '0|1' ~ '3',
+    columna == '1|0' ~ '4',
+    columna == '1|1' ~ '2'
+    )
+  return(columna)
+  }
+
+# Se importa los datos con genotipos imputados en alta densidad usando Beagle v. 5.4 ----
+
+datos_vcf <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+# Se realiza un conteo de los marcadores en cada uno de los cromosomas ----
+
+Cromo_1_29 <- datos_vcf |>
+  #filter(`#CHROM` %in% c(1, 2)) |> # En caso de que se quiera filtrar alguún cromosoma. En este caso, los cromosomas 1 y 2.
+  select(-c(2, 4:9))
+
+Cromo_1_29 |> count(`#CHROM`) # Hay, por ejemplo, 45613 marcadores en el cromosoma 1 y 39238 marcadores en el cromosoma 2.
+
+set.seed(1234) # Se coloca una semilla para que el número de marcadores elegidos al azar sea el mismo en caso de que se vuelva a repetir.
+
+Cromo_1_29_aleatorio <- datos_vcf |>
+  #filter(`#CHROM` %in% c(1, 2)) |> # En caso de que se quiera filtrar alguún cromosoma. En este caso, los cromosomas 1 y 2.
+  select(-c(2, 4:9)) |>
+  sample_n(size = 50000, replace = FALSE) |> # Elijo al azar 50000 marcadores en todos los cromosomas.
+  arrange(`#CHROM`) # Se ordena ya que al parecer cuando elijo al azar se desordena.
+
+Cromo_1_29_aleatorio |> count(`#CHROM`) # Por azar, en el cromosoma 1 se eligieron 3195 marcadores y en el cromosoma 2 se eligieron 2722 marcadores.
+
+Cromo_1_29_aleatorio |> slice(1:3196) |> distinct(`#CHROM`) # Se extraen los 3195 marcadores del cromosoma 1 y solo 1 marcador del cromosoma 2 para comprobar de que el arrange si permitio colocar en orden los cromosomas.
+
+Cromo_1_29_aleatorio |> select(1:4) |> slice_head(n = 10)
+
+# Se generan los datos de genotipos como lo requiere el programa de simulación de Varona et al. modificado ----
+
+Cromo_1_29_aleatorio_b <- Cromo_1_29_aleatorio |>
+  select(-1) |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (IID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  as_tibble()
+
+Cromo_1_29_aleatorio_b |> select(1:4) |> slice_head(n = 10) # Se observa una parte de los datos para verificar si si se logro transponer.
+
+Cromo_1_29_aleatorio_c <- Cromo_1_29_aleatorio_b |>
+  select(-1) |> # Se quita la columna que corresponde a la identificación de los individuos para que quede solo marcadores.
+  mutate_all(~map_chr(.x, cod_haplo)) # Se usa la función para cambiar los genotipos en fase del Beagle al código de haplotipos de la salida de FImpute.
+
+Cromo_1_29_aleatorio_c |> select(1:4) |> slice_head(n = 10) # Se observa para verificar que el cambio se haya hecho bien.
+
+save(Cromo_1_29_aleatorio_c, file = 'Simulacion/Datos/Prueba/Cromo_1_29_aleatorio.RData') # Se guarda como *.RData
+
+# Se importa el archivo *.fam para obtener la ID de los individuos ----
+
+datos_fam <- read_table(file = 'Imp_HD/Datos/Beagle/Precision_origen/Paso_2.fam', col_names = FALSE) %>%
+    select(X2)
+
+# Se carga el archivo *.RData con los genotipos editados ----
+
+load(file = 'Simulacion/Datos/Prueba/Cromo_1_29_aleatorio.RData')
+
+bind_cols(datos_fam, Cromo_1_29_aleatorio_c) |>
+  unite(
+    col = 'Geno',
+    2:50001,
+    sep = ''
+    ) |>
+  select(-X2) |>
+  write_delim(file = 'Simulacion/Datos/Prueba/genotypes1_29', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación se generan los datos de mapa para cada marcador en los cromosomas 1 y 2.
+-->
+
+```{r}
+#| label: Generación de datos de mapa de genotipos
+
+# Se obtiene el nombre de los marcadores seleccionados al azar ----
+
+marcadores <- Cromo_1_29_aleatorio |>
+  pull(ID)
+
+# Se obtiene el mapa de los marcadores seleccionados al azar ----
+
+datos_vcf |> 
+  filter(ID %in% marcadores) |>
+  select(`#CHROM`, POS) |>
+  write_delim(file = 'Simulacion/Datos/Prueba/map_chr01_29.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación, de la genealogía se renumera la ID de los individuos, padres y madres, con el fin de que queden como enteros.
+-->
+
+```{r}
+#| label: Renumeración del pedigrí
+
+# Se importa el conjunto de datos de genealogía ----
+
+Ped <- read_delim(file = 'Simulacion/Datos/datPuros/GenealoDstt_fict_todas.txt', col_names = FALSE, delim = ' ') %>%
+  rename( # Se coloca como "id", "sire" y "dam" ya que así lo requiere el paquete pedantics.
+    id = X1,
+    sire = X2,
+    dam = X3
+    ) %>%
+  relocate(
+    dam,
+    .before = sire
+    ) %>% # Se cambia la posición de estas columnas, ya que así lo requiere el paquete pedantics.
+  mutate(
+    sire = replace(sire, sire == 0, NA),
+    dam = replace(dam, dam == 0, NA)
+    ) # Se cambian los valores de 0 a NA, ya que así lo requiere el paquete pedantics.
+
+# Se usa la función fixPedigree() del paquete pedantics para reordenar los datos del pedigrí ----
+
+id_renum <- fixPedigree(Ped) |> # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "Ped") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas.
+  mutate(id_renum = row_number()) |> # Se crea una columna denominada "Animal", que corresponde a una nueva numeración de acuerdo al orden generado con la función fixPedigree().
+  dplyr::select(id, id_renum) # Se eligen estas dos columnas con el id original y el id renumerado (id_renum).
+
+# Se unen ambos conjuntos de datos (Ped y id_renum) para obtener un conjunto de datos con individuos renumerados ----
+
+Ped_2 <- left_join(x = Ped, y = id_renum, by = 'id') |>
+  relocate(
+    id_renum,
+    .after = id
+    )
+
+Ped_2 |> group_by(id_renum) |> dplyr::filter(n() > 1) # Se verifica y no hay identificaciones renumeradas "id_renum" repetidas.
+
+# Se renumeran también las madres (dam_renum) ----
+
+dam_renum <- id_renum |>
+  rename(
+    dam = id,
+    dam_renum = id_renum
+    ) 
+
+Ped_3 <- Ped_2 |>
+  right_join(x = dam_renum, by = 'dam')
+
+Ped_3 |>
+  distinct(dam_renum) |>
+  filter(!is.na(dam_renum)) |>
+  count() # Hay 34436 madres (vacas).
+
+Ped_3 |> filter(!is.na(dam_renum))|> summarise(n_hijos = n(), .by = dam_renum) |> arrange(n_hijos) |> tail() # La madre "8927" es la de mayor cantidad de crías con 16.
+
+Ped |> filter(dam == 'CA-85015') # Se comprueba, y la madre "8927" (CA-85015 su id original) si tiene 16 crías.
+
+# Se renumeran también los padres (sire_renum) ----
+
+sire_renum <- id_renum |>
+  rename(
+    sire = id,
+    sire_renum = id_renum
+    ) 
+
+Ped_4 <- Ped_3 |>
+  right_join(x = sire_renum, by = 'sire')
+
+Ped_4 |> filter(!is.na(sire_renum))|> summarise(n_hijos = n(), .by = sire_renum) |> arrange(n_hijos) |> tail() # El padre "9051" es el de mayor cantidad de crías con 355.
+
+Ped_4 |> filter(sire_renum == '9051') |> pull(sire) # Se comprueba, y el madre "9051" (R-83016 su id original) se repite 355 por lo que si tiene este mismo número de crías.
+
+# Se forman la columna de categorías ----
+
+Ped_renum_1 <- Ped_4 |>
+  select(id_renum, sire_renum, dam_renum) |>
+  arrange(id_renum) |>
+  mutate(
+    Categoria = case_when(
+      is.na(dam_renum) & is.na(sire_renum) ~ 0
+      )
+    ) # Si los individuos les falta la id del padre y de la madre se les coloca categoría igual a 0.
+
+set.seed(123)  # Se coloca la semilla para garantizar la reproducibilidad de los resultados
+
+Ped_renum_2 <- Ped_renum_1 |>
+  filter(is.na(Categoria)) |>
+  mutate(
+    Categoria = sample(1:4, size = n(), replace = TRUE)
+    ) # Se genera de forma aleatoria los números del 1 al 4 con el mismo número de filas.
+
+Ped_renum_3 <- Ped_renum_1 |>
+  filter(Categoria == 0) |>
+  bind_rows(Ped_renum_2) # Se unen los objetos para generar el conjunto de datos con las distintas categrías.
+
+Ped_renum_3 |> count(Categoria) # Se mira el n por categoría y su suma (5312+21676+21740+21883+21566) da igual a 92177, que es la misma dimensión del pedigrí original (dim(Ped)).
+
+# Se exporta el pedigrí ---
+
+Ped_renum_3 |>
+  mutate(
+    sire_renum = replace(sire_renum, is.na(sire_renum), 0),
+    dam_renum = replace(dam_renum, is.na(dam_renum), 0)
+    ) |> # Se cambian los valores de NA a 0.
+  write_delim(file = 'Simulacion/Datos/Prueba/PedDstt.txt', col_names = FALSE, delim = ' ')
+```
+
+<!--
+NOTA: A continuación, se renumera la ID de los individuos que estan en los datos de producción para que queden con la misma ID entera de la genealogía.
+-->
+
+```{r}
+#| label: Renumeración de los datos productivos
+
+# Se importa el conjunto de datos de producción y se corrige la ID de los individuos genotipados ----
+
+datProd <- read_delim(file = 'Simulacion/Datos/datPuros/DatosDestete_FICT.txt', col_names = FALSE, delim = ' ') 
+
+datProd |>
+  rename(id = X6) |>
+  left_join(y = Ped_4, by = 'id') |>
+  rename(
+    Pdtte = X1,
+    Edad = X2,
+    Sexo = X3,
+    Edad_madre = X4,
+    Grup_com = X5
+    ) |> # El archivo de datos debe tener como orden primero los efectos fijos y después los aleatorios (animal y permanente si los tuviera). 
+  dplyr::select(Edad, Sexo, Edad_madre, Grup_com, id_renum, Pdtte) |>
+  write_delim(file = 'Simulacion/Datos/Prueba/ProdDstt.txt', col_names = FALSE, delim = ' ')
+
+# Se cuenta el número de niveles de cada columna ----
+
+datProd |>
+  rename(id = X6) |>
+  left_join(y = Ped_4, by = 'id') |>
+  rename(
+    Pdtte = X1,
+    Edad = X2,
+    Sexo = X3,
+    Edad_madre = X4,
+    Grup_com = X5
+    ) |>
+  dplyr::select(Edad, Sexo, Edad_madre, Grup_com, id_renum, Pdtte) |>
+  summarise_all(~n_distinct(.)) # Se cuenta el número de niveles de cada columnas: el peso al destete tiene 418 niveles, la edad en que el individuo se desteto tiene 113 niveles, el sexo de los individuos tiene 2 niveles, la edad de la madre al nacimiento de su hij@ (clasificado en categorías) tiene 6 niveles, y el grupo de comparación tiene 5232 niveles.
+```

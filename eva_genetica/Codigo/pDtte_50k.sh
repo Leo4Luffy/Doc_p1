@@ -2,7 +2,7 @@
 
 ####
 # Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el caracter peso al destete.
-# Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González.
+# Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González; Marisol Londoño Gil.
 # Requerimientos: renumf90, blupf90+.
 ####
 
@@ -49,17 +49,30 @@ pedigree
 0.1   1.0
 (CO)VARIANCES_MPE
 1.0
-OPTION method VCE
-OPTION sol se
-OPTION callrate 0.00
-OPTION callrateAnim 0.00
-OPTION minfreq 0.00
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0
 OPTION remove_all_missing" > renum.par
 
 echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
+
+sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+ 
+echo "OPTION SNP_file ../genoPdtte_2.txt
+OPTION saveCleanSNPs
+OPTION excludeSample 2156
+OPTION createGInverse 0
+OPTION createA22Inverse 0
+OPTION createGimA22i 0" >> renf90.par
+
+echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2156 mediante la opción "excludeSample".
+
+sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+
+echo "OPTION SNP_file ../genoPdtte_2.txt_clean
+OPTION method VCE
+OPTION sol se
+OPTION no_quality_control
+OPTION verify_parentage 3
+OPTION store_accuracy 5
+OPTION acctype 1.0" >> renf90.par
 
 echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
 
@@ -108,17 +121,30 @@ pedigree
 0.1   1.0
 (CO)VARIANCES_MPE
 1.0
-OPTION method VCE
-OPTION sol se
-OPTION callrate 0.00
-OPTION callrateAnim 0.00
-OPTION minfreq 0.00
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0
 OPTION remove_all_missing" > renum.par
 
 echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
+
+sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+ 
+echo "OPTION SNP_file ../genoPdtte_2.txt
+OPTION saveCleanSNPs
+OPTION createGInverse 0
+OPTION createA22Inverse 0
+OPTION createGimA22i 0" >> renf90.par
+
+echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2156 mediante la opción "excludeSample" a continuación.
+
+sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+
+echo "OPTION SNP_file ../genoPdtte_2.txt_clean
+OPTION excludeSample 2156
+OPTION method VCE
+OPTION sol se
+OPTION no_quality_control
+OPTION verify_parentage 3
+OPTION store_accuracy 5
+OPTION acctype 1.0" >> renf90.par
 
 echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
 

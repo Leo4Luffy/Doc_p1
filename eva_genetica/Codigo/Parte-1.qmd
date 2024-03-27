@@ -120,24 +120,6 @@ dat_EPP_IEP %>%
 # 5. Efecto ambiental permanente del toro (ID_toro_EPP e ID_toro_IEP): Este representa la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor.
 #
 # 6. Edad del toro (Edad_toro_P1 e Edad_toro_P2): Este indica la edad del toro al nacimiento de la descendencia. Se clasificó en 5 grupos (< de 3 años, >= a 3 años y < a 4 años, >= a 4 años y < a 5 años, >= a 5 años y < a 6 años, y > a 6 años). Edad_toro_P1 indica la edad del toro en el primer parto y Edad_toro_P2 en el segundo parto.
-
-# Se importa los datos donde se extraera la genealogía (pedigrí) ----
-
-datPed <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
-  rename(
-    id = Animal,
-    sire = Padre,
-    dam = Madre,
-    Sexo = sexo
-    ) |>
-  relocate(
-    sire,
-    .after = dam
-    ) |>
-  mutate(
-    sire = replace(sire, sire == 0, NA),
-    dam = replace(dam, dam == 0, NA)
-    )
 ```
 
 <!--
@@ -149,54 +131,82 @@ NOTA: A continuación, usando el objeto anterior "datPed", se renumera la ID de 
 
 # Se importa el conjunto de datos de genealogía ----
 
-datPed_2 <- datPed |>
-  dplyr::select('id':'sire') |>
+# Se importa los datos donde se extraera la genealogía (pedigrí) ----
+
+datPed <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) |>
+  rename(
+    id = Animal,
+    sire = Padre,
+    dam = Madre
+    ) |>
+  relocate(
+    sire,
+    .after = dam
+    ) |>
   mutate(
     sire = replace(sire, sire == 0, NA),
     dam = replace(dam, dam == 0, NA)
-    ) # Se cambian los valores de 0 a NA, ya que así lo requiere el paquete pedantics.
+    ) |>
+  select('id':'sire')
 
 # Se usa la función fixPedigree() del paquete pedantics para reordenar los datos del pedigrí ----
 
-datPed_3 <- pedantics::fixPedigree(datPed_2) |> # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "datPed_2") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas.
+id_renum <- pedantics::fixPedigree(datPed) |> # Con la función fixPedigree() se retorna un pedigrí, en el que se reordenan los datos iniciando con aquellos individuos que no tienen información de progenitores. En caso de que en la primera columna aparezca mayor número de individuos, es que en el pedigrí original (denominado anteriormente como "datPed_2") habian padres (sire) y madres (dam) que no aparecian como hijos o hijas.
   mutate(id_renum = row_number()) |> # Se crea una columna denominada "Animal", que corresponde a una nueva numeración de acuerdo al orden generado con la función fixPedigree().
   dplyr::select(id, id_renum) # Se elogen estas dos columnas con el id original y el id renumerado (id_renum).
 
-# Se unen ambos conjuntos de datos (datPed_2 y datPed_3) para obtener un conjunto de datos con individuos renumerados ----
+# Se unen ambos conjuntos de datos (datPed y id_renum) para obtener un conjunto de datos con individuos renumerados ----
 
-ID_Ped <- left_join(x = datPed_2, y = datPed_3, by = 'id') |>
+datPed_2 <- left_join(x = datPed, y = id_renum, by = 'id') |>
   relocate(
     id_renum,
     .after = id
     )
 
-# Se unen distintos conjuntos de datos para obtener un conjunto de datos con padres y madres renumerados ----
+datPed_2 |> group_by(id_renum) |> dplyr::filter(n() > 1) # Se verifica y no hay identificaciones renumeradas "id_renum" repetidas.
 
-ID_Mad <- datPed_3 |>
+# Se renumeran también las madres (dam_renum) ----
+
+dam_renum <- id_renum |>
   rename(
     dam = id,
     dam_renum = id_renum
-    ) |>
-  right_join(y = ID_Ped, by = 'dam')
+    ) 
 
-ID_Pad <- datPed_3 |>
+datPed_3 <- datPed_2 |>
+  right_join(x = dam_renum, by = 'dam')
+
+datPed_3 |>
+  distinct(dam_renum) |>
+  filter(!is.na(dam_renum)) |>
+  count() # Hay 34436 madres (vacas).
+
+datPed_3 |> filter(!is.na(dam_renum))|> summarise(n_hijos = n(), .by = dam_renum) |> arrange(n_hijos) |> slice_tail(n = 4) # La madre "109253" es la de mayor cantidad de crías con 21.
+
+datPed_3 |> filter(dam_renum == 109253) |> select(dam) |> distinct() # Se mira la id original de la madre "109253".
+
+datPed |> filter(dam == 'AG-94004') # Se comprueba, y la madre "109253" (AG-94004 su id original) si tiene 16 crías.
+
+# Se renumeran también los padres (sire_renum) ----
+
+sire_renum <- id_renum |>
   rename(
     sire = id,
     sire_renum = id_renum
-    ) |>
-  right_join(y = ID_Mad, by = 'sire') |>
-  relocate(
-    id,
-    .before = sire
-    ) |>
-  relocate(
-    id_renum,
-    .after = id
-    )
+    ) 
+
+datPed_4 <- datPed_3 |>
+  right_join(x = sire_renum, by = 'sire')
+
+datPed_4 |> filter(!is.na(sire_renum))|> summarise(n_hijos = n(), .by = sire_renum) |> arrange(n_hijos) |> slice_tail(n = 4) # El padre "224551" es el de mayor cantidad de crías con 811.
+
+datPed_4 |> filter(sire_renum == 224551) |> select(sire) |> distinct() # Se mira la id original del padre "109253".
+
+datPed |> filter(sire == 'EJ-12036') # Se comprueba, y el padre "224551" (EJ-12036 su id original) se repite 811 por lo que si tiene este mismo número de crías.
 
 # Se seleccionan las columnas que corresponden a la ID del individuos, del madre y del padre ----
 
-datPed_4 <- ID_Pad |>
+datPed_5 <- datPed_4 |>
   dplyr::select(id, dam, sire) # Este conjunto de datos se usara más adelante para "prunear" o podar y generar un pedigrí basado en individuos con fenotipos.
 ```
 
@@ -207,29 +217,24 @@ NOTA: Se unen los conjuntos de datos de caracteres anteriormente importados.
 ```{r}
 #| label: Unión de conjuntos de datos
 
-# Se unen los conjuntos de datos de todos los caracteres ----
+# Se unen los conjuntos de datos de peso al destete y de edad al primer parto e intervalo primer y segundo parto ----
 
-datProd <- full_join(x = dat_pc305, y = dat_pdtte, by = 'ID') |>
-  full_join(y = dat_prc, by = 'ID') |>
-  full_join(y = dat_EPP_IEP, by = 'ID')
+datProd <- full_join(x = dat_EPP_IEP, y = dat_pdtte, by = 'ID')
 
 datProd |>
   summarise(n = n(), .by = ID) |>
   filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
 
-# Se une el objeto anterior (ID_Pad) con el objeto "datProd" ----
+# Se une el objeto anterior (datPed_5) con el objeto "datProd" ----
 
-datProd_2 <- ID_Pad |>
-  dplyr::select(id, id_renum) |>
+datProd_2 <- datPed_5 |>
+  dplyr::select(id) |>
   rename(ID = id) |>
   inner_join(x = datProd, by = 'ID') |>
   relocate(
     ID,
-    .before = P365
-    ) |>
-  relocate(
-    id_renum,
-    .after = ID)
+    .before = EPP
+    )
 
 datProd_2 |>
   summarise(n = n(), .by = ID) |>
@@ -245,17 +250,17 @@ NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
 
 # Se genera el pedigrí incluyendo indviduos fundadores ----
 
-ped <- nadiv::prepPed(pedigree = datPed_4, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
+ped <- nadiv::prepPed(pedigree = datPed_5, check = TRUE) # En "pedigree" se indica un objeto en el cual las primeras tres columnas deben corresponder a ID del individuo, de la madre y del padre, en este orden (Los padres faltantes (por ejemplo, población base) deben indicarse con NA, 0 o *). En "check" se indica TRUE si se quisiera realizar controles sobre la validez de la estructura genealógica (intenta identificar cualquier problema relacionado con la notación de los valores faltantes y la validez del pedigrí básico para su posterior procesamiento). En general, la función prepPed() toma un objeto con las primeras tres columnas con una estructura de pedigrí (ID | ID_m | ID_p), agrega los fundadores que faltan y luego ordena el pedigrí.
 
 slice_head(ped, n = 10)
 
-datPed_4 |> filter(sire == '5S-88337C') # Al ver los primeros diez individuos en el objeto anterior, el "id" 5S-88337C tiene como "dam_renum" y "sire_renum" NA. Luego, se puede ver que el individuo 5S-88337C aparece como padre, por lo que parece que es un individuo fundador.
+datPed_5 |> filter(dam == '1B-10A') # Al ver los primeros diez individuos en el objeto anterior, el "id" 1B-10A tiene como "dam" y "sire" NA. Luego, se puede ver que el individuo 1B-10A aparece como madre, por lo que parece que es un individuo fundador.
 
 # Se genera el pedigrí con base en información fenotípica ----
 
 pedPrune <- nadiv::prunePed(pedigree = ped, phenotyped = datProd_2$ID) # La función prunePed() elimina (o poda) a los individuos que no son ancestros de individuos fenotipados. En "pedigree" se indica un objeto donde las primeras tres columnas corresponde a ID | ID_m | ID_p, y en "phenotyped" un vector donde se indique que individuos del pedigrí tiene fenotipo. Esta función se creo debido a que según sus desarrolladores "a menudo, los modelos de efectos mixtos se ejecutan mucho más rápido cuando se elimina información superflua antes de ejecutar el modelo. Esto es particularmente cierto cuando se reduce el número de efectos aleatorios asociados con una matriz de relaciones construida a partir de un pedigrí".
 
-pedPrune |> filter(sire == '5S-88337C') # Se observa de nuevo el mismo individuo 5S-88337C como padre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
+pedPrune |> filter(dam == '1B-10A') # Se observa de nuevo el mismo individuo 1B-10A como madre en el objeto "pedPrune". Al comparar el tamaño de los objetos "ped" y "pedPrune" se observa mucho menos individuos en "predPrune" debido a que en este último se obtuvo un pedigrí con sólo los individuos que tenian información fenotípica.
 ```
 
 <!--
