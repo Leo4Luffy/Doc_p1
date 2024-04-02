@@ -365,3 +365,33 @@ NOTA: Para realizar la imputación a media densidad con Beagle v. 5.4, los 2970 
 
 plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_16 --recode vcf --alleleACGT --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_3 --const-fid')
 ```
+
+<!--
+NOTA: Se comprueba a continuación que los individuos genotipados en densidad media (50k) y que serán imputados a alta densidad (HD) y no aparezcan en este último antes de la unión de ambos genotipados (mediante la opción plink "bmerge"), tengan marcadores en missing. Lo mismo para los individuos genotipados en HD y que serán imputados a 50k.
+-->
+
+```{r}
+#| label: Verificación de imputación
+
+# Se importa a continuación los marcadores en común entre el genotipado en densidad media (50k) y alta (HD) ----
+
+nomb_marc_comun <- read_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE)
+
+# Se importa el archivo en formato VCF que se uso para imputar a 50k ----
+
+imp_50k <- data.table::fread(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |>
+  select(-c(1:2, 4:9))
+
+imp_50k |> select(1:4) |> slice_head(n = 12)
+
+imp_50k |> select('ID', 'ES000803657207_ES000803657207', 'ES000807204804_ES000807204804', 'ES021202235562_ES021202235562', 'ESCC0299AG_ESCC0299AG') |> filter(!ID %in% nomb_marc_comun$X2) # Se observan estos cuatro individuos. Los primeros dos individuos no tienen genotipos en 50k, por lo cual al filtrar los marcadores en común entre 50k y HD, dichos marcadores aparecen como missing. Contrario a los últimos dos individuos.
+
+# Se importa el archivo en formato VCF que se uso para imputar a HD ----
+
+imp_HD <- data.table::fread(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |>
+  select(-c(1:2, 4:9))
+
+imp_HD |> select(1:4) |> slice_head(n = 12)
+
+imp_HD |> select('ID', 'ES000803657207_ES000803657207', 'ES000807204804_ES000807204804', 'ES000702712752_ES000702712752', 'ES000801569724_ES000801569724') |> filter(!ID %in% nomb_marc_comun$X2) # Se observan estos cuatro individuos. Los primeros dos individuos, contrario a lo visto en 50k, si tienen genotipos en HD, por lo cual al filtrar los marcadores en común entre 50k y HD, esta vez dichos marcadores no aparecen como missing. Contrario a los últimos dos individuos que si estan genotipados a 50k pero no en HD, por lo que dichos marcadores aparecen como missing.
+```

@@ -1,0 +1,141 @@
+---
+title: "Parte 7: Comparación de la frecuencia del alelo menor (MAF) entre marcadores genotipados e imputados en HD y marcadores genotipados en HD pero no imputados"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, patchwork)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('Plink/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+# Función que permite ejecutar PLINK2 dentro de R:
+plink2 <- function(PLINKopciones = '') system(paste('Plink/plink2', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: A continuación se obtiene, con ayuda de plink y plink2, las frecuencias (MAF) de los marcadores genotipados e imputados en alta densidad (HD), y de los marcadores genotipados en HD pero no imputados.
+-->
+
+```{r}
+#| label: MAF de marcadores no imputados vs imputados
+ 
+###########
+# Imputados
+###########
+
+# Se importa el archivo vcf luego de la imputación con Beagle v. 5.4 y se extrae las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT) ----
+
+vcf_data <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+vcf_data |>
+  select(ID, ALT) |>
+  write_delim(file = 'single_tags/Datos/aleloALT.txt', col_names = FALSE, delim = ' ')
+
+# Usando PLINK, se pasa el archivo VCF anterior a datos PLINK binarios (.bed, .fam y .bim) ----
+
+plink('--cow --allow-extra-chr --vcf  Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf --make-bed --out single_tags/Datos/Paso_3')
+
+# Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo, el cual se encuentra en el archivo /aleloALT.txt anteriormente exportado ----
+
+plink2('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_3 --alt1-allele force single_tags/Datos/aleloALT.txt --make-bed --out single_tags/Datos/Paso_4')
+
+# NOTA: En PLINK, los genotipos homocigotos para el alelo 1 se representan como "A/A", los genotipos heterocigotos se representan como "A/B" y los genotipos homocigotos para el alelo 2 se representan como "B/B". En el caso de genotipos codificados como números, PLINK utiliza los siguientes códigos:
+#
+# Homocigoto para el alelo 1: 0
+# Heterocigoto: 1
+# Homocigoto para el alelo 2: 2
+
+# A continuación se obtiene la distribución y fercuencia de los marcadores por cromosoma ----
+
+plink('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_4 --freq --out single_tags/Datos/Paso_5') # Este análisis proporcionará información sobre cómo están distribuidos los marcadores en términos de frecuencias alélicas por cromosoma.
+
+# ----
+
+frq_1 <- read_table(file = 'single_tags/Datos/Paso_5.frq', col_names = TRUE) |>
+  mutate(Imputación = 'Después') |>
+  #rename(MAF_despues = MAF) |>
+  select(CHR, SNP, MAF, Imputación)
+
+##############
+# No imputados
+##############
+
+# Se importa el archivo vcf luego de la imputación con Beagle v. 5.4 y se extrae las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT) ----
+
+vcf_data_2 <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+vcf_data |>
+  select(ID, ALT) |>
+  write_delim(file = 'single_tags/Datos/aleloALT_2.txt', col_names = FALSE, delim = ' ')
+
+# Usando PLINK, se pasa el archivo VCF anterior a datos PLINK binarios (.bed, .fam y .bim) ----
+
+plink('--cow --allow-extra-chr --vcf  Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf --make-bed --out single_tags/Datos/Paso_6')
+
+# Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo, el cual se encuentra en el archivo /aleloALT.txt anteriormente exportado ----
+
+plink2('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_6 --alt1-allele force single_tags/Datos/aleloALT.txt --make-bed --out single_tags/Datos/Paso_7')
+
+# A continuación se obtiene la distribución y fercuencia de los marcadores por cromosoma ----
+
+plink('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_7 --freq --out single_tags/Datos/Paso_8')
+
+frq_2 <- read_table(file = 'single_tags/Datos/Paso_8.frq', col_names = TRUE) |>
+  mutate(Imputación = 'Antes') |>
+  #rename(MAF_antes = MAF) |>
+  select(CHR, SNP, MAF, Imputación)
+
+freq <- bind_rows(frq_1, frq_2) |>
+  arrange(SNP)
+
+# Se realiza a continuación un gráfico para comparar la frecuencia del alelo menor (MAF) antes y después de la imputación ----
+
+# Se crea una lista para almacenar los gráficos de cada cromosoma:
+cromosoma_plots <- list()
+
+# Se itera sobre los cromosomas del 1 al 29:
+for (i in 1:29) {
+  cromosoma_plots[[i]] <- freq %>%
+    filter(CHR == i) %>%
+    ggplot(aes(x = Imputación, y = MAF, fill = Imputación, colour = Imputación)) +
+    geom_boxplot(alpha = 0.2) +
+    stat_summary(fun.y = mean, geom = 'point', shape = 21, size = 4) +
+    labs(title = paste('Cromosoma', i)) +
+    scale_color_manual(values = c('orange', 'cyan')) +
+    scale_fill_manual(values = c('orange', 'cyan')) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 12, face = 'bold'),
+      axis.text = element_text(size = 10),
+      axis.title = element_text(size = 12, face = 'bold'),
+      legend.position = 'none'
+      )
+    }
+
+# Se combinan todos los gráficos en una sola cuadrícula usando el paquete "patchwork":
+multiplot <- cromosoma_plots[[1]]
+for (i in 2:length(cromosoma_plots)) {
+  multiplot <- multiplot + cromosoma_plots[[i]]
+  }
+
+ggsave('single_tags/Imagenes/MAF.pdf', width = 40, height = 20, units = 'cm')
+```

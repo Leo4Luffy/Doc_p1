@@ -102,7 +102,7 @@ bimMar <- read_table(file = 'datQC/Paso_8.bim', col_names = FALSE) %>%
    ) %>% # Se importa el archivo "Paso_1.bim" donde se encuentra la posición del marcador en el cromosoma.
    select(SNP, BPP)
 
-distMar <- read_table(file = '../../Imputacion/Beagle/Datos/Precision/Paso_3.frq', col_names = TRUE) %>% # Se importa el archivo "Paso_4.frq" que indica las frecuencias alélicas del marcador por cromosoma.
+distMar <- read_table(file = '../../Imputacion/Beagle/Datos/Precision/Paso_3.frq', col_names = TRUE) %>% # Se importa el archivo "Paso_3.frq" que indica las frecuencias alélicas del marcador por cromosoma.
   left_join(y = bimMar, by = 'SNP')
 
 num_marcadores <- distMar %>%

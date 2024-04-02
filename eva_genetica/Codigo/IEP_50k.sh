@@ -1,3 +1,5 @@
+ulimit -s unlimited
+
 #!/bin/bash
 
 ####
@@ -71,6 +73,7 @@ sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
 OPTION method VCE
+OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3
@@ -147,6 +150,7 @@ sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
 OPTION method VCE
+OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3

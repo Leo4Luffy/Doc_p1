@@ -1,3 +1,5 @@
+ulimit -s unlimited
+
 #!/bin/bash
 
 ####
@@ -62,12 +64,13 @@ OPTION createGInverse 0
 OPTION createA22Inverse 0
 OPTION createGimA22i 0" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2156 mediante la opción "excludeSample".
+echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2383 mediante la opción "excludeSample".
 
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
 OPTION method VCE
+OPTION se_covar_function H2d G_5_5_1_1/(G_5_5_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3
@@ -134,12 +137,13 @@ OPTION createGInverse 0
 OPTION createA22Inverse 0
 OPTION createGimA22i 0" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2156 mediante la opción "excludeSample" a continuación.
+echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2383 mediante la opción "excludeSample".
 
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
 OPTION method VCE
+OPTION se_covar_function H2d G_5_5_1_1/(G_5_5_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3

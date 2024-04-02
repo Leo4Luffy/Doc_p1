@@ -641,6 +641,23 @@ ID_NA_2 <- ID_ind |>
   filter(ID_ofi %in% ID_NA) |> # Hay 563 individuos que si aparecen en el libro genealogíco.
   pull(ID)
 
+# Se observan a continuación cuales son los 6 indivdiuos que no aparecen en el libro genalogíco ----
+
+ID_NA <- datGeno |>
+  anti_join(y = ID_ind_2, by = 'ID_ofi') |>
+  select(ID_ofi)
+
+ID_NA_2 <- ID_ind |>
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  inner_join(y = ID_NA, by = 'ID_ofi') |>
+  select(ID_ofi)
+
+ID_NA_3 <- anti_join(x = ID_NA, y = ID_NA_2, by = 'ID_ofi')
+
 # Se observa a continuaición si los 563 individuos anteriores aparecen en el pedigrí generado a partir de los fenotipos ----
 
 datProd |>
