@@ -38,9 +38,9 @@ NOTA: A continuación se obtiene, con ayuda de plink y plink2, las frecuencias (
 ```{r}
 #| label: MAF de marcadores no imputados vs imputados
  
-###########
-# Imputados
-###########
+##########################
+# Después de la imputación
+##########################
 
 # Se importa el archivo vcf luego de la imputación con Beagle v. 5.4 y se extrae las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT) ----
 
@@ -68,20 +68,20 @@ plink2('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_3 --alt1-allele f
 
 plink('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_4 --freq --out single_tags/Datos/Paso_5') # Este análisis proporcionará información sobre cómo están distribuidos los marcadores en términos de frecuencias alélicas por cromosoma.
 
-# ----
+# Se importa las frecuencias alélicas anteriores ----
 
 frq_1 <- read_table(file = 'single_tags/Datos/Paso_5.frq', col_names = TRUE) |>
   mutate(Imputación = 'Después') |>
   #rename(MAF_despues = MAF) |>
   select(CHR, SNP, MAF, Imputación)
 
-##############
-# No imputados
-##############
+########################
+# Antes de la imputación
+########################
 
 # Se importa el archivo vcf luego de la imputación con Beagle v. 5.4 y se extrae las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT) ----
 
-vcf_data_2 <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+vcf_data_2 <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
 
 vcf_data |>
   select(ID, ALT) |>
@@ -99,15 +99,17 @@ plink2('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_6 --alt1-allele f
 
 plink('--cow --allow-extra-chr --bfile single_tags/Datos/Paso_7 --freq --out single_tags/Datos/Paso_8')
 
+# Se importa las frecuencias alélicas anteriores ----
+
 frq_2 <- read_table(file = 'single_tags/Datos/Paso_8.frq', col_names = TRUE) |>
   mutate(Imputación = 'Antes') |>
   #rename(MAF_antes = MAF) |>
   select(CHR, SNP, MAF, Imputación)
 
+# Se realiza a continuación un gráfico para comparar la frecuencia del alelo menor (MAF) antes y después de la imputación ----
+
 freq <- bind_rows(frq_1, frq_2) |>
   arrange(SNP)
-
-# Se realiza a continuación un gráfico para comparar la frecuencia del alelo menor (MAF) antes y después de la imputación ----
 
 # Se crea una lista para almacenar los gráficos de cada cromosoma:
 cromosoma_plots <- list()
@@ -118,7 +120,7 @@ for (i in 1:29) {
     filter(CHR == i) %>%
     ggplot(aes(x = Imputación, y = MAF, fill = Imputación, colour = Imputación)) +
     geom_boxplot(alpha = 0.2) +
-    stat_summary(fun.y = mean, geom = 'point', shape = 21, size = 4) +
+    stat_summary(fun = mean, geom = 'point', shape = 21, size = 4) +
     labs(title = paste('Cromosoma', i)) +
     scale_color_manual(values = c('orange', 'cyan')) +
     scale_fill_manual(values = c('orange', 'cyan')) +
@@ -133,9 +135,77 @@ for (i in 1:29) {
 
 # Se combinan todos los gráficos en una sola cuadrícula usando el paquete "patchwork":
 multiplot <- cromosoma_plots[[1]]
+
 for (i in 2:length(cromosoma_plots)) {
   multiplot <- multiplot + cromosoma_plots[[i]]
   }
 
 ggsave('single_tags/Imagenes/MAF.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se observa la frecuencia del alelo menor (MAF) en SNP-tags.
+-->
+
+```{r}
+#| label: MAF de SNP-tags
+
+# Se importa los datos con los nombres de los SNP-tag y se extrae este nombre como un vector ----
+
+dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se observa cuales SNP-tags aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_tags, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_tags <- marc_comun |>
+  full_join(x = dat_tags, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el nombre de los SNP-tags como se quería.
+
+##########################
+# Después de la imputación
+##########################
+
+# Se dejan los marcadores considerados como SNP-tags ----
+
+frq_1_tags <- frq_1 |>
+  filter(SNP %in% dat_tags$X3)
+
+dim_desc(x = frq_1_tags) # 103080 - 102105 = 975 SNP-tags parecen que se eliminaron en el control de calidad.
+
+########################
+# Antes de la imputación
+########################
+
+# Se dejan los marcadores considerados como SNP-tags ----
+
+frq_2_tags <- frq_2 |>
+  filter(SNP %in% dat_tags$X3)
+
+dim_desc(x = frq_2_tags) # 103080 - 102105 = 975 SNP-tags parecen que se eliminaron en el control de calidad.
+
+# Se cuenta continuación el número de SNP-tags que podrían considerarse variantes raras (MAF < 0.05) ----
+
+frq_2_tags |>
+  mutate(
+    MAF = case_when(
+      MAF < 0.05 ~ '< 0.05',
+      MAF >= 0.05 & MAF < 0.1 ~ '>= 0.05 - < 0.1',
+      MAF >= 0.1 & MAF < 0.2 ~ '>= 0.1 - < 0.2',
+      MAF >= 0.2 & MAF < 0.3 ~ '>= 0.2 - < 0.3',
+      MAF >= 0.3 & MAF < 0.4 ~ '>= 0.3 - < 0.4',
+      MAF >= 0.4 ~ '>= 0.4'
+      )
+    ) |>
+  count(MAF) 
 ```

@@ -123,7 +123,7 @@ dat_EPP_IEP %>%
 ```
 
 <!--
-NOTA: A continuación, usando el objeto anterior "datPed", se renumera la ID de los individuos, padres y madres, con el fin de que queden como enteros.
+NOTA: A continuación, usando el objeto "datPed", se renumera la ID de los individuos, padres y madres, con el fin de que queden como enteros.
 -->
 
 ```{r}
@@ -274,7 +274,7 @@ NOTA: A continuación, se exportan los conjuntos de datos con información fenot
 
 pedPrune |>
   mutate_all(~if_else(is.na(.), as.factor(0), .)) |> # Se convierten los valores NA a 0. 
-  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ') # NOTA: RECORDAR CAMBIAR EL ORDEN DE MADRE Y PADRE.
 
 # Exportación de conjuntos de datos de fenotipos ----
 

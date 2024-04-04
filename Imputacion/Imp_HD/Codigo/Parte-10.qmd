@@ -105,7 +105,7 @@ for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada car
   
   command <- paste0('--cow --allow-extra-chr --bfile ', input_path, ' --extract ', nomGen_path, ' --make-bed --out ', output_path)
   system2('plink', args = command)
-  } # En total, existen 511205 marcadores completamente genotipados en todos los individuos.
+  } # En total, existen 511255 marcadores completamente genotipados en todos los individuos.
 ```
 
 <!--
@@ -123,7 +123,7 @@ plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/Beagle/Prec
 
 datGen <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_2', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
 
-sum(datGen$extract) # En total, se extrajeron los 59867 SNPs en todos los cromosomas.
+sum(datGen$extract) # En total, se extrajeron los 511255 SNPs en todos los cromosomas.
 
 tail(datGen$newID) # En el archivo creado se indica el ID de la familia, el ID del individuo y también se asigna una nueva ID del individuo (newID).
 
@@ -150,7 +150,7 @@ colnames(datGen) <- c('IID', paste0('Geno', 1:(ncol(datGen) - 1))) # Para indica
 
 datGen <- datGen %>%
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:511256),
     names_to = 'ID genotipos',
     values_to = 'Genotipos reales'
     ) # Se cambia a formato largo, de tal forma que cada columna represente el ID del indivdiuo, el ID del genotipo y el genotipo real (recordar que 0 representa homocigoto para el alelo de referencia 1, 1 representa heterocigoto, 2 representa homocigoto para el alelo alternativo y 9 valor o genotipo ausente).
@@ -173,7 +173,7 @@ Grup1 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 datGen1 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_1/datGen1_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen1$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen1$extract) # En total, se extrajeron los 511255 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -201,7 +201,7 @@ datGen1 <- datGen1 %>%
 
 Prec_imput_1 <- datGen1 %>%
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:511256),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -229,7 +229,7 @@ Grup2 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 datGen2 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_2/datGen2_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen2$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen2$extract) # En total, se extrajeron los 511255 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -257,7 +257,7 @@ datGen2 <- datGen2 %>%
 
 Prec_imput_2 <- datGen2 %>%
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:511256),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -285,7 +285,7 @@ Grup3 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 datGen3 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_3/datGen3_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen3$extract) # En total, se extrajeron los 510335 SNPs en todos los cromosomas.
+sum(datGen3$extract) # En total, se extrajeron los 511255 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -313,7 +313,7 @@ datGen3 <- datGen3 %>%
 
 Prec_imput_3 <- datGen3 %>%
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:511256),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -341,7 +341,7 @@ Grup4 <- read_delim(file = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_orige
 
 datGen4 <- convert_plink('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/Beagle_v5.4_3', outfn = '../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Prec_4/datGen4_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen4$extract) # En total, se extrajeron los 510335 SNPs en todos los cromosomas.
+sum(datGen4$extract) # En total, se extrajeron los 511255 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -369,7 +369,7 @@ datGen4 <- datGen4 %>%
 
 Prec_imput_4 <- datGen4 %>%
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:511256),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) %>%
@@ -423,7 +423,7 @@ cor.Imput %>%
   summarise(
     Promedio = mean(Correlacion),
     Desvio = sd(Correlacion)
-    ) # El resultado fue igual a 0.946 ± 0.00207.
+    ) # El resultado fue igual a 0.942 ± 0.00233.
 
 # Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
 
@@ -441,10 +441,10 @@ por.Imput %>%
 
 tribble(
   ~'Grupo de validación', ~'Proporción (%)',
-  'Primero', 98.0,
-  'Segundo', 97.8,
-  'Tercero', 97.6,
-  'Cuarto', 97.9
+  'Primero', 97.7,
+  'Segundo', 97.4,
+  'Tercero', 97.2,
+  'Cuarto', 97.5
   )
 ```
 
@@ -749,9 +749,9 @@ IQS <- bind_rows(IQS)
 
 tribble(
   ~'Grupo de validación', ~'Promedio', ~'Desvío',
-  'Primero', 0.956, 0.104,
-  'Segundo', 0.950, 0.106,
-  'Tercero', 0.945, 0.108,
-  'Cuarto', 0.952, 0.106
+  'Primero', 0.959, 0.973,
+  'Segundo', 0.953, 0.989,
+  'Tercero', 0.949, 0.100,
+  'Cuarto', 0.952, 0.0987
   )
 ```

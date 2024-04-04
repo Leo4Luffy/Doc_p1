@@ -53,7 +53,6 @@ NOTA: A continuación, se genera un archivo nomb_marc_comun.txt con el nombre de
 -->
 
 ```{r}
-
 #| label: Nombre de marcadores coincidentes
 
 # Se crea una lista para almacenar los resultados de cada cromosoma:
@@ -94,13 +93,13 @@ bim50k %>%
 ```
 
 <!--
-NOTA: Se actualiza a continuación el nombre de los marcadores en los datos PLINK datQC/Paso_2, de tal forma que se genere unos datos de genotipos con el nombre de los marcadores donde se combine la ID de estos según el tipo de genotipado (media densidad y alta densidad), pero con la posición (en pares de bases) y su ubicación (cromosoma) según el mapa del genotipado de alta densidad (UMD 3.1).
+NOTA: Se actualiza a continuación el nombre de los marcadores en los datos PLINK datQC/Paso_2 (en el que se hizo control de calidad), de tal forma que se genere unos datos de genotipos con el nombre de los marcadores donde se combine la ID de estos según el tipo de genotipado (media densidad y alta densidad), pero con la posición (en pares de bases) y su ubicación (cromosoma) según el mapa del genotipado de alta densidad (UMD 3.1).
 -->
 
 ```{r}
 #| label: Actualización de nombres de marcadores en común
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_2 --update-name ../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5')
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_2b --update-name ../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_5')
 ```
 
 <!--
@@ -331,7 +330,7 @@ plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Pas
 ```
 
 <!--
-NOTA: Para realizar la imputación a alta densidad con Beagle v. 5.4, los 2970 individuos presentes tanto en densidad media (50k) como en alta densidad (HD) con 719592 marcadores, luego de su unión (datos de densidades combinadas), se pasan a formato VCF. Esto para que al comparar la precisión de la predicción genómica con los datos de 50k, se compare distintas densidades en los mismos individuos.
+NOTA: Para realizar la imputación a alta densidad con Beagle v. 5.4, los 2970 individuos presentes tanto en densidad media (50k) como en alta densidad (HD) con 621780 marcadores, luego de su unión (datos de densidades combinadas), se pasan a formato VCF. Esto para que al comparar la precisión de la predicción genómica con los datos de 50k, se compare distintas densidades en los mismos individuos.
 -->
 
 ```{r}

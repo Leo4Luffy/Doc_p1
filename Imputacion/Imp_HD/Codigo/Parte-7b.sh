@@ -4,7 +4,7 @@
 ##############################################################
 
 # Ruta del archivo VCF que contiene los genotipos a alta densidad
-gt="Precision_origen/imp_HD_50k_2.vcf"
+gt="Precision_origen/imp_HD_50k_3.vcf" # Aquí tuve que cambiar (imp_HD_50k_2.vcf o imp_HD_50k_3.vcf), dependiendo si queria imputar a media o a alta densidad.
 
 # Ruta de salida del archivo imputado
 output="Precision_origen/Res_imputacion"

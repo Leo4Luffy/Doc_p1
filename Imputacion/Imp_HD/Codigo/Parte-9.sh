@@ -4,7 +4,7 @@
 ################################################################
 
 # Ruta del archivo VCF
-gt="Grup4.vcf" # Aquí, tuve que cambiar de acuerdo al archivo VCF que quise imputar (Grup1.vcf, Grup2.vcf, ..., Grup8.vcf).
+gt="Grup4.vcf" # Aquí, tuve que cambiar de acuerdo al archivo VCF que quise imputar (Grup1.vcf, Grup2.vcf, ..., Grup4.vcf).
 
 # Ruta de salida del archivo imputado
 output="Res_imputacion_v5.4"

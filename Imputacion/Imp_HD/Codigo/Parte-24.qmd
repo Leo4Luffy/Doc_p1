@@ -56,7 +56,7 @@ NOTA: Se modifica el archivo VCF que se uso inicialmente en la imputación (imp_
 # Se indica la ruta del archivo vcf y del archivo donde estan los nombres de los marcadores ----
 
 vcf_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf"
-marcadores_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_IBS/nomGen.txt"
+marcadores_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/nomGen.txt"
 
 # Se lee el archivo VCF ----
 

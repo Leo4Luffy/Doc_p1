@@ -61,7 +61,7 @@ NOTA: Se identifica a continuación los marcadores con genotipo completo en todo
 
 # Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 598677 marcadores en 284 individuos.
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Paso_1') # Luego se obtiene como resultado (que se indica en Paso_1.log) un archivo con 511255 marcadores en 284 individuos.
 
 # Se exporta el nombre de los marcadores con genotipo completos ----
 
