@@ -60,7 +60,7 @@ plink('--cow --allow-extra-chr --file ../../Imputacion/Imp_HD/Datos/datPuros/gen
 
 plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_1 --extract ../../Imputacion/Imp_HD/Datos/datQC/nomb_Mar_ARS.txt --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC/Paso_2')
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_2 --mind 0.10 --geno 0.10 --hwe 0.00001 --maf 0.01 --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC/Paso_2b') # Se realiza control de calidad en los marcadores en Imp_HD/Datos/datQC/Paso_2
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC/Paso_2 --mind 0.10 --geno 0.10 --hwe 0.00001 --maf 0.05 --make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC/Paso_2b') # Se realiza control de calidad en los marcadores en Imp_HD/Datos/datQC/Paso_2
 ```
 
 <!--

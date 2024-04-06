@@ -1,0 +1,15 @@
+---
+title: "Parte 8: Comparación de la frecuencia del alelo menor (MAF) entre marcadores genotipados e imputados en HD y marcadores genotipados en HD pero no imputados, con AlphaImpute2"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, SNPstats)
+```
+

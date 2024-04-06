@@ -1,5 +1,5 @@
 ---
-title: "Parte 7: Comparación de la frecuencia del alelo menor (MAF) entre marcadores genotipados e imputados en HD y marcadores genotipados en HD pero no imputados"
+title: "Parte 7: Comparación de la frecuencia del alelo menor (MAF) entre marcadores genotipados e imputados en HD y marcadores genotipados en HD pero no imputados, con Beagle v. 5.4."
 format: html
 ---
 

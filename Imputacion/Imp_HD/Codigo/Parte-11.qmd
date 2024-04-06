@@ -24,7 +24,7 @@ A continuación, se usa el paquete Siccuracy para obtener un archivo con formato
 
 datGen <- convert_plink('Imputacion/Imp_HD/Datos/datQC_2/Paso_14', outfn = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datGen.txt', method = 'simple', countminor = FALSE) # Con la función convert_plink() convierto el archivo PLINK binario a archivo con formato SNP. Con el argumento method = 'simple', se indica almacenar toda la matriz del genotipo en la memoria. Por eficiencia, con el argumento method = 'lowmem' se podria dividir el archivo de entrada en fragmentos más pequeños (por ejemplo, por cromosomas), evitando así cargar todo el archivo en memoria a la vez, y luego se puede indicar extraer los SNPs de un determinado cromosoma (en "extract_chr"). Por ejemplo, con method = 'lowmem' y extract_chr = '2', se indica extraer los SNPs del cromosoma 2. Con el argumento countminor = FALSE, se indica que no se contarán los alelos menores.
 
-sum(datGen$extract) # En total, se extrajeron los 621780 SNPs en todos los cromosomas.
+sum(datGen$extract) # En total, se extrajeron los 579424 SNPs en todos los cromosomas.
 
 head(datGen$newID) # En el archivo creado se indica el ID de la familia, el ID del individuo y también se asigna una nueva ID del individuo (newID).
 ```

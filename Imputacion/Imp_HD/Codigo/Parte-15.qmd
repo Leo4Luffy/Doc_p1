@@ -22,16 +22,21 @@ NOTA: Usando el archivo de genotipos generado en Parte-1.qmd, a continuación, s
 
 # Se importa el archivo de genotipos y se asigna un nombre a las columnas ----
 
-datGen <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/datGen.txt', col_names = FALSE, delim = ' ')
+datGen <- read_delim(file = 'Imp_HD/Datos/AlphaImpute2/datGen.txt', col_names = FALSE, delim = ' ')
 
-colnames(datGen) <- c('IID', paste0('SNP', 1:(ncol(datGen) - 1))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(datGen) - 1).
+# Se extrae el nombre de los marcadores del archivo "Paso_14.bim" y luego se coloca el nombre de los marcadores como corresponde en cada columna ----
+
+nomGen <- read_table(file = 'Imp_HD/Datos/datQC_2/Paso_14.bim', col_names = FALSE) |>
+  pull(X2)
+
+colnames(datGen) <- c('IID', paste0(nomGen))
 
 # Se identifica a continuación que marcadores (en columnas) fueron completamente genotipados (sin valor faltante en la columna) ----
 
 columnas_sin_9 <- datGen %>%
   select(-IID) %>%
   keep(~ all(.x != 9)) %>% # Se utiliza la función keep() del paquete purrr junto con el operador ~ para mantener solo las columnas en las que todos los valores sean diferentes de 9. El resultado se almacena en el objeto columnas_sin_9.
-  names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 598677 marcadores con genotipo en todos los individuos.
+  names() # Luego se obtienen los nombres de las columnas utilizando la función names(). Son en total 472405 marcadores con genotipo en todos los individuos.
 ```
 
 <!--
@@ -143,7 +148,7 @@ NOTA: Se exporta el archivo de pedigrí para usar en la imputación.
 ```{r}
 #| label: Generación y exportación del archivo de pedigrí
 
-datPed <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_12.fam', delim = ' ', col_select = c(2:4), col_names = FALSE)
+datPed <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/Paso_14.fam', delim = ' ', col_select = c(2:4), col_names = FALSE)
 
 # A continuación, se exporta el archivo de pedirgí (datPed) a las distintas carpetas (Prec_1, Prec_2, ..., Prec_8) ----
 

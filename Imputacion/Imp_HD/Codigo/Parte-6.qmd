@@ -320,7 +320,7 @@ plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Pas
 ```
 
 <!--
-NOTA: Una vez se unen los datos de media y alta densidad se convierte los datos en formato PLINK a formato VCF, y se guarda en la carpeta Imp_HD/Datos/Beagle con el nombre de "imp_HD_50k".
+NOTA: Una vez se unen los datos de media y alta densidad se convierte los datos en formato PLINK a formato VCF, y se guarda en la carpeta Imp_HD/Datos/Beagle con el nombre de "imp_HD_50k". Este acrhivo se usará para enmascarar los genotpos al momentos de evaluar la precisión de la imputación.
 -->
 
 ```{r}
@@ -350,7 +350,7 @@ read_table(file = '../../Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', c
   select(X2) %>%
   write_delim(file = '../../Imputacion/Imp_HD/Datos/datQC_2/marc_comun_50K.txt', col_names = FALSE) # Se extrae la columna con el nombre de los 33378 marcadores en común según el genotipado en 50K.
 
-plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --extract ../../Imputacion/Imp_HD/Datos/datQC_2/marc_comun_50K.txt  -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15') # Del conjunto de datos de PLINK con 2970 indviduos y 719592 marcadores (en HD), me quedo solo con los 33378 maracdores en común con el genotipado a 50K.
+plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_13 --extract ../../Imputacion/Imp_HD/Datos/datQC_2/marc_comun_50K.txt  -make-bed --recode --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15') # Del conjunto de datos de PLINK con 2970 indviduos y 579424 marcadores (en HD), me quedo solo con los 33378 maracdores en común con el genotipado a 50K.
 
 plink('--cow --allow-extra-chr --bfile ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_2 --bmerge ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15.bed ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15.bim ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_15.fam --out ../../Imputacion/Imp_HD/Datos/datQC_2/Paso_16 --list-duplicate-vars') # Uno los datos de PLINK generados en el paso anterior con el conjunto de datos de 50K, generando así un conjunto de datos con 3970 individuos y 43421 marcadores (los de 50K). Por lo tanto, 43421 - 33378 = 10043 marcadores se trarán como missing o valores faltantes en 2970 - 2894 = 76 individuos.
 ```
