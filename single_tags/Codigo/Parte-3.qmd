@@ -1,5 +1,5 @@
 ---
-title: "Parte 3: Consistencia de SNP-tag imputados formando seis grupos de validación en base a k-means usando parentesco basado en segmentos"
+title: "Parte 3: Consistencia de SNP-tag imputados formando siete grupos de validación en base a k-means usando parentesco basado en segmentos"
 format: html
 ---
 
@@ -393,6 +393,52 @@ gen_imput_6c <- gen_imput_6b |>
 gen_imput_6d <- cod_geno_2(gen_imput_6c)
 
 save(gen_imput_6d, file = 'single_tags/Datos/KM/gen_Imput_HD_val_6.RData')
+
+#######################
+# Grupo 7 de validación
+#######################
+
+# Se importa los nombres de los individuos del séptimo grupo de validación ----
+
+Grup7 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  rename(ID = X1)
+
+# Se importa los datos de genotipos imputados ----
+
+gen_imput_7 <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Res_imputacion_v5.4.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+# Del archivo anterior con genotipos reales, se extraen los marcadores considerados como tags ----
+
+gen_imput_7b <- gen_imput_7 |>
+  filter(ID %in% gen_enmas$X1) |> # Se extraen los marcadores que fueron enmascarados.
+  filter(ID %in% dat_tags$X3) # Se extrae aquí los marcadores considerados tags.
+
+# Se transpone el conjunto de datos ----
+
+gen_imput_7c <- gen_imput_7b |>
+  pivot_longer(
+    cols = c(2:285),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-ID_2) |>
+  filter(ID %in% Grup7$ID)
+
+# Se cambia los valores de los genotipos con base en la función al inicio de este fragmento de código ----
+
+gen_imput_7d <- cod_geno_2(gen_imput_7c)
+
+save(gen_imput_7d, file = 'single_tags/Datos/KM/gen_Imput_HD_val_7.RData')
 ```
 
 <!--
@@ -428,14 +474,14 @@ comp_val1 <- gen_real_5 |>
 sum_val1 <- summarise(
   .data = comp_val1,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val1 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -463,14 +509,14 @@ comp_val2 <- gen_real_6 |>
 sum_val2 <- summarise(
   .data = comp_val2,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val2 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -498,14 +544,14 @@ comp_val3 <- gen_real_7 |>
 sum_val3 <- summarise(
   .data = comp_val3,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val3 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -533,14 +579,14 @@ comp_val4 <- gen_real_8 |>
 sum_val4 <- summarise(
   .data = comp_val4,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val4 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -568,14 +614,14 @@ comp_val5 <- gen_real_9 |>
 sum_val5 <- summarise(
   .data = comp_val5,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val5 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -603,18 +649,53 @@ comp_val6 <- gen_real_10 |>
 sum_val6 <- summarise(
   .data = comp_val6,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val6 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
   write_delim(file = 'single_tags/Datos/KM/sum_val_6.txt', col_names = TRUE)
+
+#######################
+# Grupo 7 de validación
+#######################
+
+# Se carga el objeto de R anteriormente guardado, denominado como "gen_imput_6d" ----
+
+load(file = 'single_tags/Datos/KM/gen_Imput_HD_val_7.RData') # Este objeto contiene los genotipos imputados considerados como tags y que al momento de imputar habian sido enmascarados, en los individuos del séptimo grupo de validación.
+
+# Del objeto "gen_real_4" se dejan solo los individuos del séptimo grupo de valiación ----
+
+gen_real_11 <- gen_real_4 |>
+  filter(ID %in% Grup7$ID)
+
+# En el quinto grupo de validación, se comparan los dos objetos anteriores ("gen_imput_6d" y "gen_real_10"), valor por valor, para ver si la imputación de genotipos fue correcta o no ----
+
+comp_val7 <- gen_real_11 |>
+  select(-ID) |>  # Se excluye la columna ID en la comparación valor por valor.
+  mutate(across(everything(), ~case_when(. == gen_imput_7d[[cur_column()]] ~ 0, TRUE ~ 1))) # En este código, across(everything(), ...) se utiliza para aplicar la comparación a todas las columnas. La función case_when() compara cada par de valores y asigna 0 si son iguales y 1 si son diferentes. La función cur_column() se utiliza dentro del contexto de across(everything(), ...). Dentro de esta operación, cur_column() se refiere a la columna actual en la que se está aplicando la función. Es una manera dinámica de referenciar la columna actual para realizar la comparación con la columna correspondiente en gen_imput_7d.
+
+sum_val7 <- summarise(
+  .data = comp_val7,
+  across(
+    .cols = c(1:81597),
+    .fns = sum
+    )
+  ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
+
+sum_val7 |>
+  pivot_longer(
+    cols = c(1:81597),
+    names_to = 'SNP_tag',
+    values_to = 'N_mal_imput'
+    ) |>
+  write_delim(file = 'single_tags/Datos/KM/sum_val_7.txt', col_names = TRUE)
 ```
 
 <!--

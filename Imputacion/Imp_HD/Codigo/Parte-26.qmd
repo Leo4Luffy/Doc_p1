@@ -437,6 +437,56 @@ Prec_imput_6 <- datGen6 |>
 
 Prec_imput_6 |>
   write_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_6/Prec_imput_6.txt', col_names = TRUE, delim = ' ')
+
+#######################
+# Grupo 7 de validación
+#######################
+
+Grup7 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Grup7.txt', delim = ' ', col_names = FALSE) # Se importa el nombre de los individuos.
+
+# Se usa la función Siccuracy::convert_plink() para convertir el archivo PLINK binario a un archivo con formato SNP ----
+
+datGen7 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/datGen7_v5.4.txt', method = 'simple', countminor = FALSE)
+
+sum(datGen7$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+
+# Se importa el archivo .fam  ----
+
+datPed <- read_table(file = 'Imp_HD/Datos/Beagle/Precision_origen/Paso_2.fam', col_names = FALSE)
+
+# Se importa el archivo de genotipos anteriormente generado, y luego se edita el ID del individuo y exporta nuevamente ----
+
+datGen7_2 <- read_table(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/datGen7_v5.4.txt', col_names = FALSE)
+
+datPed |>
+  select(X2) |>
+  rename(ID = X2) |>
+  bind_cols(datGen7_2) |>
+  select(-X1) |> # Se elimina aquí la primera columna ya que el ID del individuo no es igual al ID del pedigrí.
+  write_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/datGen7_v5.4.txt', col_names = FALSE, delim = ' ')
+
+# Se importa de nuevo el archivo de genotipos anteriormente exportado con el ID del pedigrí, y se asigna el nombre a las columnas ----
+
+datGen7 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/datGen7_v5.4.txt', col_names = FALSE, delim = ' ')
+
+colnames(datGen7) <- c('IID', paste0(nomGen))
+
+datGen7 <- datGen7 |>
+  filter(IID %in% Grup7$X1) # Se eligen solo los individuos del séptimo grupo de validación.
+
+Prec_imput_7 <- datGen7 |>
+  pivot_longer(
+    cols = c(2:472406),
+    names_to = 'ID genotipos',
+    values_to = 'Genotipos imputados'
+    ) |>
+  inner_join(datGen, by = c('IID', 'ID genotipos')) |>
+  mutate(
+    Grupo_val = 'Séptimo' # Se indica el grupo de validación (sexto grupo).
+  )
+
+Prec_imput_7 |>
+  write_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Prec_imput_7.txt', col_names = TRUE, delim = ' ')
 ```
 
 <!--
@@ -448,7 +498,7 @@ NOTA: Se evalua la precisón de la imputación a partir de la correlación entre
 
 # Se importan los distintos conjuntos de datos que contienen el ID del individuo, el ID de los genotipos y los genotipos imputados y reales ----
 
-carpetas <- c(1, 2, 3, 4, 5, 6)
+carpetas <- c(1, 2, 3, 4, 5, 6, 7)
 
 prec_imput <- list() # Se crea una lista llamada "prec_imput" para almacenar los resultados de la importación de los archivos.
 
@@ -480,7 +530,7 @@ cor.Imput |>
   summarise(
     Promedio = mean(Correlacion),
     Desvio = sd(Correlacion)
-    ) # El resultado fue igual a 0.920 ± 0.00249.
+    ) # El resultado fue igual a 0.925 ± 0.0226.
 
 # Se verifica también la precisión de la imputación mediante el calculó del porcentaje de genotipos imputados correctamente ----
 
@@ -538,7 +588,7 @@ Graf_imput <- prec.Imput |>
 
 # Se colocan algunas opciones para que el gráfico quede bien ----
 
-orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto') # Se indica el orden en el que se presentarán las facetas.
+orden_facetas <- c('Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo') # Se indica el orden en el que se presentarán las facetas.
 
 etiquetas_x <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje x.
 etiquetas_y <- c('0', '1', '2')  # Se agrega aquí las etiquetas que desean mostrar en el eje y.
@@ -633,11 +683,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_1 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 47, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 36, .by = `ID genotipos`)
 
 P_c_1 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 47^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 36^2, .by = `ID genotipos`)
 
 IQS_1 <- inner_join(x = P_0_1, y = P_c_1, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -646,7 +696,7 @@ IQS_imput_1 <- IQS_1 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a 0.939 ± 0.125.
+    )
 
 ####################
 # Grupo validación 2
@@ -683,11 +733,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_2 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 32, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 98, .by = `ID genotipos`)
 
 P_c_2 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 32^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 98^2, .by = `ID genotipos`)
 
 IQS_2 <- inner_join(x = P_0_2, y = P_c_2, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -696,7 +746,7 @@ IQS_imput_2 <- IQS_2 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a  0.964 ± 0.110.
+    )
 
 ####################
 # Grupo validación 3
@@ -733,11 +783,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_3 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 50, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 44, .by = `ID genotipos`)
 
 P_c_3 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 50^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 44^2, .by = `ID genotipos`)
 
 IQS_3 <- inner_join(x = P_0_3, y = P_c_3, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -746,7 +796,7 @@ IQS_imput_3 <- IQS_3 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a 0.885 ±  0.135.
+    )
 
 ####################
 # Grupo validación 4
@@ -783,11 +833,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_4 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 105, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 45, .by = `ID genotipos`)
 
 P_c_4 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 105^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 45^2, .by = `ID genotipos`)
 
 IQS_4 <- inner_join(x = P_0_4, y = P_c_4, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -796,7 +846,7 @@ IQS_imput_4 <- IQS_4 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a 0.917 ± 0.121.
+    )
 
 ####################
 # Grupo validación 5
@@ -833,11 +883,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_5 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 11, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 45, .by = `ID genotipos`)
 
 P_c_5 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 11^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 45^2, .by = `ID genotipos`)
 
 IQS_5 <- inner_join(x = P_0_5, y = P_c_5, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -846,7 +896,7 @@ IQS_imput_5 <- IQS_5 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a 0.852 ± 0.221.
+    )
 
 ####################
 # Grupo validación 6
@@ -883,11 +933,11 @@ T_IQS_2 <- T_IQS |>
 
 P_0_6 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_0 = sum(Cantidad) / 39, .by = `ID genotipos`)
+  summarise(P_0 = sum(Cantidad) / 11, .by = `ID genotipos`)
 
 P_c_6 <- T_IQS_2 |>
   filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
-  summarise(P_c = sum(Cantidad * Cantidad) / 39^2, .by = `ID genotipos`)
+  summarise(P_c = sum(Cantidad * Cantidad) / 11^2, .by = `ID genotipos`)
 
 IQS_6 <- inner_join(x = P_0_6, y = P_c_6, by = 'ID genotipos') |>
   summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
@@ -896,7 +946,57 @@ IQS_imput_6 <- IQS_6 |>
   summarise(
     Promedio = mean(IQS, na.rm = TRUE),
     Desvio = sd(IQS, na.rm = TRUE)
-    ) # El resultado fue igual a 0.907 ± 0.154.
+    )
+
+####################
+# Grupo validación 7
+####################
+
+# Se importa el conjunto de datos con los genotipos reales e imputados y se realiza el cambio de las variables de genotipos (0,1,2 por AA,BB,BB) ----
+
+Prec_imput_7 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Prec_imput_7.txt', delim = ' ', col_names = TRUE)
+
+Prec_imput_7 <- Prec_imput_7 |>
+  mutate(
+    `Genotipos reales` = case_when(
+      `Genotipos reales` == 0 ~ 'AA',
+      `Genotipos reales` == 1 ~ 'AB',
+      `Genotipos reales` == 2 ~ 'BB'
+      ),
+    `Genotipos imputados` = case_when(
+      `Genotipos imputados` == 0 ~ 'AA',
+      `Genotipos imputados` == 1 ~ 'AB',
+      `Genotipos imputados` == 2 ~ 'BB'
+      )
+    )
+
+# Se realiza la tabla de clasificación cruzada marginal de genotipos reales e imputados para cada uno de los marcadores ----
+
+T_IQS <- Prec_imput_7 |>
+  unite(col = 'Combinacion', c(`Genotipos imputados`, `Genotipos reales`), sep = '_') 
+
+T_IQS_2 <- T_IQS |>
+  summarise(Cantidad = n(), .by = c(`ID genotipos`, Combinacion)) |>
+  arrange(`ID genotipos`)
+
+# Se realiza el cálculo de IQS ----
+
+P_0_7 <- T_IQS_2 |>
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
+  summarise(P_0 = sum(Cantidad) / 5, .by = `ID genotipos`)
+
+P_c_7 <- T_IQS_2 |>
+  filter(Combinacion %in% c('AA_AA', 'AB_AB', 'BB_BB')) |>
+  summarise(P_c = sum(Cantidad * Cantidad) / 5^2, .by = `ID genotipos`)
+
+IQS_7 <- inner_join(x = P_0_7, y = P_c_7, by = 'ID genotipos') |>
+  summarise(IQS = (P_0 - P_c) / (1 - P_c), .by = `ID genotipos`)
+
+IQS_imput_7 <- IQS_7 |>
+  summarise(
+    Promedio = mean(IQS, na.rm = TRUE),
+    Desvio = sd(IQS, na.rm = TRUE)
+    )
 
 # A continuación, se obtiene la media y el desvió estándar de IQS para cada grupo de validación ----
 
@@ -908,11 +1008,12 @@ IQS <- bind_rows(IQS)
 
 tribble(
   ~'Grupo de validación', ~'Promedio', ~'Desvío',
-  'Primero', 0.939, 0.125,
-  'Segundo', 0.964, 0.110,
-  'Tercero', 0.885, 0.135,
-  'Cuarto', 0.917, 0.121,
-  'Quinto', 0.852, 0.221,
-  'Sexto', 0.907, 0.154
+  'Primero', 0.951, 0.118,
+  'Segundo', 0.936, 0.107,
+  'Tercero', 0.896, 0.124,
+  'Cuarto', 0.956, 0.102,
+  'Quinto', 0.917, 0.138,
+  'Sexto', 0.907, 0.177,
+  'Séptimo', 0.985, 0.102
   )
 ```
