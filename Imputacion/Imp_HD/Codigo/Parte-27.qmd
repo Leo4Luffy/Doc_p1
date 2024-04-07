@@ -135,7 +135,7 @@ ggsave(here('Imputacion', 'Imp_HD', 'Datos', 'Beagle', 'Precision_origen', 'Prec
 ```
 
 <!--
-NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con cinco clústeres.
+NOTA: Con base en el número adecuado de clústeres anterior, se ajusta el modelo k-means con cinco clústeres. LO ANTERIOR Y LOS ANÁLISIS POSTERIORES EN EL QUE SE USO IBS SE HIZO CON OCHO CLÚSTER. SIN EMBARGO, AL HACER LA CORRECCIÓN DEL CONTROL DE CALIDAD, SE TOMO LA DECISIÓN DE USAR LA ESTRATEGÍA DEL PARENTESCO BASADO EN SEGMENTOS PARA FORMAR LOS GRUPOS DE VALIDACIÓN. TODO EL CÓDIGO A CONTINUACIÓN Y PRODUCTOR DE ESTE ANÁLISIS PODRA AYUDAR EN ANÁLISIS FUTUROS EN EL QUE SE REQUIERA DE ESTA ESTRATEGÍA DE PARENTESCO BASADO EN IBS.
 -->
 
 ```{r}

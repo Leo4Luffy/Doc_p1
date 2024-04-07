@@ -39,7 +39,7 @@ NOTA: Usando PLINK, se pasan los archivos VCF que resultaron al imputar los geno
 ```{r}
 #| label: Paso de archivos VCF a datos PLINK binarios
 
-carpetas <- c('Prec_1', 'Prec_2', 'Prec_3', 'Prec_4', 'Prec_5', 'Prec_6')
+carpetas <- c('Prec_1', 'Prec_2', 'Prec_3', 'Prec_4', 'Prec_5', 'Prec_6', 'Prec_7')
 
 for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada carpeta.
   input_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/', carpeta, '/Res_imputacion_v5.4.vcf')
@@ -81,7 +81,7 @@ for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada car
   aleloALT_path <- paste0('../../Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/', carpeta, '/aleloALT.txt') # Se utilizan las variables input_path, output_path, y aleloALT_path para construir las rutas de entrada, salida y del archivo "aleloALT.txt" respectivamente, para cada carpeta.
   
   command <- paste0('--cow --allow-extra-chr --bfile ', input_path, ' --alt1-allele force ', aleloALT_path, ' --make-bed --out ', output_path) # El comando --alt1-allele force se usa para especificar el archivo aleloALT.txt, y luego se crea el comando necesario para ejecutar plink2 con el archivo binario Beagle_v5.4 como entrada y generar el archivo resultante Beagle_v5.4_2.
-  system2('/home/leo/Escritorio/Doc_p1/Plink/plink2', args = command)
+  system2('plink2', args = command)
   }
 
 # NOTA: En PLINK, los genotipos homocigotos para el alelo 1 se representan como "A/A", los genotipos heterocigotos se representan como "A/B" y los genotipos homocigotos para el alelo 2 se representan como "B/B". En el caso de genotipos codificados como números, PLINK utiliza los siguientes códigos:
@@ -92,7 +92,7 @@ for (carpeta in carpetas) { # Se utiliza un bucle for para iterar sobre cada car
 ```
 
 <!--
-NOTA: A continuación, en cada una de las subcarpetas (Prec_1, Prec_2, ..., Prec_6), que contienen los datos PLINK binarios con los genotipos imputados, se dejan los marcadores con genotipos completos.
+NOTA: A continuación, en cada una de las subcarpetas (Prec_1, Prec_2, ..., Prec_7), que contienen los datos PLINK binarios con los genotipos imputados, se dejan los marcadores con genotipos completos.
 -->
 
 ```{r}
@@ -131,12 +131,12 @@ colnames(datGen) <- c('IID', paste0(nomGen)) # Para indicar los nombres de las c
 
 datGen <- datGen |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos reales'
     ) # Se cambia a formato largo, de tal forma que cada columna represente el ID del indivdiuo, el ID del genotipo y el genotipo real (recordar que 0 representa homocigoto para el alelo de referencia 1, 1 representa heterocigoto, 2 representa homocigoto para el alelo alternativo y 9 valor o genotipo ausente).
 
-#head(datGen) # Se ve la estructura del objeto anteriormente creado.
+head(datGen) # Se ve la estructura del objeto anteriormente creado.
 
 #######################
 # Grupo 1 de validación
@@ -148,7 +148,7 @@ Grup1 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen1 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_1/datGen1_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen1$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen1$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -176,7 +176,7 @@ datGen1 <- datGen1 |>
 
 Prec_imput_1 <- datGen1 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>
@@ -198,7 +198,7 @@ Grup2 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen2 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_2/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_2/datGen2_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen2$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen2$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -226,7 +226,7 @@ datGen2 <- datGen2 |>
 
 Prec_imput_2 <- datGen2 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>
@@ -248,7 +248,7 @@ Grup3 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen3 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_3/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_3/datGen3_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen3$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen3$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -276,7 +276,7 @@ datGen3 <- datGen3 |>
 
 Prec_imput_3 <- datGen3 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>
@@ -298,7 +298,7 @@ Grup4 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen4 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_4/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_4/datGen4_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen4$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen4$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -326,7 +326,7 @@ datGen4 <- datGen4 |>
 
 Prec_imput_4 <- datGen4 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>
@@ -348,7 +348,7 @@ Grup5 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen5 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_5/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_5/datGen5_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen5$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen5$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -376,7 +376,7 @@ datGen5 <- datGen5 |>
 
 Prec_imput_5 <- datGen5 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>
@@ -398,7 +398,7 @@ Grup6 <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Pr
 
 datGen6 <- convert_plink('Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_6/Beagle_v5.4_3', outfn = 'Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_6/datGen6_v5.4.txt', method = 'simple', countminor = FALSE)
 
-sum(datGen6$extract) # En total, se extrajeron los 598677 SNPs en todos los cromosomas.
+sum(datGen6$extract) # En total, se extrajeron los 472406 SNPs en todos los cromosomas.
 
 # Se importa el archivo .fam  ----
 
@@ -426,7 +426,7 @@ datGen6 <- datGen6 |>
 
 Prec_imput_6 <- datGen6 |>
   pivot_longer(
-    cols = c(2:598678),
+    cols = c(2:472406),
     names_to = 'ID genotipos',
     values_to = 'Genotipos imputados'
     ) |>

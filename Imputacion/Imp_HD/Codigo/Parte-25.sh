@@ -4,13 +4,13 @@
 ################################################################
 
 # Ruta del archivo VCF
-gt="Grup6.vcf" # Aquí, tuve que cambiar de acuerdo al archivo VCF que quise imputar (Grup1.vcf, Grup2.vcf, ..., Grup6.vcf).
+gt="Grup7.vcf" # Aquí, tuve que cambiar de acuerdo al archivo VCF que quise imputar (Grup1.vcf, Grup2.vcf, ..., Grup7.vcf).
 
 # Ruta de salida del archivo imputado
 output="Res_imputacion_v5.4"
 
 # Cambiar al directorio Prec_*
-cd ../Datos/Beagle/Precision_origen/Precision_KM/Prec_6 # Aquí tuve que cambiar al directorio del respectivo archivo VCF (Prec_1, Prec_2, ..., Prec_6).
+cd ../Datos/Beagle/Precision_origen/Precision_KM/Prec_7 # Aquí tuve que cambiar al directorio del respectivo archivo VCF (Prec_1, Prec_2, ..., Prec_7).
 
 # Ruta del archivo Beagle JAR
 beagle_jar="../../../../../Beagle/beagle_v5.4.jar"

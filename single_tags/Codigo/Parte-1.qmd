@@ -44,11 +44,11 @@ dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el n
 
 # Se importa el nombre de los genotipos que fueron enmascarados y que fueron imputados ----
 
-gen_enmas <- read_delim(file = 'Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt', col_names = FALSE, delim = ' ')
+gen_enmas <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/nomGen.txt', col_names = FALSE, delim = ' ')
 
 # Se importa los datos de genotipos reales ----
 
-gen_real <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+gen_real <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
 # Del archivo anterior con genotipos reales, se extraen los marcadores (que habian sido enmascarados al monento de imputar) considerados como tags ----
@@ -356,14 +356,14 @@ comp_val1 <- gen_real_5 %>%
 sum_val1 <- summarise(
   .data = comp_val1,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag. Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val1 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -391,14 +391,14 @@ comp_val2 <- gen_real_6 %>%
 sum_val2 <- summarise(
   .data = comp_val2,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val2 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -426,14 +426,14 @@ comp_val3 <- gen_real_7 %>%
 sum_val3 <- summarise(
   .data = comp_val3,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val3 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -461,14 +461,14 @@ comp_val4 <- gen_real_8 %>%
 sum_val4 <- summarise(
   .data = comp_val4,
   across(
-    .cols = c(1:86050),
+    .cols = c(1:81597),
     .fns = sum
     )
   ) # Se realiza una suma en todas las columnas de tal forma que se indique la cantidad de imputaciones no correctas para cada SNP tag. Si el valor es igual a 0, quiere decir que no hubo imputaciones incorrectas en ese SNP tag.  Si es un valor distinto de 0, por ejemplo 1, indica el número de individuos que para ese marcador se imputo mal.
 
 sum_val4 |>
   pivot_longer(
-    cols = c(1:86050),
+    cols = c(1:81597),
     names_to = 'SNP_tag',
     values_to = 'N_mal_imput'
     ) |>
@@ -519,7 +519,7 @@ SNP_tag_imput <- inner_join(x = sum_val1, y = sum_val2, by = 'SNP_tag') |>
   inner_join(y = sum_val4, by = 'SNP_tag')
 
 SNP_tag_imput |> filter(N_mal_imput_val1 == 0 & N_mal_imput_val2 == 0 & N_mal_imput_val3 == 0 & N_mal_imput_val4 == 0) |>
-  #count() |>
+  #count()
   select(SNP_tag) |>
   write_delim(file = 'single_tags/Datos/tags_imput.txt', col_names = TRUE)
 ```
@@ -591,15 +591,15 @@ ggplot() +
     lineend = 'round', color = 'lightgrey', linewidth = 5
     ) +
   geom_segment(
-    data = dat_tags,
+    data = dat_tags |> filter(Imputación == 'Correcta'),
     aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion, color = Imputación),
     linewidth = 0.4, alpha = 1.4
     ) +
-  scale_color_manual(values = c('Correcta' = 'black', 'Incorrecta' = 'white')) +
+  scale_color_manual(values = c('Correcta' = 'black')) +
   #ggforce::facet_zoom(x = 8, y = 113256327) +
-  ggrepel::geom_label_repel(data = dat_tags |> filter(ID_tags == 'BovineHD2900005910'), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 1.4) +
+  ggrepel::geom_label_repel(data = dat_tags |> filter(ID_tags == 'BovineHD0800022731'), aes(x = Cromosoma, y = Posicion, label = ID_tags), box.padding = 1.4) +
   scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)', title = 'Aleatorio') +
+  labs(y = 'Posición (en pares de bases)') +
   theme_bw() +
   theme(
     plot.title = element_text(size = 12),
@@ -607,7 +607,8 @@ ggplot() +
     axis.title = element_text(size = 12, face = 'bold'),
     legend.text = element_text(size = 10),
     legend.title = element_text(size = 12, face = 'bold'),
-    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0)
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0),
+    legend.position = 'none'
     )
 
 ggsave('../../single_tags/Imagenes/dis_tags_mod.pdf', width = 40, height = 20, units = 'cm')

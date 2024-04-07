@@ -35,7 +35,7 @@ NOTA: Se identifica a continuación los marcadores con genotipo completo en todo
 
 # Se usa PLINk para identificar los marcadores con genotipo completos en todos los individuos ----
 
-plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_3') # Luego se obtiene como resultado (que se indica en Paso_3.log) un archivo con 598677 marcadores en 284 individuos.
+plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --geno 0  --make-bed --recode --out Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Paso_3') # Luego se obtiene como resultado (que se indica en Paso_3.log) un archivo con 472405 marcadores en 284 individuos.
 
 # Se exporta el nombre de los marcadores con genotipo completos ----
 
@@ -92,10 +92,6 @@ vcf_data_1 <- vcf_data %>%
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
 
-vcf_data_1 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ES090805688032_ES090805688032, ES050807776466_ES050807776466, ES000808213516_ES000808213516, ES020809983517_ES020809983517) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
-
 # Se guarda el archivo VCF modificado ----
 
 data.table::fwrite(vcf_data_1, output_file, sep = "\t", quote = FALSE) # Se mira el numero de filas y de columnas mediante la terminal de linux: awk '{print NR}' Grup1.vcf | tail -n 1 && awk '{print NF; exit}' Grup1.vcf.
@@ -129,10 +125,6 @@ vcf_data_2 <- vcf_data %>%
   mutate_at(vars(one_of(Grup_2)),
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
-
-vcf_data_2 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ES000812089820_ES000812089820, ES020807761204_ES020807761204, ESCC1810AG_ESCC1810AG, ES070809451440_ES070809451440) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
 
 # Se guarda el archivo VCF modificado ----
 
@@ -168,10 +160,6 @@ vcf_data_3 <- vcf_data %>%
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
 
-vcf_data_3 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ES081004654525_ES081004654525, ES090804239039_ES090804239039, ES020803801325_ES020803801325, ES031003910316_ES031003910316) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
-
 # Se guarda el archivo VCF modificado ----
 
 data.table::fwrite(vcf_data_3, output_file, sep = "\t", quote = FALSE)
@@ -205,10 +193,6 @@ vcf_data_4 <- vcf_data %>%
   mutate_at(vars(one_of(Grup_4)),
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
-
-vcf_data_4 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ESCC0299AG_ESCC0299AG, ES020808622542_ES020808622542, ES030809465033_ES030809465033, ES000805915644_ES000805915644) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
 
 # Se guarda el archivo VCF modificado ----
 
@@ -244,10 +228,6 @@ vcf_data_5 <- vcf_data %>%
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
 
-vcf_data_5 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ESLE1032GD_ESLE1032GD, ES030802427848_ES030802427848, ES020804239269_ES020804239269, ESLE2012GB_ESLE2012GB) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
-
 # Se guarda el archivo VCF modificado ----
 
 data.table::fwrite(vcf_data_5, output_file, sep = "\t", quote = FALSE)
@@ -282,11 +262,41 @@ vcf_data_6 <- vcf_data %>%
             ~ case_when(ID %in% marcadores ~ "./.",
                         TRUE ~ .))
 
-vcf_data_6 %>% 
-  filter(ID %in% c('Affx-113744580', 'Affx-113731463', 'BovineHD2700009653', 'Affx-106536391')) %>% 
-  select(ES081004061235_ES081004061235, ES080808089043_ES080808089043, ES030807310111_ES030807310111, ES011202254000_ES011202254000) # Se realiza la prueba para ver por ejemplo si los marcadores se enmascaran. Los genotipos de estos individuos aparece como "./.", y antes en el objeto "vcf_data" si tenian genotipos.
-
 # Se guarda el archivo VCF modificado ----
 
 data.table::fwrite(vcf_data_6, output_file, sep = "\t", quote = FALSE)
+
+#######################################
+# Precisión en el grupo de validación 7
+#######################################
+
+# Se importan los individuos ----
+
+Grup_7 <- read_delim(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Grup7.txt', col_names = FALSE, delim = ' ') |>
+  mutate(ID_2 = X1) |>
+  unite(
+    col = ID,
+    1:2,
+    sep = '_'
+    ) |>
+  pull()
+
+# Se indica la ruta de los archivos donde se guardará el archivo vcf generado con el marcador enmascarado ----
+
+output_file <- "Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Precision_KM/Prec_7/Grup7.vcf"
+
+# Se leen los nombres de los marcadores ----
+
+marcadores <- readLines(marcadores_file)
+
+# Se realiza el cambio en los genotipos de los individuos ----
+
+vcf_data_7 <- vcf_data %>%
+  mutate_at(vars(one_of(Grup_6)),
+            ~ case_when(ID %in% marcadores ~ "./.",
+                        TRUE ~ .))
+
+# Se guarda el archivo VCF modificado ----
+
+data.table::fwrite(vcf_data_7, output_file, sep = "\t", quote = FALSE)
 ```
