@@ -37,7 +37,7 @@ cod_geno <- function(columna) { # Esta función permite cambiar la codificación
 
 # Se importa los datos de genotipos ----
 
-res50K <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+res50K <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
 
 # Se transpone y se asigna un nombre a las columnas ----
 

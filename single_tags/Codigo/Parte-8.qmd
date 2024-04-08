@@ -13,3 +13,18 @@ NOTA: Se cargan los paquetes de R.
 pacman::p_load(tidyverse, SNPstats)
 ```
 
+<!--
+NOTA: A continuación se obtiene, las frecuencias (MAF) de los marcadores genotipados e imputados en alta densidad (HD), y de los marcadores genotipados en HD pero no imputados.
+-->
+
+```{r}
+#| label: MAF de marcadores no imputados vs imputados
+ 
+##########################
+# Después de la imputación
+##########################
+
+# Se importa el archivo resultado3.genotypes luego de la imputación con AlphaImpute y posteriormente se calcula la frencuencia del alelo menor (MAF) usando el paquete "snpStats" ----
+
+AI2_data <- read_delim(file = 'Imputacion/Imp_HD/Datos/AlphaImpute2/Resultados/resultado3.genotypes', col_names = FALSE, delim = ' ')
+```

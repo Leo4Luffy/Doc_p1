@@ -25,7 +25,11 @@ RESIDUAL_VARIANCE
 EFFECT
 3 cross alpha # Edad al primer parto como efecto para el IEP (edad al primer parto de la hembra clasificada en tres grupos: < 2.5 años, >= 2.5 años, <= 3 años, > 3 años).
 EFFECT
-4 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos.
+4 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos. Se trata como aleatorio para los dos caracteres de fertilidad.
+RANDOM
+diagonal
+(CO)VARIANCES
+1.0
 EFFECT
 5 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
 RANDOM
@@ -49,9 +53,7 @@ FILE_POS
 SNP_FILE
 ../../Genotipos_2.txt
 PED_DEPTH
-0
-INBREEDING
-pedigree
+0 # Profundidad de búsqueda de pedigrí (predeterminado igual a 3); todos los pedigríes se cargan si p = 0.
 (CO)VARIANCES
 1.0
 OPTION remove_all_missing" > renum.par
@@ -72,15 +74,18 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
+OPTION save_halfway_samples 10000
 OPTION method VCE
-OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3
 OPTION store_accuracy 5
-OPTION acctype 1.0" >> renf90.par
+OPTION acctype 1.0
+OPTION se_covar_function H2d G_2_2_1_1/(G_2_2_1_1+R_1_1)
+OPTION se_covar_function H2d G_3_3_1_1/(G_3_3_1_1+R_1_1)
+OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
+echo renf90.par | ../../../../../BLUPF90/gibbsf90+ --samples 70000 --burnin 10000 --interval 50 | tee blup.log
 
 cd -
 
@@ -101,7 +106,11 @@ RESIDUAL_VARIANCE
 EFFECT
 3 cross alpha # Edad al primer parto como efecto para el IEP (edad al primer parto de la hembra clasificada en tres grupos: < 2.5 años, >= 2.5 años, <= 3 años, > 3 años).
 EFFECT
-4 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos.
+4 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos. Se trata como aleatorio para los dos caracteres de fertilidad.
+RANDOM
+diagonal
+(CO)VARIANCES
+1.0
 EFFECT
 5 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
 RANDOM
@@ -125,9 +134,7 @@ FILE_POS
 SNP_FILE
 ../../Genotipos_2.txt
 PED_DEPTH
-0
-INBREEDING
-pedigree
+0 # Profundidad de búsqueda de pedigrí (predeterminado igual a 3); todos los pedigríes se cargan si p = 0.
 (CO)VARIANCES
 1.0
 OPTION remove_all_missing" > renum.par
@@ -139,7 +146,6 @@ sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 echo "OPTION SNP_file ../../Genotipos_2.txt
 OPTION excludeSample 2383
 OPTION saveCleanSNPs
-OPTION excludeSample 1326
 OPTION createGInverse 0
 OPTION createA22Inverse 0
 OPTION createGimA22i 0" >> renf90.par
@@ -149,14 +155,17 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
+OPTION save_halfway_samples 10000
 OPTION method VCE
-OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)
 OPTION sol se
 OPTION no_quality_control
 OPTION verify_parentage 3
 OPTION store_accuracy 5
-OPTION acctype 1.0" >> renf90.par
+OPTION acctype 1.0
+OPTION se_covar_function H2d G_2_2_1_1/(G_2_2_1_1+R_1_1)
+OPTION se_covar_function H2d G_3_3_1_1/(G_3_3_1_1+R_1_1)
+OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
+echo renf90.par | ../../../../../BLUPF90/gibbsf90+ --samples 70000 --burnin 10000 --interval 50 | tee blup.log
 
 cd -

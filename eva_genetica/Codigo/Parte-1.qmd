@@ -179,7 +179,7 @@ datPed_3 <- datPed_2 |>
 datPed_3 |>
   distinct(dam_renum) |>
   filter(!is.na(dam_renum)) |>
-  count() # Hay 34436 madres (vacas).
+  count() # Hay 74746 madres (vacas).
 
 datPed_3 |> filter(!is.na(dam_renum))|> summarise(n_hijos = n(), .by = dam_renum) |> arrange(n_hijos) |> slice_tail(n = 4) # La madre "109253" es la de mayor cantidad de crías con 21.
 
@@ -211,7 +211,7 @@ datPed_5 <- datPed_4 |>
 ```
 
 <!--
-NOTA: Se unen los conjuntos de datos de caracteres anteriormente importados.
+NOTA: Se unen los conjuntos de datos de los caracteres peso al destete y edad al primer parto e intervalo entre el primer y segundo parto anteriormente importados.
 -->
 
 ```{r}
@@ -242,7 +242,7 @@ datProd_2 |>
 ```
 
 <!--
-NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos.
+NOTA: A continuación, se genera un pedigrí basado en individuos con fenotipos. Así, se eliminan individuos que no están emparentados con los individuos con fenotipo.
 -->
 
 ```{r}
@@ -264,6 +264,56 @@ pedPrune |> filter(dam == '1B-10A') # Se observa de nuevo el mismo individuo 1B-
 ```
 
 <!--
+NOTA: A continuaicón se realizan algunas comprobaciones.
+-->
+
+```{r}
+#| label: Comprobaciones
+
+# Se comprueba que las madres de los indivdiuos eliminados siguen siendo madres de los individuos que no se eliminaron ----
+
+ped_Prueba <- anti_join(x = ped, y = pedPrune, by = 'id') # Son 194374 individuos que se eliminaron al no tener fenotipo.
+
+ped_Prueba |> slice_tail(n = 12)
+
+set.seed(1234)
+
+ped_Prueba_2 <- ped_Prueba |>
+  distinct(dam) |>
+  #count() # De los 194374 individuos eliminados, hay en total 65550 madres.
+  sample_n(size = 8) # Elijo al azar 4 madres.
+
+ped_Prueba_3 <- pedPrune |>
+  filter(dam %in% ped_Prueba_2$dam)
+
+# Se comprueba que las madres de los indivdiuos antes y después de la poda siguen siendo los mismos. Esto con el proposito de verificar que los terneros/as que están en el archivo de datos de pesos al destete no pierden su madre al generar el pedigrí: el peso al destete es un carácter que representa dos genotipos, el del ternero (potencial para crecer) y el de la madre (aptitud materna). Si se eliminan las madres de los datos se puede generar una heterogeneidad de residuos que no se modeliza, y esto puede dificultar los análisis ----
+
+ped_Prueba <- pedPrune |>
+  rename(
+    dam_prune = dam,
+    sire_prune = sire
+    ) |>
+  left_join(y = datPed, by = 'id')
+
+ped_Prueba |> slice_tail(n = 12)
+
+ped_Prueba_2 <- ped_Prueba %>%
+  mutate_all(~if_else(is.na(.), as.factor(0), .)) |>
+  mutate(
+    Comparación = case_when(
+      dam == dam_prune ~ 'Iguales',
+      TRUE ~ 'Diferentes'
+      )
+    )
+
+ped_Prueba_2 |> slice_tail(n = 12)
+
+ped_Prueba_2 |>
+  filter(Comparación == 'Diferentes') |>
+  slice_head(n = 12)
+```
+
+<!--
 NOTA: A continuación, se exportan los conjuntos de datos con información fenotípica y de pedigrí o genealogíca.
 -->
 
@@ -273,8 +323,12 @@ NOTA: A continuación, se exportan los conjuntos de datos con información fenot
 # Exportación de conjuntos de datos de pedigrí (o genealogíca) ----
 
 pedPrune |>
-  mutate_all(~if_else(is.na(.), as.factor(0), .)) |> # Se convierten los valores NA a 0. 
-  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ') # NOTA: RECORDAR CAMBIAR EL ORDEN DE MADRE Y PADRE.
+  mutate_all(~if_else(is.na(.), as.factor(0), .)) |> # Se convierten los valores NA a 0.
+  relocate(
+    sire,
+    .before = dam
+    ) |> # Se cambia el orden para que quede una estructura de pedigrí como lo requiere el programa blupf90 (ID | ID_p | ID_m). 
+  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
 
 # Exportación de conjuntos de datos de fenotipos ----
 
