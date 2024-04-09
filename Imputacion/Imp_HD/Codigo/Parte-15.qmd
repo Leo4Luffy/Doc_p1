@@ -175,7 +175,7 @@ NOTA: Se realiza a continuación la imputación con AlphaImpute2, basado en el p
 #| label: Imputación basado en el pedigrí
 
 # Definir la ruta de la carpeta principal
-carpeta_principal <- "Imp_HD/Datos/AlphaImpute2/Precision"
+carpeta_principal <- "Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/"
 
 # Definir los nombres de las subcarpetas y los archivos
 subcarpetas <- c("Prec_1", "Prec_2", "Prec_3", "Prec_4")
@@ -206,7 +206,7 @@ NOTA: Se realiza a continuación la imputación con AlphaImpute 2, basado en la 
 #| label: Imputación basado en la población
 
 # Definir la ruta de la carpeta principal
-carpeta_principal <- "../Datos/AlphaImpute2/Precision"
+carpeta_principal <- "Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/"
 
 # Definir los nombres de las subcarpetas y los archivos
 subcarpetas <- c("Prec_1", "Prec_2", "Prec_3", "Prec_4")
@@ -237,7 +237,7 @@ NOTA: Se realiza a continuación la imputación con AlphaImpute 2, basado en el 
 #| label: Imputación conjunta
 
 # Definir la ruta de la carpeta principal
-carpeta_principal <- "../Datos/AlphaImpute2/Precision"
+carpeta_principal <- "Imputacion/Imp_HD/Datos/AlphaImpute2/Precision/"
 
 # Definir los nombres de las subcarpetas y los archivos
 subcarpetas <- c("Prec_1", "Prec_2", "Prec_3", "Prec_4")

@@ -24,14 +24,19 @@ RESIDUAL_VARIANCE
 1.0 0.1
 0.1 1.0
 EFFECT
-3 0 cross alpha # Grupo de comparación para la edad al primer parto.
-EFFECT
-4 10 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+3 0 cross alpha # Grupo de comparación para la edad al primer parto. Se trata como aleatorio.
 RANDOM
 diagonal
 (CO)VARIANCES
-1.0 0.1
-0.1 1.0
+1.0 0.0
+0.0 0.0
+EFFECT
+4 0 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+RANDOM
+diagonal
+(CO)VARIANCES
+1.0 0.0
+0.0 0.0
 EFFECT
 5 0 cross alpha # Sexo de la cría en el primer parto.
 EFFECT
@@ -40,6 +45,18 @@ EFFECT
 0 8 cross alpha # Edad al primer parto como efecto para el IEP (edad al primer parto de la hembra clasificada en tres grupos: < 2.5 años, >= 2.5 años, <= 3 años, > 3 años).
 EFFECT
 0 9 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos.
+RANDOM
+diagonal
+(CO)VARIANCES
+0.0 0.0
+0.0 1.0
+EFFECT
+0 10 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+RANDOM
+diagonal
+(CO)VARIANCES
+0.0 0.0
+0.0 1.0
 EFFECT
 0 11 cross alpha # Sexo de la cría en el segundo parto.
 EFFECT
@@ -58,8 +75,6 @@ SNP_FILE
 ../../Genotipos_2.txt
 PED_DEPTH
 0
-INBREEDING
-pedigree
 (CO)VARIANCES
 1.0 0.1
 0.1 1.0
@@ -81,17 +96,16 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
-OPTION method VCE
-OPTION se_covar_function H2_1 G_10_10_1_1/(G_10_10_1_1+R_1_1)
-OPTION se_covar_function H2_2 G_10_10_2_2/(G_10_10_2_2+R_2_2)
-OPTION se_covar_function Rg1_2 G_10_10_1_2/(G_10_10_1_1*G_10_10_2_2)**0.5
-OPTION sol se
+OPTION solution mean
+OPTION save_halfway_samples 10000
 OPTION no_quality_control
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0" >> renf90.par
+OPTION verify_parentage 3" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
+../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
+renf90.par
+70000 10000
+50
+AA
 
 cd -
 
@@ -111,14 +125,19 @@ RESIDUAL_VARIANCE
 1.0 0.1
 0.1 1.0
 EFFECT
-3 0 cross alpha # Grupo de comparación para la edad al primer parto.
-EFFECT
-4 10 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+3 0 cross alpha # Grupo de comparación para la edad al primer parto. Se trata como aleatorio.
 RANDOM
 diagonal
 (CO)VARIANCES
-1.0 0.1
-0.1 1.0
+1.0 0.0
+0.0 0.0
+EFFECT
+4 0 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+RANDOM
+diagonal
+(CO)VARIANCES
+1.0 0.0
+0.0 0.0
 EFFECT
 5 0 cross alpha # Sexo de la cría en el primer parto.
 EFFECT
@@ -127,6 +146,18 @@ EFFECT
 0 8 cross alpha # Edad al primer parto como efecto para el IEP (edad al primer parto de la hembra clasificada en tres grupos: < 2.5 años, >= 2.5 años, <= 3 años, > 3 años).
 EFFECT
 0 9 cross alpha # Grupo de comparación para el intervalo entre los partos uno y dos.
+RANDOM
+diagonal
+(CO)VARIANCES
+0.0 0.0
+0.0 1.0
+EFFECT
+0 10 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
+RANDOM
+diagonal
+(CO)VARIANCES
+0.0 0.0
+0.0 1.0
 EFFECT
 0 11 cross alpha # Sexo de la cría en el segundo parto.
 EFFECT
@@ -145,8 +176,6 @@ SNP_FILE
 ../../Genotipos_2.txt
 PED_DEPTH
 0
-INBREEDING
-pedigree
 (CO)VARIANCES
 1.0 0.1
 0.1 1.0
@@ -168,16 +197,15 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
-OPTION method VCE
-OPTION se_covar_function H2_1 G_10_10_1_1/(G_10_10_1_1+R_1_1)
-OPTION se_covar_function H2_2 G_10_10_2_2/(G_10_10_2_2+R_2_2)
-OPTION se_covar_function Rg1_2 G_10_10_1_2/(G_10_10_1_1*G_10_10_2_2)**0.5
-OPTION sol se
+OPTION solution mean
+OPTION save_halfway_samples 10000
 OPTION no_quality_control
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0" >> renf90.par
+OPTION verify_parentage 3" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/blupf90+ | tee blup.log
+../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
+renf90.par
+70000 10000
+50
+AA
 
 cd -

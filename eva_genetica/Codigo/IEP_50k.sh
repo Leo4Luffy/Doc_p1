@@ -74,18 +74,16 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
+OPTION solution mean
 OPTION save_halfway_samples 10000
-OPTION method VCE
-OPTION sol se
 OPTION no_quality_control
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0
-OPTION se_covar_function H2d G_2_2_1_1/(G_2_2_1_1+R_1_1)
-OPTION se_covar_function H2d G_3_3_1_1/(G_3_3_1_1+R_1_1)
-OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)" >> renf90.par
+OPTION verify_parentage 3" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/gibbsf90+ --samples 70000 --burnin 10000 --interval 50 | tee blup.log
+../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
+renf90.par
+70000 10000
+50
+AA
 
 cd -
 
@@ -155,17 +153,15 @@ echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos indi
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
 echo "OPTION SNP_file ../../Genotipos_2.txt_clean
+OPTION solution mean
 OPTION save_halfway_samples 10000
-OPTION method VCE
-OPTION sol se
 OPTION no_quality_control
-OPTION verify_parentage 3
-OPTION store_accuracy 5
-OPTION acctype 1.0
-OPTION se_covar_function H2d G_2_2_1_1/(G_2_2_1_1+R_1_1)
-OPTION se_covar_function H2d G_3_3_1_1/(G_3_3_1_1+R_1_1)
-OPTION se_covar_function H2d G_7_7_1_1/(G_7_7_1_1+R_1_1)" >> renf90.par
+OPTION verify_parentage 3" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/gibbsf90+ --samples 70000 --burnin 10000 --interval 50 | tee blup.log
+../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
+renf90.par
+70000 10000
+50
+AA
 
 cd -

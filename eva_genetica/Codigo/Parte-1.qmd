@@ -328,11 +328,11 @@ pedPrune |>
     sire,
     .before = dam
     ) |> # Se cambia el orden para que quede una estructura de pedigrí como lo requiere el programa blupf90 (ID | ID_p | ID_m). 
-  write_delim(file = 'eva_genetica/Datos/Pedigri.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE, delim = ' ')
 
 # Exportación de conjuntos de datos de fenotipos ----
 
 datProd_2 |>
   mutate_all(function(x) if_else(is.na(x), as.factor(0), as.character(x))) |> # Se convierten los valores NA a 0.
-  write_delim(file = 'eva_genetica/Datos/Fenotipos.txt', col_names = FALSE, delim = ' ')
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Fenotipos.txt', col_names = FALSE, delim = ' ')
 ```
