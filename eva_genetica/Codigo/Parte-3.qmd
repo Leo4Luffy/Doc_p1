@@ -316,7 +316,7 @@ ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos 
     ) |>
   right_join(y = EPP_IEP, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
 
-# Se exporta el conjunto de datos de genotipos ----
+# Se obtiene el conjunto de datos de genotipos ----
 
 datGeno_2 <- datGeno |>
   inner_join(y = ID_ind_2, by = 'ID_ofi') |>

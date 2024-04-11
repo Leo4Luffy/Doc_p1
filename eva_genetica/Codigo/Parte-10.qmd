@@ -123,7 +123,7 @@ efecto_4 <- create_plot(burnin_3, 'Residuo', 'green')
 
 ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil.pdf', width = 40, height = 20, units = 'cm')
 
-# Se realiza un gráfica para visualizar las varianzas y la heredabilidad ----
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad ----
 
 heredabilidad <- burnin_3 |>
   select(-c(1, 3)) |>
@@ -325,6 +325,106 @@ efecto_4 <- create_plot(burnin_3, 'Residuo', 'green')
   theme(plot.title = element_text(size = 10, face = 'bold'))
 
 ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad ----
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo))
+
+graf_varGC <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 440, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3040, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad <- heredabilidad |>
+  ggplot(aes(x = heredabilidad)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.078, y = 30,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad), digits = 2)), size = 3.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+(guide_area()/(((graf_varGC | graf_varG) / (graf_varT | graf_varE)) | (graf_heredabilidad))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 <!--
@@ -432,6 +532,107 @@ efecto_5 <- create_plot(burnin_1, 'Residuo', 'brown')
   theme(plot.title = element_text(size = 10, face = 'bold'))
 
 ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad ----
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
+    ) |>
+  mutate(heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto materno` + `Varianza para el efecto del individuo` + Residuo))# VOY AQUI.
+
+graf_varGC <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 440, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3040, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad <- heredabilidad |>
+  ggplot(aes(x = heredabilidad)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.078, y = 30,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad), digits = 2)), size = 3.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+(guide_area()/(((graf_varGC | graf_varG) / (graf_varT | graf_varE)) | (graf_heredabilidad))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 <!--
