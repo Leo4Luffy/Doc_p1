@@ -1,0 +1,107 @@
+---
+title: "Parte 17: Edición en los datos de SNP-tags imputados correctamente a partir de los grupos de validación formados mediante parentesco basado en segmentos"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse, conflicted)
+conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
+# Error:
+# ! [conflicted] filter found in 2 packages.
+# Either pick the one you want with `::`:
+# dplyr::filter
+# stats::filter
+conflicts_prefer(dplyr::select)
+```
+
+<!--
+NOTA: A continuación se filtran los 8426 SNP-tags imputados correctamente. Luego se transpone para que los individuos queden en filas y los marcadores en columnas.
+-->
+
+```{r}
+#| label: Selección de SNP-tags correctamente imputados.
+
+# Se importan los SNP-tags correctamete imputados ----
+
+SNP_tags <- read_delim(file = 'single_tags/Datos/KM/tags_imput.txt', col_names = TRUE, delim = ' ')
+
+# Se importa los datos de genotipos ----
+
+resHD <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+res_tags <- resHD |>
+  filter(ID %in% SNP_tags$SNP_tag) |>
+  select(-c(2, 4:9))
+
+res_tags |> select(1:4) |> slice_head(n = 8)
+
+dim_desc(res_tags) # Se seleccionaron los 8426 SNP-tags imputados correctamente en 2970 individuos.
+
+# Se transpone lo anterior para que los marcadores queden en columnas y los individuos en filas ----
+
+res_tags_b <- res_tags |>
+  select(-1) |> # Se quita la columna que indica el cromosoma.
+  pivot_longer(
+    cols = c(2:2971),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (IID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into = c('IID', 'IID_2'),
+    sep = '_'
+    ) |> # La ID de los indiviuos esta por ejemplo de esta forma: ES000702712752_ES000702712752, por lo que se debe separar y quedar con una sola de ellas.
+  select(-IID_2)
+
+res_tags_b |> select(1:4) |> slice_head(n = 8)
+
+dim_desc(res_tags_b)
+```
+
+<!--
+NOTA: A continuación se generan los conjuntos de datos de SNP-tags editados.
+-->
+
+```{r}
+#| label: Edición de datos de SNP-tags
+
+# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
+
+cod_geno <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna, ya que la primera corresponde a la ID de los individuos.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+# Se cambian los valores de los genotipos ----
+
+res_tags_c <-cod_geno(res_tags_b) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
+
+res_tags_c |> select(1:4) |> slice_head(n = 8) # Se observa aquí si se logro cambiar la codificación de los genotipos.
+
+res_tags_c |>
+  unite(
+    col = 'Geno', 
+    2:ncol(res_tags_c),
+    sep = '',
+    remove = TRUE
+    ) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/resSNP_tags_val2.txt', col_names = FALSE)
+```

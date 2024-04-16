@@ -1,5 +1,5 @@
 ---
-title: "Parte 4: Edición en los datos de genotipos imputados a HD con Beagle v. 5.4"
+title: "Parte 4: Visualización de resultados del gibbs en datos completos en el genotipado de 50K imputado"
 format: html
 ---
 
@@ -10,1930 +10,1137 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse, conflicted)
-conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
-# Error:
-# ! [conflicted] filter found in 2 packages.
-# Either pick the one you want with `::`:
-# dplyr::filter
-# stats::filter
-conflicts_prefer(dplyr::select)
+pacman::p_load(tidyverse, patchwork)
 ```
 
 <!--
-NOTA: A continuación se transponen los conjuntos de datos de genotipos editados en los datos de HD con Beagle v. 5.4, un cromosoma a la vez.
+NOTA: Para el caracter "edad al primer parto" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y .
 -->
 
 ```{r}
-#| label: Edición de datos de genotipos (50k) con Beagle v. 5.4
-
-# Se importa los datos de genotipos ----
-
-resHD <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
-
-# Se realiza un conteo de los marcadores en cada uno de los cromosomas ----
-
-Cromo_1_29 <- resHD |>
-  #filter(`#CHROM` %in% c(1, 2)) |> # En caso de que se quiera filtrar alguún cromosoma. En este caso, los cromosomas 1 y 2.
-  select(-c(2, 4:9))
-
-Cromo_1_29 |> count(`#CHROM`)
-
-#############
-# Cromosoma 1
-#############
-
-# Se obtienen solo los marcadores del cromosoma 1 ----
-
-Cromo_1 <- Cromo_1_29 |>
-  filter(`#CHROM` == 1)
-
-Cromo_1 |> count(`#CHROM`)
-
-Cromo_1 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
-
-Cromo_1_t <- Cromo_1 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_1_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_1_t)
-
-Cromo_1_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_1.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 2
-#############
-
-# Se obtienen solo los marcadores del cromosoma 2 ----
-
-Cromo_2 <- Cromo_1_29 |>
-  filter(`#CHROM` == 2)
-
-Cromo_2 |> count(`#CHROM`)
-
-Cromo_2 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
-
-Cromo_2_t <- Cromo_2 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_2_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_2_t)
-
-Cromo_2_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_2.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 3
-#############
-
-# Se obtienen solo los marcadores del cromosoma 3 ----
-
-Cromo_3 <- Cromo_1_29 |>
-  filter(`#CHROM` == 3)
-
-Cromo_3 |> count(`#CHROM`) # Se comprueba y si hay 34863 marcadores en el cromosoma 3.
-
-Cromo_3 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
-
-Cromo_3_t <- Cromo_3 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_3_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_3_t)
-
-Cromo_3_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_3.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 4
-#############
-
-# Se obtienen solo los marcadores del cromosoma 4 ----
-
-Cromo_4 <- Cromo_1_29 |>
-  filter(`#CHROM` == 4)
-
-Cromo_4 |> count(`#CHROM`) # Se comprueba y si hay 34176 marcadores en el cromosoma 4.
-
-Cromo_4 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_4_t <- Cromo_4 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_4_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_4_t)
-
-Cromo_4_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_4.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 5
-#############
-
-# Se obtienen solo los marcadores del cromosoma 5 ----
-
-Cromo_5 <- Cromo_1_29 |>
-  filter(`#CHROM` == 5)
-
-Cromo_5 |> count(`#CHROM`)
-
-Cromo_5 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_5_t <- Cromo_5 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_5_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_5_t)
-
-Cromo_5_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD//Cromo_5.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 6
-#############
-
-# Se obtienen solo los marcadores del cromosoma 6 ----
-
-Cromo_6 <- Cromo_1_29 |>
-  filter(`#CHROM` == 6)
-
-Cromo_6 |> count(`#CHROM`)
-
-Cromo_6 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_6_t <- Cromo_6 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_6_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_6_t)
-
-Cromo_6_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_6.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 7
-#############
-
-# Se obtienen solo los marcadores del cromosoma 7 ----
-
-Cromo_7 <- Cromo_1_29 |>
-  filter(`#CHROM` == 7)
-
-Cromo_7 |> count(`#CHROM`)
-
-Cromo_7 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_7_t <- Cromo_7 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_7_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_7_t)
-
-Cromo_7_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_7.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 8
-#############
-
-# Se obtienen solo los marcadores del cromosoma 8 ----
-
-Cromo_8 <- Cromo_1_29 |>
-  filter(`#CHROM` == 8)
-
-Cromo_8 |> count(`#CHROM`)
-
-Cromo_8 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_8_t <- Cromo_8 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_8_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_8_t)
-
-Cromo_8_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_8.txt', delim = ' ', col_names = TRUE)
-
-#############
-# Cromosoma 9
-#############
-
-# Se obtienen solo los marcadores del cromosoma 9 ----
-
-Cromo_9 <- Cromo_1_29 |>
-  filter(`#CHROM` == 9)
-
-Cromo_9 |> count(`#CHROM`)
-
-Cromo_9 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_9_t <- Cromo_9 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_9_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_9_t)
-
-Cromo_9_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_9.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 10
-##############
-
-# Se obtienen solo los marcadores del cromosoma 10 ----
-
-Cromo_10 <- Cromo_1_29 |>
-  filter(`#CHROM` == 10)
-
-Cromo_10 |> count(`#CHROM`)
-
-Cromo_10 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_10_t <- Cromo_10 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_10_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_10_t) # Se comprueba y hay 2970 individuos y 29657 marcadores.
-
-Cromo_10_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_10.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 11
-##############
-
-# Se obtienen solo los marcadores del cromosoma 11 ----
-
-Cromo_11 <- Cromo_1_29 |>
-  filter(`#CHROM` == 11)
-
-Cromo_11 |> count(`#CHROM`)
-
-Cromo_11 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_11_t <- Cromo_11 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_11_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_11_t)
-
-Cromo_11_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_11.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 12
-##############
-
-# Se obtienen solo los marcadores del cromosoma 12 ----
-
-Cromo_12 <- Cromo_1_29 |>
-  filter(`#CHROM` == 12)
-
-Cromo_12 |> count(`#CHROM`)
-
-Cromo_12 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_12_t <- Cromo_12 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_12_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_12_t)
-
-Cromo_12_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_12.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 13
-##############
-
-# Se obtienen solo los marcadores del cromosoma 13 ----
-
-Cromo_13 <- Cromo_1_29 |>
-  filter(`#CHROM` == 13)
-
-Cromo_13 |> count(`#CHROM`)
-
-Cromo_13 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_13_t <- Cromo_13 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_13_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_13_t)
-
-Cromo_13_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_13.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 14
-##############
-
-# Se obtienen solo los marcadores del cromosoma 14 ----
-
-Cromo_14 <- Cromo_1_29 |>
-  filter(`#CHROM` == 14)
-
-Cromo_14 |> count(`#CHROM`)
-
-Cromo_14 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_14_t <- Cromo_14 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_14_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_14_t)
-
-Cromo_14_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_14.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 15
-##############
-
-# Se obtienen solo los marcadores del cromosoma 15 ----
-
-Cromo_15 <- Cromo_1_29 |>
-  filter(`#CHROM` == 15)
-
-Cromo_15 |> count(`#CHROM`)
-
-Cromo_15 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_15_t <- Cromo_15 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_15_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_15_t)
-
-Cromo_15_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_15.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 16
-##############
-
-# Se obtienen solo los marcadores del cromosoma 16 ----
-
-Cromo_16 <- Cromo_1_29 |>
-  filter(`#CHROM` == 16)
-
-Cromo_16 |> count(`#CHROM`)
-
-Cromo_16 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_16_t <- Cromo_16 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_16_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_16_t)
-
-Cromo_16_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_16.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 17
-##############
-
-# Se obtienen solo los marcadores del cromosoma 17 ----
-
-Cromo_17 <- Cromo_1_29 |>
-  filter(`#CHROM` == 17)
-
-Cromo_17 |> count(`#CHROM`)
-
-Cromo_17 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_17_t <- Cromo_17 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_17_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_17_t)
-
-Cromo_17_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_17.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 18
-##############
-
-# Se obtienen solo los marcadores del cromosoma 18 ----
-
-Cromo_18 <- Cromo_1_29 |>
-  filter(`#CHROM` == 18)
-
-Cromo_18 |> count(`#CHROM`) # Se comprueba y si hay 18928 marcadores en el cromosoma 18.
-
-Cromo_18 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_18_t <- Cromo_18 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_18_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_18_t)
-
-Cromo_18_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_18.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 19
-##############
-
-# Se obtienen solo los marcadores del cromosoma 19 ----
-
-Cromo_19 <- Cromo_1_29 |>
-  filter(`#CHROM` == 19)
-
-Cromo_19 |> count(`#CHROM`)
-
-Cromo_19 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_19_t <- Cromo_19 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_19_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_19_t)
-
-Cromo_19_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_19.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 20
-##############
-
-# Se obtienen solo los marcadores del cromosoma 20 ----
-
-Cromo_20 <- Cromo_1_29 |>
-  filter(`#CHROM` == 20)
-
-Cromo_20 |> count(`#CHROM`)
-
-Cromo_20 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_20_t <- Cromo_20 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_20_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_20_t)
-
-Cromo_20_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_20.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 21
-##############
-
-# Se obtienen solo los marcadores del cromosoma 21 ----
-
-Cromo_21 <- Cromo_1_29 |>
-  filter(`#CHROM` == 21)
-
-Cromo_21 |> count(`#CHROM`)
-
-Cromo_21 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_21_t <- Cromo_21 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_21_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_21_t)
-
-Cromo_21_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_21.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 22
-##############
-
-# Se obtienen solo los marcadores del cromosoma 22 ----
-
-Cromo_22 <- Cromo_1_29 |>
-  filter(`#CHROM` == 22)
-
-Cromo_22 |> count(`#CHROM`)
-
-Cromo_22 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_22_t <- Cromo_22 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_22_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_22_t)
-
-Cromo_22_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_22.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 23
-##############
-
-# Se obtienen solo los marcadores del cromosoma 23 ----
-
-Cromo_23 <- Cromo_1_29 |>
-  filter(`#CHROM` == 23)
-
-Cromo_23 |> count(`#CHROM`)
-
-Cromo_23 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_23_t <- Cromo_23 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_23_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_23_t)
-
-Cromo_23_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_23.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 24
-##############
-
-# Se obtienen solo los marcadores del cromosoma 24 ----
-
-Cromo_24 <- Cromo_1_29 |>
-  filter(`#CHROM` == 24)
-
-Cromo_24 |> count(`#CHROM`)
-
-Cromo_24 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_24_t <- Cromo_24 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_24_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_24_t)
-
-Cromo_24_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_24.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 25
-##############
-
-# Se obtienen solo los marcadores del cromosoma 25 ----
-
-Cromo_25 <- Cromo_1_29 |>
-  filter(`#CHROM` == 25)
-
-Cromo_25 |> count(`#CHROM`)
-
-Cromo_25 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_25_t <- Cromo_25 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_25_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_25_t)
-
-Cromo_25_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_25.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 26
-##############
-
-# Se obtienen solo los marcadores del cromosoma 26 ----
-
-Cromo_26 <- Cromo_1_29 |>
-  filter(`#CHROM` == 26)
-
-Cromo_26 |> count(`#CHROM`)
-
-Cromo_26 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_26_t <- Cromo_26 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_26_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_26_t)
-
-Cromo_26_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_26.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 27
-##############
-
-# Se obtienen solo los marcadores del cromosoma 27 ----
-
-Cromo_27 <- Cromo_1_29 |>
-  filter(`#CHROM` == 27)
-
-Cromo_27 |> count(`#CHROM`)
-
-Cromo_27 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_27_t <- Cromo_27 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_27_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_27_t)
-
-Cromo_27_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_27.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 28
-##############
-
-# Se obtienen solo los marcadores del cromosoma 28 ----
-
-Cromo_28 <- Cromo_1_29 |>
-  filter(`#CHROM` == 28)
-
-Cromo_28 |> count(`#CHROM`) # Se comprueba y si hay 12714 marcadores en el cromosoma 28.
-
-Cromo_28 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_28_t <- Cromo_28 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_28_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_28_t)
-
-Cromo_28_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_28.txt', delim = ' ', col_names = TRUE)
-
-##############
-# Cromosoma 29
-##############
-
-# Se obtienen solo los marcadores del cromosoma 29 ----
-
-Cromo_29 <- Cromo_1_29 |>
-  filter(`#CHROM` == 29)
-
-Cromo_29 |> count(`#CHROM`) # Se comprueba y si hay 14259 marcadores en el cromosoma 29.
-
-Cromo_29 |> select(1:4) |> slice_head(n = 4)
-
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
-
-Cromo_29_t <- Cromo_29 |>
-  select(-1) |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
-    ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |>
-  separate(
-    col = IID,
-    into = c('ID', 'ID_2'),
-    sep = '_'
-    ) |>
-  select(-ID_2) |>
-  as_tibble()
-
-Cromo_29_t |> select(1:4) |> slice_head(n = 4)
-
-dim_desc(Cromo_29_t)
-
-Cromo_29_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_29.txt', delim = ' ', col_names = TRUE)
-```
-
-<!--
-NOTA: Se cambia los genotipos en fase del Beagle al código de genotipos como lo requiere el blupf90.
--->
-
-```{r}
-#| label: Recodificación de genotipos
-
-# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
-
-cod_geno <- function(columna) { # Esta función permite cambiar los genotipos en fase del Beagle al código de genotipos como lo requiere el blupf90 (0: A1A1 | 5: fase desconocida | 2: A2A2 | 1: A1A2 | 1:A2A1... el primer alelo es el paterno y el segundo es el materno).
-  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna, ya que la primera corresponde a la ID de los individuos.
-    columna[[i]] <- case_when(
-      columna[[i]] == '0|0' ~ '0',
-      columna[[i]] == '0|1' ~ '1',
-      columna[[i]] == '1|0' ~ '1',
-      columna[[i]] == '1|1' ~ '2',
-      columna[[i]] == '.|.' ~ '5'
-      )
-    }
-  return(columna)
+#| label: Resultados del postgibbs para la edad al primer parto
+
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
+
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación' = X4,
+      'Varianza para el efecto del toro' = X5,
+      'Varianza para el efecto del individuo' = X6,
+      'Residuo' = X7
+      ) |>
+    pivot_longer(
+      cols = c(2:5),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
+    )
   }
 
-#############
-# Cromosoma 1
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_1_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_1.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_1_e <- cod_geno(Cromo_1_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_1', 
-    2:ncol(Cromo_1_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 2
-#############
-
-Cromo_2_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_2.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_2_e <- cod_geno(Cromo_2_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_2', 
-    2:ncol(Cromo_2_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 3
-#############
-
-Cromo_3_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_3.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_3_e <- cod_geno(Cromo_3_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_3', 
-    2:ncol(Cromo_3_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 4
-#############
-
-Cromo_4_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_4.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_4_e <- cod_geno(Cromo_4_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_4', 
-    2:ncol(Cromo_4_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 5
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_5_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_5.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_5_e <- cod_geno(Cromo_5_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_5', 
-    2:ncol(Cromo_5_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 6
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_6_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_6.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_6_e <- cod_geno(Cromo_6_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_6', 
-    2:ncol(Cromo_6_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 7
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_7_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_7.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_7_e <- cod_geno(Cromo_7_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_7', 
-    2:ncol(Cromo_7_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 8
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_8_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_8.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_8_e <- cod_geno(Cromo_8_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_8', 
-    2:ncol(Cromo_8_t),
-    sep = '',
-    remove = TRUE
-    )
-
-#############
-# Cromosoma 9
-#############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_9_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_9.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_9_e <- cod_geno(Cromo_9_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_9', 
-    2:ncol(Cromo_9_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 10
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_10_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_10.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_10_e <- cod_geno(Cromo_10_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_10', 
-    2:ncol(Cromo_10_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 11
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_11_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_11.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_11_e <- cod_geno(Cromo_11_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_11', 
-    2:ncol(Cromo_11_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 12
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_12_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_12.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_12_e <- cod_geno(Cromo_12_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_12', 
-    2:ncol(Cromo_12_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 13
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_13_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_13.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_13_e <- cod_geno(Cromo_13_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_13', 
-    2:ncol(Cromo_13_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 14
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_14_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_14.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_14_e <- cod_geno(Cromo_14_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_14', 
-    2:ncol(Cromo_14_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 15
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_15_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_15.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_15_e <- cod_geno(Cromo_15_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_15', 
-    2:ncol(Cromo_15_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 16
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_16_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_16.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_16_e <- cod_geno(Cromo_16_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_16', 
-    2:ncol(Cromo_16_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 17
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_17_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_17.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_17_e <- cod_geno(Cromo_17_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_17', 
-    2:ncol(Cromo_17_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 18
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_18_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_18.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_18_e <- cod_geno(Cromo_18_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_18', 
-    2:ncol(Cromo_18_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 19
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_19_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_19.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_19_e <- cod_geno(Cromo_19_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_19', 
-    2:ncol(Cromo_19_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 20
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_20_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_20.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_20_e <- cod_geno(Cromo_20_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_20', 
-    2:ncol(Cromo_20_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 21
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_21_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_21.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_21_e <- cod_geno(Cromo_21_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_21', 
-    2:ncol(Cromo_21_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 22
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_22_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_22.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_22_e <- cod_geno(Cromo_22_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_22', 
-    2:ncol(Cromo_22_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 23
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_23_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_23.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_23_e <- cod_geno(Cromo_23_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_23', 
-    2:ncol(Cromo_23_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 24
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_24_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_24.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_24_e <- cod_geno(Cromo_24_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_24', 
-    2:ncol(Cromo_24_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 25
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_25_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_25.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_25_e <- cod_geno(Cromo_25_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_25', 
-    2:ncol(Cromo_25_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 26
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_26_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_26.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_26_e <- cod_geno(Cromo_26_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_26', 
-    2:ncol(Cromo_26_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 27
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_27_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_27.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_27_e <- cod_geno(Cromo_27_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_27', 
-    2:ncol(Cromo_27_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 28
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_28_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_28.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_28_e <- cod_geno(Cromo_28_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_28', 
-    2:ncol(Cromo_28_t),
-    sep = '',
-    remove = TRUE
-    )
-
-##############
-# Cromosoma 29
-##############
-
-# Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
-
-Cromo_29_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_29.txt', delim = ' ', col_names = TRUE)
-
-# Se cambian los valores de los genotipos ----
-
-Cromo_29_e <- cod_geno(Cromo_29_t) |> # Se usa la función al inicio de este fragmento de código para cambiar los valores de los genotipos (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
-  unite(
-    col = 'Geno_29', 
-    2:ncol(Cromo_29_t),
-    sep = '',
-    remove = TRUE
-    )
-
-# Se unen los objetos anteriores ----
-
-Cromo_e <- inner_join(Cromo_1_e, Cromo_2_e, by = 'ID') |>
-  inner_join(Cromo_3_e, by = 'ID') |>
-  inner_join(Cromo_4_e, by = 'ID') |>
-  inner_join(Cromo_5_e, by = 'ID') |>
-  inner_join(Cromo_6_e, by = 'ID') |>
-  inner_join(Cromo_7_e, by = 'ID') |>
-  inner_join(Cromo_8_e, by = 'ID') |>
-  inner_join(Cromo_9_e, by = 'ID') |>
-  inner_join(Cromo_10_e, by = 'ID') |>
-  inner_join(Cromo_11_e, by = 'ID') |>
-  inner_join(Cromo_12_e, by = 'ID') |>
-  inner_join(Cromo_13_e, by = 'ID') |>
-  inner_join(Cromo_14_e, by = 'ID') |>
-  inner_join(Cromo_15_e, by = 'ID') |>
-  inner_join(Cromo_16_e, by = 'ID') |>
-  inner_join(Cromo_17_e, by = 'ID') |>
-  inner_join(Cromo_18_e, by = 'ID') |>
-  inner_join(Cromo_19_e, by = 'ID') |>
-  inner_join(Cromo_20_e, by = 'ID') |>
-  inner_join(Cromo_21_e, by = 'ID') |>
-  inner_join(Cromo_22_e, by = 'ID') |>
-  inner_join(Cromo_23_e, by = 'ID') |>
-  inner_join(Cromo_24_e, by = 'ID') |>
-  inner_join(Cromo_25_e, by = 'ID') |>
-  inner_join(Cromo_26_e, by = 'ID') |>
-  inner_join(Cromo_27_e, by = 'ID') |>
-  inner_join(Cromo_28_e, by = 'ID') |>
-  inner_join(Cromo_29_e, by = 'ID')
-
-Cromo_e |>
-  unite(
-    col = 'Geno', 
-    2:ncol(Cromo_e),
-    sep = '',
-    remove = TRUE
-    ) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/resHD_Beagle_v.5.4.txt', delim = ' ', col_names = FALSE)
-```
-
-<!--
-NOTA: Otra forma de hacer lo anterior sería hacer lo que hago a continuación. Usar plink para dejar en filas los individuos y en columnas los marcadores, y posteriormente editar la codificación de genotipos con R, como hice en el análisis de paternidad. Sin embargo, al momento de cambiar la codificación, esto se debería hacer en un computador con la suficiente capacidad ya que hacer esto en genotipados de alta densidas consume muchos recursos.
--->
-
-<!--
-NOTA: Se carga el software PLINK dentro del ambiente R.
--->
-
-```{r}
-#| label: Carga del software PLINK dentro del ambiente R
-
-# Función que permite ejecutar PLINK dentro de R:
-plink <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Imputacion/Plink/plink', PLINKopciones))
-
-plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
-
-# Función que permite ejecutar PLINK2 dentro de R:
-plink2 <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Imputacion/Plink/plink2', PLINKopciones))
-
-plink2() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
-```
-
-<!--
-NOTA: Usando PLINK, se pasan el archivo VCF que resultó al imputar los genotipos mediante Beagle v 5.4 a datos PLINK binarios (.bed, .fam y .bim).
--->
-
-```{r}
-#| label: Paso de archivos VCF a datos PLINK binarios
-
-plink('--cow --allow-extra-chr --vcf Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_1')
-```
-
-<!--
-NOTA: Del archivo VCF que se uso en la imputación (imp_HD_50k.vcf), se obtiene las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT).
--->
-
-```{r}
-#| label: Nombre del marcador y alelo alternativo
-
-vcf_data <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
-
-vcf_data |>
-  select(ID, ALT) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/aleloALT.txt', col_names = FALSE, delim = ' ')
-```
-
-<!--
-NOTA: Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo, el cual se encuentra en el archivo /aleloALT.txt anteriormente exportado.
--->
-
-```{r}
-#| label: Paso de genotipos a 0, 1, 2
-
-plink2('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_1 --alt1-allele force eva_genetica/Datos/eva_genomica/Beagle_HD/aleloALT.txt --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_2')
-
-# NOTA: En PLINK, los genotipos homocigotos para el alelo 1 se representan como "A/A", los genotipos heterocigotos se representan como "A/B" y los genotipos homocigotos para el alelo 2 se representan como "B/B". En el caso de genotipos codificados como números, PLINK utiliza los siguientes códigos:
+##########################
+# Con burn-in igual a cero
+##########################
+
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
 #
-# Homocigoto para el alelo 1: 0
-# Heterocigoto: 1
-# Homocigoto para el alelo 2: 2
+# Columna 1: Indica el orden secuencial en el que la muestra se guardo luego del proceso de quema (burn-in) y adelgazamiento (thinning).
+#
+# Columna 2: Indica el número de la muestra en la cadena (en este caso, de 10 mil en adelante, después del burn-in, guarda una de cada 50 veces).
+#
+# Columna 3: Especifica la cantidad de parámetros para los cuales se guardó la muestra. En este caso 4, lo que sugiere que se estan estimando cuatro parámetros en el modelo (varianzas para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente).
+#
+# Columnas 4, 5, 6 y 7: Indican los componentes de varianza para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente. Esto se puede observar también en el archivo "postind".
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+
+###########################
+# Con burn-in igual a 5 mil
+###########################
+
+burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varGC.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del toro', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varT.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del individuo', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Residuo', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+############################
+# Con burn-in igual a 10 mil
+############################
+
+burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varGC.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del toro', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varT.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del individuo', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Residuo', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de diez mil (burnin_3) ----
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo))
+
+graf_varGC <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 5800, y = 0.0020,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 4500, y = 0.0015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 2400, y = 0.0020,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 11225, y = 0.002,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad <- heredabilidad |>
+  ggplot(aes(x = heredabilidad)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.078, y = 50,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad), digits = 2)), size = 3.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+(guide_area()/(((graf_varGC | graf_varG) / (graf_varT | graf_varE)) | (graf_heredabilidad))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para la edad al primer parto') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 <!--
-NOTA: Se realiza una conversión de los alelos de cada SNP a un formato de dos dígitos. Se genera tambén con esto un archivo *.ped que contiene información sobre los individuos y sus genotipos, y un archivo *.map que contendrá información sobre los marcadores genéticos.
+NOTA: Para el caracter "intervalo entre el primer y segundo parto" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y 
 -->
 
 ```{r}
-#| label: Generación de archivo *.ped
+#| label: Resultados del postgibbs para el intervalo entre el primer y segundo parto
 
-plink('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_2 --recode 12 --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_3') # Con "recode 12" se indica recodificar los alelos como 1 y 2 (y el genotipo faltante como 0).
-```
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
 
-<!--
-NOTA: Se cambia los genotipos en fase del Beagle al código de genotipos como lo requiere el blupf90.
--->
-
-```{r}
-#| label: Recodificación de genotipos.
-
-# Se importa el archivo *.ped y se asigna un nombre a cada columna ----
-
-ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_3.ped', delim = ' ', col_names = FALSE)
-
-colnames(ped) <- c('FID', 'IID', 'PID', 'MID', 'Sex', 'P', paste0('alelo_', 1:(ncol(ped) - 6))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(ped) - 6).
-
-# Mediante una serie de pasos se obtiene los conjuntos de datos de genotipos como lo requiere el blup90 ----
-
-# 1. Se crea una función que permite unir cada dos columnas ----
-
-Geno <- function(x, y) {
-  paste0(x, y)
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación' = X4,
+      'Varianza para el efecto del toro' = X5,
+      'Varianza para el efecto del individuo' = X6,
+      'Residuo' = X7
+      ) |>
+    pivot_longer(
+      cols = c(2:5),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
+    )
   }
 
-# 2. Se aplica la función anterior a cada par de columnas del conjunto de datos (que representa los dos alelos de un genotipo), y se usa la función map2 para generar el conjunto de datos de genotipos (11 | 12 | 21 | 22 | 00) ----
+##########################
+# Con burn-in igual a cero
+##########################
 
-datAle <- ped |> # Se seleccionan las columnas de alelos.
-  select(-c(1:6))
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
-datGen <- map2(datAle[, seq(1, ncol(datAle), by = 2)], datAle[, seq(2, ncol(datAle), by = 2)], Geno) |> # Se obtienen las columnas de genotipos uniendo cada par consecutivo de columnas de alelos del objeto anterior.
-  as_tibble()
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
 
-colnames(datGen) <- paste0('Geno', seq_len(ncol(datGen)))
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
 
-#write_delim(x = datGen, file = 'Paternidad/Datos/datGen.ped', delim = ' ', col_names = TRUE) # Se importa para comprobar el resultado.
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
 
-# 3. Se realiza la recodificación del conjunto anterior de genotipos, indicando los genotipos 11 como 0, 12 o 21 como 1, 22 como 2 y 00 como 5.
+create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
 
-recGen <- function(x) {
-  case_when(
-    x == '00' ~ '5',
-    x == '11' ~ '0',
-    x %in% c('12', '21') ~ '1',
-    x == '22' ~ '2'
-  )
-  } # Se define la función de recodificación.
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
 
-datGen_recode <- datGen |>
-  map(recGen) |>
-  as_tibble() |>
-  unite('Geno', sep = '')
+create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
 
-# 4. Se une el conjunto de datos anteriormente recodificado con el conjunto de datos inicial (que tiene la identificación del individuo), y posteriormente se importa para usar en el programa seekparentf90 ----
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
-datMar <- ped |>
-  select(IID) |>
-  bind_cols(datGen_recode)
+create_plot(burnin_1, 'Residuo', 'green')
 
-save(gen_imput_1d, file = '../Datos/eva_genomica/Beagle_HD/datGeno_bluf90.RData')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+
+###########################
+# Con burn-in igual a 5 mil
+###########################
+
+burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varGC.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del toro', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varT.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del individuo', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Residuo', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+############################
+# Con burn-in igual a 10 mil
+############################
+
+burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varGC.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del toro', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varT.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del individuo', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Residuo', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de diez mil (burnin_3) ----
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo))
+
+graf_varGC <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1280, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 440, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3040, y = 0.006,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad <- heredabilidad |>
+  ggplot(aes(x = heredabilidad)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.078, y = 30,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad), digits = 2)), size = 3.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+(guide_area()/(((graf_varGC | graf_varG) / (graf_varT | graf_varE)) | (graf_heredabilidad))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Para el caracter "peso al destete" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y 
+-->
+
+```{r}
+#| label: Resultados del postgibbs para el peso al destete
+
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
+
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del individuo' = X4,
+      'Covarianza entre efecto directo y materno' = X5,
+      'Varianza para el efecto materno' = X6,
+      'Varianza para el efecto permanente materno' = X7,
+      'Residuo' = X8
+      ) |>
+    pivot_longer(
+      cols = c(2:6),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
+    )
+  }
+
+##########################
+# Con burn-in igual a cero
+##########################
+
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza entre efecto directo y materno', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto materno', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto permanente materno', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo', 'red')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+
+###########################
+# Con burn-in igual a 5 mil
+###########################
+
+burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_2, 'Varianza para el efecto del individuo', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Covarianza entre efecto directo y materno', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/covarDM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto materno', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto permanente materno', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varPM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Residuo', 'red')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+############################
+# Con burn-in igual a 10 mil
+############################
+
+burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_3, 'Varianza para el efecto del individuo', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Covarianza entre efecto directo y materno', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/covarDM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto materno', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto permanente materno', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varPM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Residuo', 'red')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad ----
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
+    ) |>
+  mutate(
+    heredabilidad_total = (`Varianza para el efecto del individuo` + ((0.5) * (`Varianza para el efecto materno`)) + ((1.5) * (`Covarianza entre efecto directo y materno`))) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_materna = `Varianza para el efecto materno` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    corr_directo_materno = `Covarianza entre efecto directo y materno` / (sqrt(`Varianza para el efecto del individuo`) * sqrt(`Varianza para el efecto materno`)),
+    proporcion_var_ambiental_materna = (`Varianza para el efecto permanente materno`) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo)
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 270, y = 0.015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varM <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 140, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varPM <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto permanente materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto permanente materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_covarDM <- heredabilidad |>
+  ggplot(aes(x = `Covarianza entre efecto directo y materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = -80, y = 0.025,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Covarianza entre efecto directo y materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Covarianza entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_directa <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_directa)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.34, y = 13,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_directa), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad directa') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_materna <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.19, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad materna') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_total <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_total)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.165, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_total), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad total') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_directo_materno <- heredabilidad |>
+  ggplot(aes(x = corr_directo_materno)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2)  +
+  annotate(
+    'text', x = -0.65, y = 9,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_directo_materno), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_ambiente_materno <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_ambiental_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = 0.10, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_ambiental_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza ambiental materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG | graf_varM) / (graf_varPM | graf_varE) / (graf_covarDM | graf_vacio)) | ((graf_her_directa | graf_her_materna) / (graf_her_total | graf_corr_directo_materno) / (graf_prop_ambiente_materno | graf_vacio)))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el peso al destete') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Para el bi-caracter "edad al primer parto" e "intervalo entre el primer y segundo parto" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y 
+-->
+
+```{r}
+#| label: Resultados del postgibbs para el bi-carácter edad al primer parto e intervalo entre el primer y segundo parto
+
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
+
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación - EPP' = X4,
+      'Varianza para el efecto del toro - EPP' = X5,
+      'Varianza para el efecto del grupo de comparación - I_P1-P2' = X6,
+      'Varianza para el efecto del toro - I_P1-P2' = X7,
+      'Varianza para el efecto del individuo - EPP' = X8,
+      'Covarianza entre efectos geneticos - EPP e I_P1-P2' = X9,
+      'Varianza para el efecto del individuo - I_P1-P2' = X10,
+      'Residuo - EPP' = X11,
+      'Covarianza residual - EPP e I_P1-P2' = X12,
+      'Residuo - I_P1-P2' = X13
+      ) |>
+    pivot_longer(
+      cols = c(2:11),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
+    )
+  }
+
+##########################
+# Con burn-in igual a cero
+##########################
+
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del toro - EPP', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza residual - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+###########################
+# Con burn-in igual a 5 mil
+###########################
+
+burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
+
+create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del toro - EPP', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del individuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/covG_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Residuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Covarianza residual - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/covR_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_2, 'Residuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+############################
+# Con burn-in igual a 10 mil
+############################
+
+burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
+
+create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del toro - EPP', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del individuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/covG_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Residuo - EPP', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Covarianza residual - EPP e I_P1-P2', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/covR_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_3, 'Residuo - I_P1-P2', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+heredabilidad <- burnin_3 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación - EPP' = X4,
+      'Varianza para el efecto del toro - EPP' = X5,
+      'Varianza para el efecto del grupo de comparación - I_P1-P2' = X6,
+      'Varianza para el efecto del toro - I_P1-P2' = X7,
+      'Varianza para el efecto del individuo - EPP' = X8,
+      'Covarianza entre efectos geneticos - EPP e I_P1-P2' = X9,
+      'Varianza para el efecto del individuo - I_P1-P2' = X10,
+      'Residuo - EPP' = X11,
+      'Covarianza residual - EPP e I_P1-P2' = X12,
+      'Residuo - I_P1-P2' = X13
+    ) |>
+  mutate(
+    heredabilidad_EPP = `Varianza para el efecto del individuo - EPP` / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    heredabilidad_IEP = `Varianza para el efecto del individuo - I_P1-P2` / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`),
+    corr_gen_EPP_IEP = `Covarianza entre efectos geneticos - EPP e I_P1-P2` / (sqrt(`Varianza para el efecto del individuo - EPP`) * sqrt(`Varianza para el efecto del individuo - I_P1-P2`))
+    )
+
+graf_varG_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 2400, y = 0.0015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 400, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_EPP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 11250, y = 0.0020,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_IEP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3050, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 5810, y = 0.0017,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1250, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 4500, y = 0.00125,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1300, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_EPP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.11, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_IEP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_gen_EPP_IEP <- heredabilidad |>
+  ggplot(aes(x = corr_gen_EPP_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 3,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_gen_EPP_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación genética entre EPP e IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG_EPP | graf_varE_EPP) / (graf_varGC_EPP | graf_varT_EPP) / (graf_heredabilidad_EPP | graf_vacio)) | ((graf_varG_IEP | graf_varE_IEP) / (graf_varGC_IEP | graf_varT_IEP) / (graf_heredabilidad_IEP | graf_vacio)) | (graf_corr_gen_EPP_IEP))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el bi-carácter entre edad al primer parto e intervalo entre el primer y segundo parto') & 
+  theme(plot.title = element_text(size = 8.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 ```

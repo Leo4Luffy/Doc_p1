@@ -330,6 +330,9 @@ pedPrune |>
     ) |> # Se cambia el orden para que quede una estructura de pedigrí como lo requiere el programa blupf90 (ID | ID_p | ID_m). 
   write_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE, delim = ' ')
 
+pedPrune |>
+  summarise_all(~n_distinct(.)) # Se cuenta el número de niveles de cada columna de "pedPrune".
+
 # Exportación de conjuntos de datos de fenotipos ----
 
 datProd_2 |>

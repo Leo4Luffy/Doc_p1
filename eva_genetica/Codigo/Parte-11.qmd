@@ -1,5 +1,5 @@
 ---
-title: "Parte 5: Edición en los datos de genotipos imputados a HD con Beagle v. 5.4"
+title: "Parte 8: Edición en los datos de genotipos imputados a HD con Beagle v. 5.4 y que corresponden a SNP-tags y singletones"
 format: html
 ---
 
@@ -21,23 +21,94 @@ conflicts_prefer(dplyr::select)
 ```
 
 <!--
-NOTA: A continuación se transponen los conjuntos de datos de genotipos editados en los datos de HD con Beagle v. 5.4, un cromosoma a la vez.
+NOTA: A continuación se seleccionan de los genotipos en HD imputados, los marcadores que corresponden a SNP-tags.
 -->
 
 ```{r}
-#| label: Edición de datos de genotipos (50k) con Beagle v. 5.4
+#| label: Selección de tags en los datos de genotipos en HD
 
-# Se importa los datos de genotipos ----
+# Se importa los datos de genotipos imputados en HD ----
 
-resHD <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
-
-# Se realiza un conteo de los marcadores en cada uno de los cromosomas ----
-
-Cromo_1_29 <- resHD |>
-  #filter(`#CHROM` %in% c(1, 2)) |> # En caso de que se quiera filtrar alguún cromosoma. En este caso, los cromosomas 1 y 2.
+resHD <- data.table::fread(file = 'Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |> # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(2, 4:9))
 
-Cromo_1_29 |> count(`#CHROM`)
+# Se importa los datos con los nombres de los SNP-tags ----
+
+dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se observa cuales SNP-tags aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun <- read_delim(file = 'Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_tags, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_tags <- marc_comun |>
+  full_join(x = dat_tags, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el nombre de los SNP-tags como se quería.
+
+dim_desc(dat_tags) # Hay en total 103080 SNP-tags.
+
+# Se dejan los marcadores considerados tags ----
+
+SNP_tag <- resHD |>
+  filter(ID %in% dat_tags$X3)
+
+dim_desc(SNP_tag) # 103080-102554 = 526 SNP-tags se eliminaron, pueden que al hacer el control de calidad.
+
+# Se importa los datos con los nombres de los singletones  ----
+
+dat_sing <- read_delim(file = 'single_tags/Datos/datPuros/SNP_single_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se observa cuales singletones aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun_2 <- read_delim(file = 'Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_sing, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_sing <- marc_comun_2 |>
+  full_join(x = dat_sing, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+dat_sing |>
+  filter(grepl("Affx-", X2)) |> # Con la función  grepl() se filtra las filas de dat_sing donde la columna X2 contiene la cadena "Affx-".
+  slice_tail(n = 4) # Se observa para ver si la columna X3 generó el nombre de los singletones como se quería.
+
+dim_desc(dat_sing) # Hay en total 128660 singletones.
+
+# Se dejan los marcadores considerados singletones ----
+
+SNP_sing <- resHD |>
+  filter(ID %in% dat_sing$X3)
+
+dim_desc(SNP_sing) # 128660-128003 = 657 singletones se eliminaron, pueden que al hacer el control de calidad.
+
+# Se unen los marcadores considerados SNP-tags y singletones ----
+
+SNP_tag_sing <- bind_rows(SNP_tag, SNP_sing)
+
+dim_desc(SNP_tag_sing) # Hay en total 128003 + 102554 = 230557 SNP-tags y singletones.
+```
+
+<!--
+NOTA: A continuación se transponen los conjuntos de datos de SNP-tags y singletones, un cromosoma a la vez.
+-->
+
+```{r}
+#| label: Edición de datos de SNP-tags y singletones
 
 #############
 # Cromosoma 1
@@ -45,10 +116,10 @@ Cromo_1_29 |> count(`#CHROM`)
 
 # Se obtienen solo los marcadores del cromosoma 1 ----
 
-Cromo_1 <- Cromo_1_29 |>
+Cromo_1 <- SNP_tag_sing |>
   filter(`#CHROM` == 1)
 
-Cromo_1 |> count(`#CHROM`)
+Cromo_1 |> count(`#CHROM`) # Se comprueba y si hay 13139 marcadores en el cromosoma 1.
 
 Cromo_1 |> select(1:4) |> slice_head(n = 4)
 
@@ -75,10 +146,10 @@ Cromo_1_t <- Cromo_1 |>
 
 Cromo_1_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_1_t)
+dim_desc(Cromo_1_t) # Se comprueba y hay 2970 individuos y 13139 marcadores.
 
 Cromo_1_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_1.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_1/Cromo_1.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 2
@@ -86,10 +157,10 @@ Cromo_1_t |>
 
 # Se obtienen solo los marcadores del cromosoma 2 ----
 
-Cromo_2 <- Cromo_1_29 |>
+Cromo_2 <- SNP_tag_sing |>
   filter(`#CHROM` == 2)
 
-Cromo_2 |> count(`#CHROM`)
+Cromo_2 |> count(`#CHROM`) # Se comprueba y si hay 11631 marcadores en el cromosoma 2.
 
 Cromo_2 |> select(1:4) |> slice_head(n = 4)
 
@@ -116,10 +187,10 @@ Cromo_2_t <- Cromo_2 |>
 
 Cromo_2_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_2_t)
+dim_desc(Cromo_2_t) # Se comprueba y hay 2970 individuos y 11631 marcadores.
 
 Cromo_2_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_2.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_2/Cromo_2.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 3
@@ -127,10 +198,10 @@ Cromo_2_t |>
 
 # Se obtienen solo los marcadores del cromosoma 3 ----
 
-Cromo_3 <- Cromo_1_29 |>
+Cromo_3 <- SNP_tag_sing |>
   filter(`#CHROM` == 3)
 
-Cromo_3 |> count(`#CHROM`) # Se comprueba y si hay 34863 marcadores en el cromosoma 3.
+Cromo_3 |> count(`#CHROM`) # Se comprueba y si hay 10749 marcadores en el cromosoma 3.
 
 Cromo_3 |> select(1:4) |> slice_head(n = 4)
 
@@ -157,10 +228,10 @@ Cromo_3_t <- Cromo_3 |>
 
 Cromo_3_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_3_t)
+dim_desc(Cromo_3_t) # Se comprueba y hay 2970 individuos y 10749 marcadores.
 
 Cromo_3_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_3.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_3/Cromo_3.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 4
@@ -168,14 +239,14 @@ Cromo_3_t |>
 
 # Se obtienen solo los marcadores del cromosoma 4 ----
 
-Cromo_4 <- Cromo_1_29 |>
+Cromo_4 <- SNP_tag_sing |>
   filter(`#CHROM` == 4)
 
-Cromo_4 |> count(`#CHROM`) # Se comprueba y si hay 34176 marcadores en el cromosoma 4.
+Cromo_4 |> count(`#CHROM`) # Se comprueba y si hay 11005 marcadores en el cromosoma 4.
 
 Cromo_4 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_4_t <- Cromo_4 |>
   select(-1) |>
@@ -198,10 +269,10 @@ Cromo_4_t <- Cromo_4 |>
 
 Cromo_4_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_4_t)
+dim_desc(Cromo_4_t) # Se comprueba y hay 2970 individuos y 11005 marcadores.
 
 Cromo_4_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_4.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_4/Cromo_4.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 5
@@ -209,14 +280,14 @@ Cromo_4_t |>
 
 # Se obtienen solo los marcadores del cromosoma 5 ----
 
-Cromo_5 <- Cromo_1_29 |>
+Cromo_5 <- SNP_tag_sing |>
   filter(`#CHROM` == 5)
 
-Cromo_5 |> count(`#CHROM`)
+Cromo_5 |> count(`#CHROM`) # Se comprueba y si hay 10183 marcadores en el cromosoma 5.
 
 Cromo_5 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_5_t <- Cromo_5 |>
   select(-1) |>
@@ -239,10 +310,10 @@ Cromo_5_t <- Cromo_5 |>
 
 Cromo_5_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_5_t)
+dim_desc(Cromo_5_t) # Se comprueba y hay 2970 individuos y 10183 marcadores.
 
 Cromo_5_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD//Cromo_5.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_5/Cromo_5.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 6
@@ -250,14 +321,14 @@ Cromo_5_t |>
 
 # Se obtienen solo los marcadores del cromosoma 6 ----
 
-Cromo_6 <- Cromo_1_29 |>
+Cromo_6 <- SNP_tag_sing |>
   filter(`#CHROM` == 6)
 
-Cromo_6 |> count(`#CHROM`)
+Cromo_6 |> count(`#CHROM`) # Se comprueba y si hay 10140 marcadores en el cromosoma 6.
 
 Cromo_6 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_6_t <- Cromo_6 |>
   select(-1) |>
@@ -280,10 +351,10 @@ Cromo_6_t <- Cromo_6 |>
 
 Cromo_6_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_6_t)
+dim_desc(Cromo_6_t) # Se comprueba y hay 2970 individuos y 10140 marcadores.
 
 Cromo_6_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_6.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_6/Cromo_6.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 7
@@ -291,14 +362,14 @@ Cromo_6_t |>
 
 # Se obtienen solo los marcadores del cromosoma 7 ----
 
-Cromo_7 <- Cromo_1_29 |>
+Cromo_7 <- SNP_tag_sing |>
   filter(`#CHROM` == 7)
 
-Cromo_7 |> count(`#CHROM`)
+Cromo_7 |> count(`#CHROM`) # Se comprueba y si hay 9845 marcadores en el cromosoma 7.
 
 Cromo_7 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_7_t <- Cromo_7 |>
   select(-1) |>
@@ -321,10 +392,10 @@ Cromo_7_t <- Cromo_7 |>
 
 Cromo_7_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_7_t)
+dim_desc(Cromo_7_t) # Se comprueba y hay 2970 individuos y 9845 marcadores.
 
 Cromo_7_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_7.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_7/Cromo_7.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 8
@@ -332,14 +403,14 @@ Cromo_7_t |>
 
 # Se obtienen solo los marcadores del cromosoma 8 ----
 
-Cromo_8 <- Cromo_1_29 |>
+Cromo_8 <- SNP_tag_sing |>
   filter(`#CHROM` == 8)
 
-Cromo_8 |> count(`#CHROM`)
+Cromo_8 |> count(`#CHROM`) # Se comprueba y si hay 9005 marcadores en el cromosoma 7.
 
 Cromo_8 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_8_t <- Cromo_8 |>
   select(-1) |>
@@ -362,10 +433,10 @@ Cromo_8_t <- Cromo_8 |>
 
 Cromo_8_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_8_t)
+dim_desc(Cromo_8_t) # Se comprueba y hay 2970 individuos y 9005 marcadores.
 
 Cromo_8_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_8.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_8/Cromo_8.txt', delim = ' ', col_names = TRUE)
 
 #############
 # Cromosoma 9
@@ -373,14 +444,14 @@ Cromo_8_t |>
 
 # Se obtienen solo los marcadores del cromosoma 9 ----
 
-Cromo_9 <- Cromo_1_29 |>
+Cromo_9 <- SNP_tag_sing |>
   filter(`#CHROM` == 9)
 
-Cromo_9 |> count(`#CHROM`)
+Cromo_9 |> count(`#CHROM`) # Se comprueba y si hay 9149 marcadores en el cromosoma 9.
 
 Cromo_9 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_9_t <- Cromo_9 |>
   select(-1) |>
@@ -403,10 +474,10 @@ Cromo_9_t <- Cromo_9 |>
 
 Cromo_9_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_9_t)
+dim_desc(Cromo_9_t) # Se comprueba y hay 2970 individuos y 9149 marcadores.
 
 Cromo_9_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_9.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_9/Cromo_9.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 10
@@ -414,14 +485,14 @@ Cromo_9_t |>
 
 # Se obtienen solo los marcadores del cromosoma 10 ----
 
-Cromo_10 <- Cromo_1_29 |>
+Cromo_10 <- SNP_tag_sing |>
   filter(`#CHROM` == 10)
 
-Cromo_10 |> count(`#CHROM`)
+Cromo_10 |> count(`#CHROM`) # Se comprueba y si hay 9854 marcadores en el cromosoma 10.
 
 Cromo_10 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_10_t <- Cromo_10 |>
   select(-1) |>
@@ -444,10 +515,10 @@ Cromo_10_t <- Cromo_10 |>
 
 Cromo_10_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_10_t) # Se comprueba y hay 2970 individuos y 29657 marcadores.
+dim_desc(Cromo_10_t) # Se comprueba y hay 2970 individuos y 9854 marcadores.
 
 Cromo_10_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_10.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_10/Cromo_10.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 11
@@ -455,14 +526,14 @@ Cromo_10_t |>
 
 # Se obtienen solo los marcadores del cromosoma 11 ----
 
-Cromo_11 <- Cromo_1_29 |>
+Cromo_11 <- SNP_tag_sing |>
   filter(`#CHROM` == 11)
 
-Cromo_11 |> count(`#CHROM`)
+Cromo_11 |> count(`#CHROM`) # Se comprueba y si hay 9873 marcadores en el cromosoma 11.
 
 Cromo_11 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_11_t <- Cromo_11 |>
   select(-1) |>
@@ -485,10 +556,10 @@ Cromo_11_t <- Cromo_11 |>
 
 Cromo_11_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_11_t)
+dim_desc(Cromo_11_t) # Se comprueba y hay 2970 individuos y 9873 marcadores.
 
 Cromo_11_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_11.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_11/Cromo_11.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 12
@@ -496,14 +567,14 @@ Cromo_11_t |>
 
 # Se obtienen solo los marcadores del cromosoma 12 ----
 
-Cromo_12 <- Cromo_1_29 |>
+Cromo_12 <- SNP_tag_sing |>
   filter(`#CHROM` == 12)
 
-Cromo_12 |> count(`#CHROM`)
+Cromo_12 |> count(`#CHROM`) # Se comprueba y si hay 8290 marcadores en el cromosoma 12.
 
 Cromo_12 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_12_t <- Cromo_12 |>
   select(-1) |>
@@ -526,10 +597,10 @@ Cromo_12_t <- Cromo_12 |>
 
 Cromo_12_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_12_t)
+dim_desc(Cromo_12_t) # Se comprueba y hay 2970 individuos y 8290 marcadores.
 
 Cromo_12_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_12.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_12/Cromo_12.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 13
@@ -537,14 +608,14 @@ Cromo_12_t |>
 
 # Se obtienen solo los marcadores del cromosoma 13 ----
 
-Cromo_13 <- Cromo_1_29 |>
+Cromo_13 <- SNP_tag_sing |>
   filter(`#CHROM` == 13)
 
-Cromo_13 |> count(`#CHROM`)
+Cromo_13 |> count(`#CHROM`) # Se comprueba y si hay 7166 marcadores en el cromosoma 13.
 
 Cromo_13 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_13_t <- Cromo_13 |>
   select(-1) |>
@@ -567,10 +638,10 @@ Cromo_13_t <- Cromo_13 |>
 
 Cromo_13_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_13_t)
+dim_desc(Cromo_13_t) # Se comprueba y hay 2970 individuos y 7166 marcadores.
 
 Cromo_13_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_13.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_13/Cromo_13.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 14
@@ -578,14 +649,14 @@ Cromo_13_t |>
 
 # Se obtienen solo los marcadores del cromosoma 14 ----
 
-Cromo_14 <- Cromo_1_29 |>
+Cromo_14 <- SNP_tag_sing |>
   filter(`#CHROM` == 14)
 
-Cromo_14 |> count(`#CHROM`)
+Cromo_14 |> count(`#CHROM`) # Se comprueba y si hay 7557 marcadores en el cromosoma 14.
 
 Cromo_14 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_14_t <- Cromo_14 |>
   select(-1) |>
@@ -608,10 +679,10 @@ Cromo_14_t <- Cromo_14 |>
 
 Cromo_14_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_14_t)
+dim_desc(Cromo_14_t) # Se comprueba y hay 2970 individuos y 7557 marcadores.
 
 Cromo_14_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_14.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_14/Cromo_14.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 15
@@ -619,14 +690,14 @@ Cromo_14_t |>
 
 # Se obtienen solo los marcadores del cromosoma 15 ----
 
-Cromo_15 <- Cromo_1_29 |>
+Cromo_15 <- SNP_tag_sing |>
   filter(`#CHROM` == 15)
 
-Cromo_15 |> count(`#CHROM`)
+Cromo_15 |> count(`#CHROM`) # Se comprueba y si hay 7878 marcadores en el cromosoma 15.
 
 Cromo_15 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_15_t <- Cromo_15 |>
   select(-1) |>
@@ -649,10 +720,10 @@ Cromo_15_t <- Cromo_15 |>
 
 Cromo_15_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_15_t)
+dim_desc(Cromo_15_t) # Se comprueba y hay 2970 individuos y 13139 marcadores.
 
 Cromo_15_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_15.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_15/Cromo_15.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 16
@@ -660,14 +731,14 @@ Cromo_15_t |>
 
 # Se obtienen solo los marcadores del cromosoma 16 ----
 
-Cromo_16 <- Cromo_1_29 |>
+Cromo_16 <- SNP_tag_sing |>
   filter(`#CHROM` == 16)
 
-Cromo_16 |> count(`#CHROM`)
+Cromo_16 |> count(`#CHROM`) # Se comprueba y si hay 7228 marcadores en el cromosoma 16.
 
 Cromo_16 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_16_t <- Cromo_16 |>
   select(-1) |>
@@ -690,10 +761,10 @@ Cromo_16_t <- Cromo_16 |>
 
 Cromo_16_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_16_t)
+dim_desc(Cromo_16_t) # Se comprueba y hay 2970 individuos y 7228 marcadores.
 
 Cromo_16_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_16.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_16/Cromo_16.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 17
@@ -701,14 +772,14 @@ Cromo_16_t |>
 
 # Se obtienen solo los marcadores del cromosoma 17 ----
 
-Cromo_17 <- Cromo_1_29 |>
+Cromo_17 <- SNP_tag_sing |>
   filter(`#CHROM` == 17)
 
-Cromo_17 |> count(`#CHROM`)
+Cromo_17 |> count(`#CHROM`) # Se comprueba y si hay 7292 marcadores en el cromosoma 17.
 
 Cromo_17 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_17_t <- Cromo_17 |>
   select(-1) |>
@@ -731,10 +802,10 @@ Cromo_17_t <- Cromo_17 |>
 
 Cromo_17_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_17_t)
+dim_desc(Cromo_17_t) # Se comprueba y hay 2970 individuos y 7292 marcadores.
 
 Cromo_17_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_17.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_17/Cromo_17.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 18
@@ -742,14 +813,14 @@ Cromo_17_t |>
 
 # Se obtienen solo los marcadores del cromosoma 18 ----
 
-Cromo_18 <- Cromo_1_29 |>
+Cromo_18 <- SNP_tag_sing |>
   filter(`#CHROM` == 18)
 
-Cromo_18 |> count(`#CHROM`) # Se comprueba y si hay 18928 marcadores en el cromosoma 18.
+Cromo_18 |> count(`#CHROM`) # Se comprueba y si hay 6358 marcadores en el cromosoma 18.
 
 Cromo_18 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_18_t <- Cromo_18 |>
   select(-1) |>
@@ -772,10 +843,10 @@ Cromo_18_t <- Cromo_18 |>
 
 Cromo_18_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_18_t)
+dim_desc(Cromo_18_t) # Se comprueba y hay 2970 individuos y 6358 marcadores.
 
 Cromo_18_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_18.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_18/Cromo_18.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 19
@@ -783,14 +854,14 @@ Cromo_18_t |>
 
 # Se obtienen solo los marcadores del cromosoma 19 ----
 
-Cromo_19 <- Cromo_1_29 |>
+Cromo_19 <- SNP_tag_sing |>
   filter(`#CHROM` == 19)
 
-Cromo_19 |> count(`#CHROM`)
+Cromo_19 |> count(`#CHROM`) # Se comprueba y si hay 7208 marcadores en el cromosoma 19.
 
 Cromo_19 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_19_t <- Cromo_19 |>
   select(-1) |>
@@ -813,10 +884,10 @@ Cromo_19_t <- Cromo_19 |>
 
 Cromo_19_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_19_t)
+dim_desc(Cromo_19_t) # Se comprueba y hay 2970 individuos y 7208 marcadores.
 
 Cromo_19_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_19.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_19/Cromo_19.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 20
@@ -824,14 +895,14 @@ Cromo_19_t |>
 
 # Se obtienen solo los marcadores del cromosoma 20 ----
 
-Cromo_20 <- Cromo_1_29 |>
+Cromo_20 <- SNP_tag_sing |>
   filter(`#CHROM` == 20)
 
-Cromo_20 |> count(`#CHROM`)
+Cromo_20 |> count(`#CHROM`) # Se comprueba y si hay 6883 marcadores en el cromosoma 20.
 
 Cromo_20 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_20_t <- Cromo_20 |>
   select(-1) |>
@@ -854,10 +925,10 @@ Cromo_20_t <- Cromo_20 |>
 
 Cromo_20_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_20_t)
+dim_desc(Cromo_20_t) # Se comprueba y hay 2970 individuos y 6883 marcadores.
 
 Cromo_20_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_20.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_20/Cromo_20.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 21
@@ -865,14 +936,14 @@ Cromo_20_t |>
 
 # Se obtienen solo los marcadores del cromosoma 21 ----
 
-Cromo_21 <- Cromo_1_29 |>
+Cromo_21 <- SNP_tag_sing |>
   filter(`#CHROM` == 21)
 
-Cromo_21 |> count(`#CHROM`)
+Cromo_21 |> count(`#CHROM`) # Se comprueba y si hay 6596 marcadores en el cromosoma 21.
 
 Cromo_21 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_21_t <- Cromo_21 |>
   select(-1) |>
@@ -895,10 +966,10 @@ Cromo_21_t <- Cromo_21 |>
 
 Cromo_21_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_21_t)
+dim_desc(Cromo_21_t) # Se comprueba y hay 2970 individuos y 6596 marcadores.
 
 Cromo_21_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_21.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_21/Cromo_21.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 22
@@ -906,14 +977,14 @@ Cromo_21_t |>
 
 # Se obtienen solo los marcadores del cromosoma 22 ----
 
-Cromo_22 <- Cromo_1_29 |>
+Cromo_22 <- SNP_tag_sing |>
   filter(`#CHROM` == 22)
 
-Cromo_22 |> count(`#CHROM`)
+Cromo_22 |> count(`#CHROM`) # Se comprueba y si hay 6382 marcadores en el cromosoma 22.
 
 Cromo_22 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_22_t <- Cromo_22 |>
   select(-1) |>
@@ -936,10 +1007,10 @@ Cromo_22_t <- Cromo_22 |>
 
 Cromo_22_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_22_t)
+dim_desc(Cromo_22_t) # Se comprueba y hay 2970 individuos y 13139 marcadores.
 
 Cromo_22_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_22.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_22/Cromo_22.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 23
@@ -947,14 +1018,14 @@ Cromo_22_t |>
 
 # Se obtienen solo los marcadores del cromosoma 23 ----
 
-Cromo_23 <- Cromo_1_29 |>
+Cromo_23 <- SNP_tag_sing |>
   filter(`#CHROM` == 23)
 
-Cromo_23 |> count(`#CHROM`)
+Cromo_23 |> count(`#CHROM`) # Se comprueba y si hay 5994 marcadores en el cromosoma 23.
 
 Cromo_23 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_23_t <- Cromo_23 |>
   select(-1) |>
@@ -977,10 +1048,10 @@ Cromo_23_t <- Cromo_23 |>
 
 Cromo_23_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_23_t)
+dim_desc(Cromo_23_t) # Se comprueba y hay 2970 individuos y 5994 marcadores.
 
 Cromo_23_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_23.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_23/Cromo_23.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 24
@@ -988,14 +1059,14 @@ Cromo_23_t |>
 
 # Se obtienen solo los marcadores del cromosoma 24 ----
 
-Cromo_24 <- Cromo_1_29 |>
+Cromo_24 <- SNP_tag_sing |>
   filter(`#CHROM` == 24)
 
-Cromo_24 |> count(`#CHROM`)
+Cromo_24 |> count(`#CHROM`) # Se comprueba y si hay 6194 marcadores en el cromosoma 24.
 
 Cromo_24 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_24_t <- Cromo_24 |>
   select(-1) |>
@@ -1018,10 +1089,10 @@ Cromo_24_t <- Cromo_24 |>
 
 Cromo_24_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_24_t)
+dim_desc(Cromo_24_t) # Se comprueba y hay 2970 individuos y 6194 marcadores.
 
 Cromo_24_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_24.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_24/Cromo_24.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 25
@@ -1029,14 +1100,14 @@ Cromo_24_t |>
 
 # Se obtienen solo los marcadores del cromosoma 25 ----
 
-Cromo_25 <- Cromo_1_29 |>
+Cromo_25 <- SNP_tag_sing |>
   filter(`#CHROM` == 25)
 
-Cromo_25 |> count(`#CHROM`)
+Cromo_25 |> count(`#CHROM`) # Se comprueba y si hay 4731 marcadores en el cromosoma 25.
 
 Cromo_25 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_25_t <- Cromo_25 |>
   select(-1) |>
@@ -1059,10 +1130,10 @@ Cromo_25_t <- Cromo_25 |>
 
 Cromo_25_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_25_t)
+dim_desc(Cromo_25_t) # Se comprueba y hay 2970 individuos y 4731 marcadores.
 
 Cromo_25_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_25.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_25/Cromo_25.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 26
@@ -1070,14 +1141,14 @@ Cromo_25_t |>
 
 # Se obtienen solo los marcadores del cromosoma 26 ----
 
-Cromo_26 <- Cromo_1_29 |>
+Cromo_26 <- SNP_tag_sing |>
   filter(`#CHROM` == 26)
 
-Cromo_26 |> count(`#CHROM`)
+Cromo_26 |> count(`#CHROM`) # Se comprueba y si hay 5229 marcadores en el cromosoma 26.
 
 Cromo_26 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_26_t <- Cromo_26 |>
   select(-1) |>
@@ -1100,10 +1171,10 @@ Cromo_26_t <- Cromo_26 |>
 
 Cromo_26_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_26_t)
+dim_desc(Cromo_26_t) # Se comprueba y hay 2970 individuos y 5229 marcadores.
 
 Cromo_26_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_26.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_26/Cromo_26.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 27
@@ -1111,14 +1182,14 @@ Cromo_26_t |>
 
 # Se obtienen solo los marcadores del cromosoma 27 ----
 
-Cromo_27 <- Cromo_1_29 |>
+Cromo_27 <- SNP_tag_sing |>
   filter(`#CHROM` == 27)
 
-Cromo_27 |> count(`#CHROM`)
+Cromo_27 |> count(`#CHROM`) # Se comprueba y si hay 4817 marcadores en el cromosoma 27.
 
 Cromo_27 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_27_t <- Cromo_27 |>
   select(-1) |>
@@ -1141,10 +1212,10 @@ Cromo_27_t <- Cromo_27 |>
 
 Cromo_27_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_27_t)
+dim_desc(Cromo_27_t) # Se comprueba y hay 2970 individuos y 4817 marcadores.
 
 Cromo_27_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_27.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_27/Cromo_27.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 28
@@ -1152,14 +1223,14 @@ Cromo_27_t |>
 
 # Se obtienen solo los marcadores del cromosoma 28 ----
 
-Cromo_28 <- Cromo_1_29 |>
+Cromo_28 <- SNP_tag_sing |>
   filter(`#CHROM` == 28)
 
-Cromo_28 |> count(`#CHROM`) # Se comprueba y si hay 12714 marcadores en el cromosoma 28.
+Cromo_28 |> count(`#CHROM`) # Se comprueba y si hay 4806 marcadores en el cromosoma 28.
 
 Cromo_28 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_28_t <- Cromo_28 |>
   select(-1) |>
@@ -1182,10 +1253,10 @@ Cromo_28_t <- Cromo_28 |>
 
 Cromo_28_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_28_t)
+dim_desc(Cromo_28_t) # Se comprueba y hay 2970 individuos y 4806 marcadores.
 
 Cromo_28_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_28.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_28/Cromo_28.txt', delim = ' ', col_names = TRUE)
 
 ##############
 # Cromosoma 29
@@ -1193,14 +1264,14 @@ Cromo_28_t |>
 
 # Se obtienen solo los marcadores del cromosoma 29 ----
 
-Cromo_29 <- Cromo_1_29 |>
+Cromo_29 <- SNP_tag_sing |>
   filter(`#CHROM` == 29)
 
-Cromo_29 |> count(`#CHROM`) # Se comprueba y si hay 14259 marcadores en el cromosoma 29.
+Cromo_29 |> count(`#CHROM`) # Se comprueba y si hay 5375 marcadores en el cromosoma 29.
 
 Cromo_29 |> select(1:4) |> slice_head(n = 4)
 
-# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas
+# Se transpone el objeto anterior para que los maradores queden en columnas y los individuos en filas ----
 
 Cromo_29_t <- Cromo_29 |>
   select(-1) |>
@@ -1223,10 +1294,10 @@ Cromo_29_t <- Cromo_29 |>
 
 Cromo_29_t |> select(1:4) |> slice_head(n = 4)
 
-dim_desc(Cromo_29_t)
+dim_desc(Cromo_29_t) # Se comprueba y hay 2970 individuos y 5375 marcadores.
 
 Cromo_29_t |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_29.txt', delim = ' ', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_29/Cromo_29.txt', delim = ' ', col_names = TRUE)
 ```
 
 <!--
@@ -1257,7 +1328,7 @@ cod_geno <- function(columna) { # Esta función permite cambiar los genotipos en
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_1_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_1.txt', delim = ' ', col_names = TRUE)
+Cromo_1_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_1/Cromo_1.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1273,7 +1344,7 @@ Cromo_1_e <- cod_geno(Cromo_1_t) |> # Se usa la función al inicio de este fragm
 # Cromosoma 2
 #############
 
-Cromo_2_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_2.txt', delim = ' ', col_names = TRUE)
+Cromo_2_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_2/Cromo_2.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1289,7 +1360,7 @@ Cromo_2_e <- cod_geno(Cromo_2_t) |> # Se usa la función al inicio de este fragm
 # Cromosoma 3
 #############
 
-Cromo_3_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_3.txt', delim = ' ', col_names = TRUE)
+Cromo_3_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_3/Cromo_3.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1305,7 +1376,7 @@ Cromo_3_e <- cod_geno(Cromo_3_t) |> # Se usa la función al inicio de este fragm
 # Cromosoma 4
 #############
 
-Cromo_4_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_4.txt', delim = ' ', col_names = TRUE)
+Cromo_4_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_4/Cromo_4.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1323,7 +1394,7 @@ Cromo_4_e <- cod_geno(Cromo_4_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_5_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_5.txt', delim = ' ', col_names = TRUE)
+Cromo_5_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_5/Cromo_5.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1341,7 +1412,7 @@ Cromo_5_e <- cod_geno(Cromo_5_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_6_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_6.txt', delim = ' ', col_names = TRUE)
+Cromo_6_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_6/Cromo_6.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1359,7 +1430,7 @@ Cromo_6_e <- cod_geno(Cromo_6_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_7_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_7.txt', delim = ' ', col_names = TRUE)
+Cromo_7_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_7/Cromo_7.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1377,7 +1448,7 @@ Cromo_7_e <- cod_geno(Cromo_7_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_8_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_8.txt', delim = ' ', col_names = TRUE)
+Cromo_8_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_8/Cromo_8.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1395,7 +1466,7 @@ Cromo_8_e <- cod_geno(Cromo_8_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_9_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_9.txt', delim = ' ', col_names = TRUE)
+Cromo_9_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_9/Cromo_9.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1413,7 +1484,7 @@ Cromo_9_e <- cod_geno(Cromo_9_t) |> # Se usa la función al inicio de este fragm
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_10_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_10.txt', delim = ' ', col_names = TRUE)
+Cromo_10_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_10/Cromo_10.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1431,7 +1502,7 @@ Cromo_10_e <- cod_geno(Cromo_10_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_11_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_11.txt', delim = ' ', col_names = TRUE)
+Cromo_11_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_11/Cromo_11.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1449,7 +1520,7 @@ Cromo_11_e <- cod_geno(Cromo_11_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_12_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_12.txt', delim = ' ', col_names = TRUE)
+Cromo_12_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_12/Cromo_12.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1467,7 +1538,7 @@ Cromo_12_e <- cod_geno(Cromo_12_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_13_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_13.txt', delim = ' ', col_names = TRUE)
+Cromo_13_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_13/Cromo_13.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1485,7 +1556,7 @@ Cromo_13_e <- cod_geno(Cromo_13_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_14_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_14.txt', delim = ' ', col_names = TRUE)
+Cromo_14_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_14/Cromo_14.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1503,7 +1574,7 @@ Cromo_14_e <- cod_geno(Cromo_14_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_15_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_15.txt', delim = ' ', col_names = TRUE)
+Cromo_15_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_15/Cromo_15.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1521,7 +1592,7 @@ Cromo_15_e <- cod_geno(Cromo_15_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_16_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_16.txt', delim = ' ', col_names = TRUE)
+Cromo_16_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_16/Cromo_16.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1539,7 +1610,7 @@ Cromo_16_e <- cod_geno(Cromo_16_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_17_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_17.txt', delim = ' ', col_names = TRUE)
+Cromo_17_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_17/Cromo_17.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1557,7 +1628,7 @@ Cromo_17_e <- cod_geno(Cromo_17_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_18_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_18.txt', delim = ' ', col_names = TRUE)
+Cromo_18_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_18/Cromo_18.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1575,7 +1646,7 @@ Cromo_18_e <- cod_geno(Cromo_18_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_19_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_19.txt', delim = ' ', col_names = TRUE)
+Cromo_19_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_19/Cromo_19.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1593,7 +1664,7 @@ Cromo_19_e <- cod_geno(Cromo_19_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_20_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_20.txt', delim = ' ', col_names = TRUE)
+Cromo_20_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_20/Cromo_20.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1611,7 +1682,7 @@ Cromo_20_e <- cod_geno(Cromo_20_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_21_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_21.txt', delim = ' ', col_names = TRUE)
+Cromo_21_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_21/Cromo_21.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1629,7 +1700,7 @@ Cromo_21_e <- cod_geno(Cromo_21_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_22_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_22.txt', delim = ' ', col_names = TRUE)
+Cromo_22_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_22/Cromo_22.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1647,7 +1718,7 @@ Cromo_22_e <- cod_geno(Cromo_22_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_23_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_23.txt', delim = ' ', col_names = TRUE)
+Cromo_23_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_23/Cromo_23.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1665,7 +1736,7 @@ Cromo_23_e <- cod_geno(Cromo_23_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_24_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_24.txt', delim = ' ', col_names = TRUE)
+Cromo_24_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_24/Cromo_24.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1683,7 +1754,7 @@ Cromo_24_e <- cod_geno(Cromo_24_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_25_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_25.txt', delim = ' ', col_names = TRUE)
+Cromo_25_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_25/Cromo_25.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1701,7 +1772,7 @@ Cromo_25_e <- cod_geno(Cromo_25_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_26_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_26.txt', delim = ' ', col_names = TRUE)
+Cromo_26_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_26/Cromo_26.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1719,7 +1790,7 @@ Cromo_26_e <- cod_geno(Cromo_26_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_27_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_27.txt', delim = ' ', col_names = TRUE)
+Cromo_27_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_27/Cromo_27.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1737,7 +1808,7 @@ Cromo_27_e <- cod_geno(Cromo_27_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_28_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_28.txt', delim = ' ', col_names = TRUE)
+Cromo_28_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_28/Cromo_28.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1755,7 +1826,7 @@ Cromo_28_e <- cod_geno(Cromo_28_t) |> # Se usa la función al inicio de este fra
 
 # Se importa el conjunto de datos con marcadoes en columnas e individuos en filas ----
 
-Cromo_29_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Cromo_29.txt', delim = ' ', col_names = TRUE)
+Cromo_29_t <- read_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Cromo_29/Cromo_29.txt', delim = ' ', col_names = TRUE)
 
 # Se cambian los valores de los genotipos ----
 
@@ -1805,135 +1876,5 @@ Cromo_e |>
     sep = '',
     remove = TRUE
     ) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/resHD_Beagle_v.5.4.txt', delim = ' ', col_names = FALSE)
-```
-
-<!--
-NOTA: Otra forma de hacer lo anterior sería hacer lo que hago a continuación. Usar plink para dejar en filas los individuos y en columnas los marcadores, y posteriormente editar la codificación de genotipos con R, como hice en el análisis de paternidad. Sin embargo, al momento de cambiar la codificación, esto se debería hacer en un computador con la suficiente capacidad ya que hacer esto en genotipados de alta densidas consume muchos recursos.
--->
-
-<!--
-NOTA: Se carga el software PLINK dentro del ambiente R.
--->
-
-```{r}
-#| label: Carga del software PLINK dentro del ambiente R
-
-# Función que permite ejecutar PLINK dentro de R:
-plink <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Imputacion/Plink/plink', PLINKopciones))
-
-plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
-
-# Función que permite ejecutar PLINK2 dentro de R:
-plink2 <- function(PLINKopciones = '') system(paste('/home/leonardo/Escritorio/Imputacion/Plink/plink2', PLINKopciones))
-
-plink2() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
-```
-
-<!--
-NOTA: Usando PLINK, se pasan el archivo VCF que resultó al imputar los genotipos mediante Beagle v 5.4 a datos PLINK binarios (.bed, .fam y .bim).
--->
-
-```{r}
-#| label: Paso de archivos VCF a datos PLINK binarios
-
-plink('--cow --allow-extra-chr --vcf Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_2.vcf --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_1')
-```
-
-<!--
-NOTA: Del archivo VCF que se uso en la imputación (imp_HD_50k.vcf), se obtiene las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT).
--->
-
-```{r}
-#| label: Nombre del marcador y alelo alternativo
-
-vcf_data <- data.table::fread('Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_2.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
-
-vcf_data |>
-  select(ID, ALT) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/aleloALT.txt', col_names = FALSE, delim = ' ')
-```
-
-<!--
-NOTA: Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo, el cual se encuentra en el archivo /aleloALT.txt anteriormente exportado.
--->
-
-```{r}
-#| label: Paso de genotipos a 0, 1, 2
-
-plink2('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_1 --alt1-allele force eva_genetica/Datos/eva_genomica/Beagle_HD/aleloALT.txt --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_2')
-
-# NOTA: En PLINK, los genotipos homocigotos para el alelo 1 se representan como "A/A", los genotipos heterocigotos se representan como "A/B" y los genotipos homocigotos para el alelo 2 se representan como "B/B". En el caso de genotipos codificados como números, PLINK utiliza los siguientes códigos:
-#
-# Homocigoto para el alelo 1: 0
-# Heterocigoto: 1
-# Homocigoto para el alelo 2: 2
-```
-
-<!--
-NOTA: Se realiza una conversión de los alelos de cada SNP a un formato de dos dígitos. Se genera tambén con esto un archivo *.ped que contiene información sobre los individuos y sus genotipos, y un archivo *.map que contendrá información sobre los marcadores genéticos.
--->
-
-```{r}
-#| label: Generación de archivo *.ped
-
-plink('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_2 --recode 12 --out eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_3') # Con "recode 12" se indica recodificar los alelos como 1 y 2 (y el genotipo faltante como 0).
-```
-
-<!--
-NOTA: Se cambia los genotipos en fase del Beagle al código de genotipos como lo requiere el blupf90.
--->
-
-```{r}
-#| label: Recodificación de genotipos.
-
-# Se importa el archivo *.ped y se asigna un nombre a cada columna ----
-
-ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Paso_3.ped', delim = ' ', col_names = FALSE)
-
-colnames(ped) <- c('FID', 'IID', 'PID', 'MID', 'Sex', 'P', paste0('alelo_', 1:(ncol(ped) - 6))) # Para indicar los nombres de las columnas de genotipos, se usa una combinación de la cadena "SNP" y un número que va del 1 al número de columnas de genotipos (ncol(ped) - 6).
-
-# Mediante una serie de pasos se obtiene los conjuntos de datos de genotipos como lo requiere el blup90 ----
-
-# 1. Se crea una función que permite unir cada dos columnas ----
-
-Geno <- function(x, y) {
-  paste0(x, y)
-  }
-
-# 2. Se aplica la función anterior a cada par de columnas del conjunto de datos (que representa los dos alelos de un genotipo), y se usa la función map2 para generar el conjunto de datos de genotipos (11 | 12 | 21 | 22 | 00) ----
-
-datAle <- ped |> # Se seleccionan las columnas de alelos.
-  select(-c(1:6))
-
-datGen <- map2(datAle[, seq(1, ncol(datAle), by = 2)], datAle[, seq(2, ncol(datAle), by = 2)], Geno) |> # Se obtienen las columnas de genotipos uniendo cada par consecutivo de columnas de alelos del objeto anterior.
-  as_tibble()
-
-colnames(datGen) <- paste0('Geno', seq_len(ncol(datGen)))
-
-#write_delim(x = datGen, file = 'Paternidad/Datos/datGen.ped', delim = ' ', col_names = TRUE) # Se importa para comprobar el resultado.
-
-# 3. Se realiza la recodificación del conjunto anterior de genotipos, indicando los genotipos 11 como 0, 12 o 21 como 1, 22 como 2 y 00 como 5.
-
-recGen <- function(x) {
-  case_when(
-    x == '00' ~ '5',
-    x == '11' ~ '0',
-    x %in% c('12', '21') ~ '1',
-    x == '22' ~ '2'
-  )
-  } # Se define la función de recodificación.
-
-datGen_recode <- datGen |>
-  map(recGen) |>
-  as_tibble() |>
-  unite('Geno', sep = '')
-
-# 4. Se une el conjunto de datos anteriormente recodificado con el conjunto de datos inicial (que tiene la identificación del individuo), y posteriormente se importa para usar en el programa seekparentf90 ----
-
-datMar <- ped |>
-  select(IID) |>
-  bind_cols(datGen_recode)
-
-save(gen_imput_1d, file = '../Datos/eva_genomica/Beagle_HD/datGeno_bluf90.RData')
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/resSNP_tags_sing.txt', delim = ' ', col_names = FALSE)
 ```

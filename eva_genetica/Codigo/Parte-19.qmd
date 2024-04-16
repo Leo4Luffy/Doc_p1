@@ -1,0 +1,87 @@
+---
+title: "Parte 19: Hola"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: 
+-->
+
+```{r}
+#| label: Estadisticos del método LR para el caracter edad al primer parto
+
+# Se importa el conjunto de datos con la ID original de los individuos focales ----
+
+ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
+  rename(ID_original = X1)
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
+```

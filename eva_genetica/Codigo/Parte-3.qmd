@@ -137,6 +137,10 @@ datGeno_4 <- datGeno_2 |>
   filter(año_Nac %in% c(2017, 2018, 2019)) |>
   pull(ID) # Hay 220 individuos que en los años 2017, 2018 y 2019 tenian datos de fenotipo y de genotipo.
 
+datGeno_4 |>
+  as_tibble() |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE) # Se exporta la identificación de los 220 individuos con información de fenotipo y de genotipo.
+
 datProd_2 <- pDtte |>
   right_join(x = ID_ind_3, by = 'ID') |>
   filter(año_Nac %in% c(2017, 2018, 2019)) |>
@@ -212,6 +216,10 @@ datGeno_4 <- datGeno_2 |>
   filter(año_Nac %in% c(2017, 2018, 2019)) |>
   pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo.
 
+datGeno_4 |>
+  as_tibble() |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE) # Se exporta la identificación de los 189 individuos con información de fenotipo y de genotipo.
+
 datProd_2 <- EPP |>
   right_join(x = ID_ind_3, by = 'ID') |>
   filter(año_Nac %in% c(2017, 2018, 2019)) |>
@@ -286,6 +294,10 @@ datGeno_4 <- datGeno_2 |>
   right_join(x = ID_ind_3, by = 'ID') |>
   filter(año_Nac %in% c(2017, 2018, 2019)) |>
   pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo.
+
+datGeno_4 |>
+  as_tibble() |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/ind_geno_feno.txt', col_names = FALSE) # Se exporta la identificación de los 189 individuos con información de fenotipo y de genotipo.
 
 datProd_2 <- IEP |>
   right_join(x = ID_ind_3, by = 'ID') |>

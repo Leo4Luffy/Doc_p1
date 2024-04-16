@@ -5,7 +5,7 @@ ulimit -s unlimited
 ####
 # Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el caracter intervalor entre el parto uno y dos.
 # Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González; Marisol Londoño Gil.
-# Requerimientos: renumf90, blupf90+.
+# Requerimientos: renumf90, gibbsf90.
 ####
 
 # Conjunto de datos completo
