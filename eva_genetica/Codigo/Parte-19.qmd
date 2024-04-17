@@ -85,7 +85,47 @@ ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Ed
 
 ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
 
-set.seed(1234)
+# 1. a) Se estima a continuación el sesgo (delta_p) a partir del método LR ----
 
-ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # https://www.tidymodels.org/learn/statistics/bootstrap/ y https://mohsinramay.medium.com/block-bootstrapping-in-r-using-tidymodels-e8191f439f8d.
+delta_p <- ebv_EPP |>
+  summarise(
+    across(
+      .cols = c(EBV_completo, EBV_parcial),
+      .fns = mean
+    )
+  ) |>
+  mutate(Diferencia = EBV_parcial - EBV_completo)
+
+print(delta_p)
+
+# 1. b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el delta_p ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan  diez mil replicas del conjunto de datos "ebv_EPP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_EPP_boots) # Se observa que "ebv_EPP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_EPP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+delta_p <- function(data) {
+  data |>
+    summarise(across(.cols = c(EBV_completo, EBV_parcial), .fns = mean)) |>
+    mutate(Diferencia = EBV_parcial - EBV_completo)
+    } # Se crea esta función para calcular el delta_p.
+
+boots_deltap <- ebv_EPP_boots |>
+  mutate(res_boots_deltap = map(splits, ~delta_p(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~delta_p(analysis(.x)) dentro de map(), se aplica la función delta_p() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función delta_p.
+
+slice_head(boots_deltap, n = 12)
+
+res_boots_deltap <- unnest(boots_deltap, res_boots_deltap) # Para convertir la columna "res_boots_deltap", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_deltap, n = 12)
+
+quantile(res_boots_deltap$Diferencia, c(0.025, 0.975)) # Se calcula los intervalos de confianza usando el método de percentiles.
+
+# 2. a)
+
+# 2. b)
+
 ```
