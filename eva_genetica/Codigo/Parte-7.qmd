@@ -1,5 +1,5 @@
 ---
-title: "Parte 4: Visualización de resultados del gibbs en datos completos y parciales en el genotipado de 50K imputado"
+title: "Parte 7: Visualización de resultados del gibbs en datos completos y parciales en el genotipado de HD imputado"
 format: html
 ---
 
@@ -58,81 +58,23 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
-#
-# Columna 1: Indica el orden secuencial en el que la muestra se guardo luego del proceso de quema (burn-in) y adelgazamiento (thinning).
-#
-# Columna 2: Indica el número de la muestra en la cadena (en este caso, de 10 mil en adelante, después del burn-in, guarda una de cada 50 veces).
-#
-# Columna 3: Especifica la cantidad de parámetros para los cuales se guardó la muestra. En este caso 4, lo que sugiere que se estan estimando cuatro parámetros en el modelo (varianzas para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente).
-#
-# Columnas 4, 5, 6 y 7: Indican los componentes de varianza para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente. Esto se puede observar también en el archivo "postind".
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
-
-###########################
-# Con burn-in igual a 5 mil
-###########################
-
-burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varGC.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del toro', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varT.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del individuo', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Residuo', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
-
-############################
-# Con burn-in igual a 10 mil
-############################
-
-burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varGC.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del toro', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varT.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del individuo', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Residuo', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de 0 (burnin_1) ----
 
@@ -268,8 +210,6 @@ graf_heredabilidad <- heredabilidad |>
   plot_annotation(title = 'Parámetros para la edad al primer parto') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
-
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
 HPD_result <- burnin_1 |>
@@ -287,7 +227,7 @@ HPD_result <- burnin_1 |>
     proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
     )
 
-HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El intervalo es de [0.076, 0.106]
+HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El intervalo es de [0.078, 0.108]
 
 ##############################
 # 2. Conjunto de datos parcial
@@ -297,7 +237,7 @@ HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El interva
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de 0 (burnin_1) ----
 
@@ -498,73 +438,25 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
-
-###########################
-# Con burn-in igual a 5 mil
-###########################
-
-burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varGC.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del toro', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varT.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del individuo', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Residuo', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
-
-############################
-# Con burn-in igual a 10 mil
-############################
-
-burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varGC.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del toro', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varT.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del individuo', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Residuo', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ----
 
@@ -699,8 +591,6 @@ graf_heredabilidad <- heredabilidad |>
   plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
   plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
@@ -725,7 +615,7 @@ HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El interva
 # 2. Conjunto de datos parcial
 ##############################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ----
 
@@ -860,8 +750,6 @@ graf_heredabilidad <- heredabilidad |>
   plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
   plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
-
-
 
 HPD_result <- burnin_1 |>
   select(-c(1, 3)) |>
@@ -929,85 +817,29 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'cyan')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza entre efecto directo y materno', 'orange')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto materno', 'black')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto permanente materno', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'red')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
-
-###########################
-# Con burn-in igual a 5 mil
-###########################
-
-burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_2, 'Varianza para el efecto del individuo', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Covarianza entre efecto directo y materno', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/covarDM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto materno', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto permanente materno', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varPM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Residuo', 'red')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_cincomil/varR.pdf', width = 40, height = 20, units = 'cm')
-
-############################
-# Con burn-in igual a 10 mil
-############################
-
-burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
-
-# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
-
-create_plot(burnin_3, 'Varianza para el efecto del individuo', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varG.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Covarianza entre efecto directo y materno', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/covarDM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto materno', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto permanente materno', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varPM.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Residuo', 'red')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1198,8 +1030,6 @@ graf_vacio <- ggplot(NULL)+
   plot_annotation(title = 'Parámetros para el peso al destete') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
-
 HPD_result <- burnin_1 |>
   select(-c(1, 3)) |>
   rename(
@@ -1232,7 +1062,7 @@ HDInterval::hdi(object = HPD_result$corr_directo_materno, credMass = 0.95) # El 
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1499,139 +1329,47 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro - EPP', 'orange')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo - EPP', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo - EPP', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza residual - EPP e I_P1-P2', 'black')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo - I_P1-P2', 'green')
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-###########################
-# Con burn-in igual a 5 mil
-###########################
-
-burnin_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_2/postgibbs_samples', col_names = FALSE)
-
-create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del toro - EPP', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del individuo - EPP', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/covG_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Residuo - EPP', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Covarianza residual - EPP e I_P1-P2', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/covR_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_2, 'Residuo - I_P1-P2', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_cincomil/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-############################
-# Con burn-in igual a 10 mil
-############################
-
-burnin_3 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/postgibbs_3/postgibbs_samples', col_names = FALSE)
-
-create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del toro - EPP', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del individuo - EPP', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/covG_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Residuo - EPP', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Covarianza residual - EPP e I_P1-P2', 'black')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/covR_EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
-
-create_plot(burnin_3, 'Residuo - I_P1-P2', 'green')
-
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1913,7 +1651,7 @@ graf_vacio <- ggplot(NULL)+
   plot_annotation(title = 'Parámetros para el bi-carácter entre edad al primer parto e intervalo entre el primer y segundo parto') & 
   theme(plot.title = element_text(size = 8.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 ##############################
 # 2. Conjunto de datos parcial
@@ -1923,7 +1661,7 @@ ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/Imagenes/bur
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 

@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, tidymodels)
 ```
 
 <!--
@@ -84,4 +84,8 @@ ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Ed
 #############################
 
 ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
+
+set.seed(1234)
+
+ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # https://www.tidymodels.org/learn/statistics/bootstrap/ y https://mohsinramay.medium.com/block-bootstrapping-in-r-using-tidymodels-e8191f439f8d.
 ```
