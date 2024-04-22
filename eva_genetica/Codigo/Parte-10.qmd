@@ -1,5 +1,5 @@
 ---
-title: "Parte 17: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags e imputación hecha mediante grupos de validación baado en segmentos"
+title: "Parte 10: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags"
 format: html
 ---
 
@@ -58,7 +58,7 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
 #
 # Columna 1: Indica el orden secuencial en el que la muestra se guardo luego del proceso de quema (burn-in) y adelgazamiento (thinning).
 #
@@ -72,19 +72,19 @@ burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Part
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de 0 (burnin_1) ----
 
@@ -220,7 +220,7 @@ graf_heredabilidad <- heredabilidad |>
   plot_annotation(title = 'Parámetros para la edad al primer parto') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
@@ -249,7 +249,7 @@ HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El interva
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de 0 (burnin_1) ----
 
@@ -450,25 +450,25 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación', 'cyan')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varGC.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro', 'orange')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varT.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'black')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ----
 
@@ -604,7 +604,7 @@ graf_heredabilidad <- heredabilidad |>
   plot_annotation(title = 'Parámetros para el intervalo entre el primer parto y segundo parto') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
@@ -633,7 +633,7 @@ HDInterval::hdi(object = HPD_result$heredabilidad, credMass = 0.95) # El interva
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ----
 
@@ -835,29 +835,29 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo', 'cyan')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza entre efecto directo y materno', 'orange')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto materno', 'black')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto permanente materno', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo', 'red')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1048,7 +1048,7 @@ graf_vacio <- ggplot(NULL)+
   plot_annotation(title = 'Parámetros para el peso al destete') & 
   theme(plot.title = element_text(size = 9.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 HPD_result <- burnin_1 |>
   select(-c(1, 3)) |>
@@ -1082,7 +1082,7 @@ HDInterval::hdi(object = HPD_result$corr_directo_materno, credMass = 0.95) # El 
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1349,47 +1349,47 @@ create_plot <- function(data, componente, color) {
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro - EPP', 'orange')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo - EPP', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo - EPP', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Covarianza residual - EPP e I_P1-P2', 'black')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 create_plot(burnin_1, 'Residuo - I_P1-P2', 'green')
 
-ggsave('Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+ggsave('Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1671,7 +1671,7 @@ graf_vacio <- ggplot(NULL)+
   plot_annotation(title = 'Parámetros para el bi-carácter entre edad al primer parto e intervalo entre el primer y segundo parto') & 
   theme(plot.title = element_text(size = 8.4, face = 'bold'))
 
-ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
 
 ##############################
 # 2. Conjunto de datos parcial
@@ -1681,7 +1681,7 @@ ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/Imagenes/
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
