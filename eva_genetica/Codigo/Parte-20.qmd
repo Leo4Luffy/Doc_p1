@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse, tidymodels)
+pacman::p_load(tidyverse, tidymodels, patchwork)
 ```
 
 <!--
@@ -2920,7 +2920,7 @@ sesgo_PD <- tribble(
    0.942, 'SNP_tags_val1_directo', '0.320961712211364_1.56306609347386', 'Peso destete',
    -0.0756, 'SNP_tags_val1_materno', '-0.436059765163637_0.287886358936364', 'Peso destete',
    0.920, 'SNP_tags_val2_directo', '0.315221748634091_1.52923572842955', 'Peso destete',
-   -0.0228, 'SNP_tags_val2_materno' '-0.388810892628409_0.343265522111363', 'Peso destete',
+   -0.0228, 'SNP_tags_val2_materno', '-0.388810892628409_0.343265522111363', 'Peso destete'
    )
 ```
 
@@ -8838,6 +8838,173 @@ est_LR |>
     .after = Estimado
     ) |>
   write_delim(file = 'eva_genetica/Datos/eva_genomica/Estadisticos_LR.txt', col_names = TRUE)
+```
+
+<!--
+Nota: Hola
+-->
+
+```{r}
+#| label: Hola
+
+# ----
+
+est_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Estadisticos_LR.txt', col_names = TRUE, delim = ' ')
+
+orden_densidad <- c('SNP_tags_val2', 'SNP_tags_val2_directo', 'SNP_tags_val2_materno', 'SNP_tags_val1', 'SNP_tags_val1_directo', 'SNP_tags_val1_materno', '50k', '50k_directo', '50k_materno', 'SNP_tags', 'SNP_tags_directo', 'SNP_tags_materno', 'SNP_tags_sing', 'SNP_tags_sing_directo', 'SNP_tags_sing_materno', 'HD', 'HD_directo', 'HD_materno') # Se define el orden deseado de las variables en el eje x.
+
+est_LR <- est_LR |>
+  mutate(Densidad_marcador = factor(Densidad_marcador, levels = orden_densidad)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
+
+# ----
+
+sesgo <- est_LR |>
+  filter(Estadistico_LR == 'sesgo')
+
+sesgo_EPP <- ggplot(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_EPP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+sesgo_IEP <- ggplot(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+sesgo_PD <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete'), aes(x = Densidad_marcador, y = Estimado, group = Densidad_marcador, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Peso destete'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_PD_uni.pdf', width = 40, height = 20, units = 'cm')
+
+# ----
+
+dispersion <- est_LR |>
+  filter(Estadistico_LR == 'dispersion')
+
+dispersion_EPP <- ggplot(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_EPP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+sesgo_IEP <- ggplot(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+dispersion_PD <- ggplot(data = dispersion |> filter(Carácter == 'Peso destete'), aes(x = Densidad_marcador, y = Estimado, group = Densidad_marcador, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Peso destete'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_PD_uni.pdf', width = 40, height = 20, units = 'cm')
+
+# ----
+
+correlacion <- est_LR |>
+  filter(Estadistico_LR == 'correlacion')
+
+correlacion_EPP <- ggplot(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_EPP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+correlacion_IEP <- ggplot(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(x = Densidad_marcador, y = Estimado, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
+
+correlacion_PD <- ggplot(data = correlacion |> filter(Carácter == 'Peso al destete'), aes(x = Densidad_marcador, y = Estimado, group = Densidad_marcador, fill = Densidad_marcador, colour = Densidad_marcador)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Peso al destete'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = 'Densidad del marcador') +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 15),
+    axis.title = element_text(size = 16, face = 'bold'),
+    legend.position = 'none'
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_PD_uni.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 <!--
