@@ -10457,6 +10457,10 @@ ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_
 # Densidad de marcador - 50k
 ############################
 
+#########################
+# Efecto genético directo
+#########################
+
 ##########################################
 # Datos parciales con información genómica
 ##########################################
@@ -10490,7 +10494,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10498,7 +10502,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10521,12 +10525,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_50k <- (covarianza / raiz_cuadrada) |>
+correlacion_50k_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = '50k') |>
+  mutate(Densidad_marcador = '50k_directo') |>
   rename(correlacion = value)
 
-print(correlacion_50k)
+print(correlacion_50k_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -10557,7 +10561,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_50k <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_50k_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -10567,11 +10571,131 @@ IC_correlacion_50k <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.
     sep = '_'
     )
 
-correlacion_50k <- bind_cols(correlacion_50k, IC_correlacion_50k)
+correlacion_50k_directo <- bind_cols(correlacion_50k_directo, IC_correlacion_50k_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_50k_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = '50k_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_50k_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_50k_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_50k_materno <- bind_cols(correlacion_50k_materno, IC_correlacion_50k_materno)
 
 ###########################
 # Densidad de marcador - HD
 ###########################
+
+#########################
+# Efecto genético directo
+#########################
 
 ##########################################
 # Datos parciales con información genómica
@@ -10606,7 +10730,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10614,7 +10738,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10637,12 +10761,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_HD <- (covarianza / raiz_cuadrada) |>
+correlacion_HD_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = 'HD') |>
+  mutate(Densidad_marcador = 'HD_directo') |>
   rename(correlacion = value)
 
-print(correlacion_HD)
+print(correlacion_HD_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -10673,7 +10797,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_HD <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_HD_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -10683,11 +10807,131 @@ IC_correlacion_HD <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.0
     sep = '_'
     )
 
-correlacion_HD <- bind_cols(correlacion_HD, IC_correlacion_HD)
+correlacion_HD_directo <- bind_cols(correlacion_HD_directo, IC_correlacion_HD_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_HD_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'HD_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_HD_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_HD_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_HD_materno <- bind_cols(correlacion_HD_materno, IC_correlacion_HD_materno)
 
 #################################
 # Densidad de marcador - SNP_tags
 #################################
+
+#########################
+# Efecto genético directo
+#########################
 
 ##########################################
 # Datos parciales con información genómica
@@ -10722,7 +10966,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10730,7 +10974,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10753,12 +10997,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_SNP_tags <- (covarianza / raiz_cuadrada) |>
+correlacion_SNP_tags_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = 'SNP_tags') |>
+  mutate(Densidad_marcador = 'SNP_tags_materno') |>
   rename(correlacion = value)
 
-print(correlacion_SNP_tags)
+print(correlacion_SNP_tags_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -10789,7 +11033,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_SNP_tags <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_SNP_tags_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -10799,11 +11043,131 @@ IC_correlacion_SNP_tags <- quantile(res_boots_correlacion$res_boots_correlacion,
     sep = '_'
     )
 
-correlacion_SNP_tags <- bind_cols(correlacion_SNP_tags, IC_correlacion_SNP_tags)
+correlacion_SNP_tags_directo <- bind_cols(correlacion_SNP_tags_directo, IC_correlacion_SNP_tags_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_SNP_tags_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_SNP_tags_materno <- bind_cols(correlacion_SNP_tags_materno, IC_correlacion_SNP_tags_materno)
 
 ###############################################
 # Densidad de marcador - SNP-tags y singletones
 ###############################################
+
+#########################
+# Efecto genético directo
+#########################
 
 ##########################################
 # Datos parciales con información genómica
@@ -10838,7 +11202,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10846,7 +11210,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10869,12 +11233,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_SNP_tags_sing <- (covarianza / raiz_cuadrada) |>
+correlacion_SNP_tags_sing_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = 'SNP_tags_sing') |>
+  mutate(Densidad_marcador = 'SNP_tags_sing_directo') |>
   rename(correlacion = value)
 
-print(correlacion_SNP_tags_sing)
+print(correlacion_SNP_tags_sing_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -10905,7 +11269,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_SNP_tags_sing <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_SNP_tags_sing_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -10915,11 +11279,131 @@ IC_correlacion_SNP_tags_sing <- quantile(res_boots_correlacion$res_boots_correla
     sep = '_'
     )
 
-correlacion_SNP_tags_sing <- bind_cols(correlacion_SNP_tags_sing, IC_correlacion_SNP_tags_sing)
+correlacion_SNP_tags_sing_directo <- bind_cols(correlacion_SNP_tags_sing_directo, IC_correlacion_SNP_tags_sing_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_sing_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_sing_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_sing_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_SNP_tags_sing_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_SNP_tags_sing_materno <- bind_cols(correlacion_SNP_tags_sing_materno, IC_correlacion_SNP_tags_sing_materno)
 
 ################################################
 # Densidad de marcador - SNP-tags (validación 1)
 ################################################
+
+#########################
+# Efecto genético directo
+#########################
 
 ##########################################
 # Datos parciales con información genómica
@@ -10954,7 +11438,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10962,7 +11446,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10985,12 +11469,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_SNP_tags_val1 <- (covarianza / raiz_cuadrada) |>
+correlacion_SNP_tags_val1_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = 'SNP_tags_val1') |>
+  mutate(Densidad_marcador = 'SNP_tags_val1_directo') |>
   rename(correlacion = value)
 
-print(correlacion_SNP_tags_val1)
+print(correlacion_SNP_tags_val1_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -11021,7 +11505,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_SNP_tags_val1 <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_SNP_tags_val1_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -11031,11 +11515,131 @@ IC_correlacion_SNP_tags_val1 <- quantile(res_boots_correlacion$res_boots_correla
     sep = '_'
     )
 
-correlacion_SNP_tags_val1 <- bind_cols(correlacion_SNP_tags_val1, IC_correlacion_SNP_tags_val1)
+correlacion_SNP_tags_val1_directo <- bind_cols(correlacion_SNP_tags_val1_directo, IC_correlacion_SNP_tags_val1_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val1_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val1_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val1_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_SNP_tags_val1_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_SNP_tags_val1_materno <- bind_cols(correlacion_SNP_tags_val1_materno, IC_correlacion_SNP_tags_val1_materno)
 
 ################################################
 # Densidad de marcador - SNP-tags (validación 2)
 ################################################
+
+#########################
+# Efecto genético directo
+#########################
 
 ##########################################
 # Datos parciales con información genómica
@@ -11070,7 +11674,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11078,7 +11682,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/renadd0
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11101,12 +11705,12 @@ covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula 
 
 raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
 
-correlacion_SNP_tags_val2 <- (covarianza / raiz_cuadrada) |>
+correlacion_SNP_tags_val2_directo <- (covarianza / raiz_cuadrada) |>
   as_tibble() |>
-  mutate(Densidad_marcador = 'SNP_tags_val2') |>
+  mutate(Densidad_marcador = 'SNP_tags_val2_directo') |>
   rename(correlacion = value)
 
-print(correlacion_SNP_tags_val2)
+print(correlacion_SNP_tags_val2_directo)
 
 # b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
 
@@ -11137,7 +11741,7 @@ res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para
 
 slice_head(res_boots_correlacion, n = 12)
 
-IC_correlacion_SNP_tags_val2 <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+IC_correlacion_SNP_tags_val2_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
   as_tibble() |>
   pivot_wider(
     names_from = value
@@ -11147,18 +11751,140 @@ IC_correlacion_SNP_tags_val2 <- quantile(res_boots_correlacion$res_boots_correla
     sep = '_'
     )
 
-correlacion_SNP_tags_val2 <- bind_cols(correlacion_SNP_tags_val2, IC_correlacion_SNP_tags_val2)
+correlacion_SNP_tags_val2_directo <- bind_cols(correlacion_SNP_tags_val2_directo, IC_correlacion_SNP_tags_val2_directo)
 
-correlacion <- bind_rows(correlacion_50k, correlacion_HD, correlacion_SNP_tags, correlacion_SNP_tags_sing, correlacion_SNP_tags_val1, correlacion_SNP_tags_val2)
+#########################
+# Efecto genético materno
+#########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_PD <- inner_join(x = ebv_PD_datP_geno, y = ebv_PD_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_parcial_geno, ebv_PD$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial_geno) * var(ebv_PD$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val2_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val2_materno') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val2_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_parcial_geno, data$EBV_parcial_ped)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial_geno) * var(data$EBV_parcial_ped))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_SNP_tags_val2_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_SNP_tags_val2_materno <- bind_cols(correlacion_SNP_tags_val2_materno, IC_correlacion_SNP_tags_val2_materno)
+
+correlacion <- bind_rows(correlacion_50k_directo, correlacion_50k_materno, correlacion_HD_directo, correlacion_HD_materno, correlacion_SNP_tags_directo, correlacion_SNP_tags_materno, correlacion_SNP_tags_sing_directo, correlacion_SNP_tags_sing_materno, correlacion_SNP_tags_val1_directo, correlacion_SNP_tags_val1_materno, correlacion_SNP_tags_val2_directo, correlacion_SNP_tags_val2_materno)
 
 correlacion_AG_PD <- tribble(
   ~'correlacion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
-  0.804, '50k', '0.744723109793435_0.853174731462164', 'Peso al destete',
-  0.813, 'HD', '0.75648543793481_0.859352283349432', 'Peso al destete',
-  0.818, 'SNP_tags', '0.760791581790863_0.863141374192121', 'Peso al destete',
-  0.809, 'SNP_tags_sing', '0.748669468737103_0.856426532539394', 'Peso al destete',
-  0.785, 'SNP_tags_val1', '0.726043927915094_0.833064361159705', 'Peso al destete',
-  0.764, 'SNP_tags_val2', '0.702643088077763_0.815583264451098', 'Peso al destete'
+  0.804, '50k_directo', '0.744723109793435_0.853174731462164', 'Peso al destete',
+  0.824, '50k_materno', '0.77840777595265_0.862151489417488', 'Peso al destete',
+  0.813, 'HD_directo', '0.75648543793481_0.859352283349432', 'Peso al destete',
+  0.839, 'HD_materno', '0.80006370559629_0.871590499908617', 'Peso al destete',
+  0.818, 'SNP_tags_directo', '0.760791581790863_0.863141374192121', 'Peso al destete',
+  0.841, 'SNP_tags_materno', '0.803261646068695_0.873359579859311', 'Peso al destete',
+  0.809, 'SNP_tags_sing_directo', '0.748669468737103_0.856426532539394', 'Peso al destete',
+  0.839, 'SNP_tags_sing_materno', '0.80097343317946_0.872295870262579', 'Peso al destete',
+  0.785, 'SNP_tags_val1_directo', '0.726043927915094_0.833064361159705', 'Peso al destete',
+  0.762, 'SNP_tags_val1_materno', '0.710996548831915_0.80640279490266', 'Peso al destete',
+  0.764, 'SNP_tags_val2_directo', '0.702643088077763_0.815583264451098', 'Peso al destete',
+  0.766, 'SNP_tags_val2_materno', '0.711435856456395_0.813810819212463', 'Peso al destete'
   )
 ```
 
@@ -11180,5 +11906,5 @@ correlacion_AG |>
     correlacion,
     .after = Densidad_marcador
     ) |>
-  write_delim(file = 'Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE)
+  write_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE)
 ```
