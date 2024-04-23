@@ -12143,3 +12143,18 @@ correlacion_AG |>
     ) |>
   write_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE)
 ```
+
+<!--
+Nota: Hola
+-->
+
+```{r}
+#| label: Hola
+
+# ----
+
+correlacion_AG <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE, delim = ' ')
+
+inc_AG <- correlacion_AG |>
+  mutate(Incremento_precision = ((correlacion)^-1) - 1)
+```
