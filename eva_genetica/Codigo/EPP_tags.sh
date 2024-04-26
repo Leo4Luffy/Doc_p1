@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 # Conjunto de datos completo
 
-cd ../../eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Completo
+cd ../../eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Completo
 
 echo "DATAFILE
 EPP.txt
@@ -85,7 +85,7 @@ cd -
 
 # Conjunto de datos parcial
 
-cd ../../eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial
+cd ../../eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial
 
 echo "DATAFILE
 EPP.txt

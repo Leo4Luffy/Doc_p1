@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 # Conjunto de datos completo
 
-cd ../Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo
+cd ../Datos/eva_genomica/SNP_tags/EPP_IEP/Completo
 
 echo "DATAFILE
 EPP_IEP.txt
@@ -111,7 +111,7 @@ cd -
 
 # Conjunto de datos parcial
 
-cd ../Datos/eva_genomica/Beagle_50K/EPP_IEP/Parcial
+cd ../Datos/eva_genomica/SNP_tags/EPP_IEP/Parcial
 
 echo "DATAFILE
 EPP_IEP.txt

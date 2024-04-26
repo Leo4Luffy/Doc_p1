@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 # Conjunto de datos completo
 
-cd ../Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Completo
+cd ../Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Completo
 
 echo "DATAFILE
 IEP.txt
@@ -89,7 +89,7 @@ cd -
 
 # Conjunto de datos parcial
 
-cd ../Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial
+cd ../Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Parcial
 
 echo "DATAFILE
 IEP.txt
@@ -137,31 +137,31 @@ PED_DEPTH
 1.0
 OPTION remove_all_missing" > renum.par
 
-echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
+#echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
 
-sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+#sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
  
-echo "OPTION SNP_file ../../Genotipos_2.txt
-OPTION excludeSample 2383
-OPTION saveCleanSNPs
-OPTION createGInverse 0
-OPTION createA22Inverse 0
-OPTION createGimA22i 0" >> renf90.par
+#echo "OPTION SNP_file ../../Genotipos_2.txt
+#OPTION excludeSample 2383
+#OPTION saveCleanSNPs
+#OPTION createGInverse 0
+#OPTION createA22Inverse 0
+#OPTION createGimA22i 0" >> renf90.par
 
-echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2383 mediante la opción "excludeSample".
+#echo renf90.par | ../../../../../BLUPF90/preGSf90 | tee pregs.log # Hay dos individuos con genotipos duplicados. Se elimina uno de ellos, el que esta en la fila o linea 2383 mediante la opción "excludeSample".
 
-sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
+#sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
 
-echo "OPTION SNP_file ../../Genotipos_2.txt_clean
-OPTION solution mean
-OPTION save_halfway_samples 10000
-OPTION no_quality_control
-OPTION verify_parentage 3" >> renf90.par
+#echo "OPTION SNP_file ../../Genotipos_2.txt_clean
+#OPTION solution mean
+#OPTION save_halfway_samples 10000
+#OPTION no_quality_control
+#OPTION verify_parentage 3" >> renf90.par
 
-../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
-renf90.par
-200000 50000
-50
-AA
+#../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
+#renf90.par
+#200000 50000
+#50
+#AA
 
 cd -

@@ -3,9 +3,9 @@ ulimit -s unlimited
 #!/bin/bash
 
 ####
-# Titulo: Bash para relanzar el muestreo de gibbs en datos parciales y completos para el bi-caracter edad al primer parto e intervalo primer y segundo parto.
+# Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el bi-caracter edad al primer parto e intervalo primer y segundo parto.
 # Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González; Marisol Londoño Gil.
-# Requerimientos: renumf90, gibbsf90.
+# Requerimientos: renumf90, blupf90+.
 ####
 
 # Conjunto de datos completo

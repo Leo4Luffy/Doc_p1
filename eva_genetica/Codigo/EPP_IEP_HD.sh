@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 # Conjunto de datos completo
 
-cd ../Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo
+cd ../Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo
 
 echo "DATAFILE
 EPP_IEP.txt
@@ -85,6 +85,7 @@ echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
  
 echo "OPTION SNP_file ../../Genotipos_2.txt
+OPTION maxsnp 600000
 OPTION saveCleanSNPs
 OPTION excludeSample 2383
 OPTION createGInverse 0
@@ -111,7 +112,7 @@ cd -
 
 # Conjunto de datos parcial
 
-cd ../Datos/eva_genomica/Beagle_50K/EPP_IEP/Parcial
+cd ../Datos/eva_genomica/Beagle_HD/EPP_IEP/Parcial
 
 echo "DATAFILE
 EPP_IEP.txt
@@ -186,6 +187,7 @@ echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
  
 echo "OPTION SNP_file ../../Genotipos_2.txt
+OPTION maxsnp 600000
 OPTION excludeSample 2383
 OPTION saveCleanSNPs
 OPTION createGInverse 0

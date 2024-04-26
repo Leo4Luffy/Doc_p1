@@ -3,9 +3,9 @@ ulimit -s unlimited
 #!/bin/bash
 
 ####
-# Titulo: Bash para para relanzar el muestreo de gibbs en datos parciales y completos para el caracter peso al destete.
+# Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el caracter peso al destete.
 # Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González; Marisol Londoño Gil.
-# Requerimientos: renumf90, gibbsf90.
+# Requerimientos: renumf90, blupf90+.
 ####
 
 # Conjunto de datos completo

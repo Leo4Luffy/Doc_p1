@@ -12145,13 +12145,13 @@ correlacion_AG |>
 ```
 
 <!--
-Nota: Hola
+Nota: Se calcula el incremento en precisión debido a la información genómica.
 -->
 
 ```{r}
-#| label: Hola
+#| label: Calculo de incremento en precisión debido a la información genómica
 
-# ----
+# Se importa el conjunto de datos de interes y posteriormente se calcula el incremento en precisión debido a la información genómica ----
 
 correlacion_AG <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE, delim = ' ')
 
