@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse, tidymodels)
+pacman::p_load(tidyverse, tidymodels, patchwork)
 ```
 
 <!--
@@ -4410,7 +4410,7 @@ NOTA: Se exporta los resultados (estimas) de los estadísticos del método LR ob
 -->
 
 ```{r}
-#| label: Hola
+#| label: Resultados del método LR
 
 sesgo <- bind_rows(sesgo_EPP, sesgo_IEP) |>
   pivot_longer(
@@ -4449,4 +4449,474 @@ est_LR |>
     .after = Estimado
     ) |>
   write_delim(file = 'Datos/eva_genomica/Estadisticos_LR_bi.txt', col_names = TRUE)
+```
+
+<!--
+Nota: Se visualizan los estadísticos del método LR.
+-->
+
+```{r}
+#| label: Visualización del sesgo, la dispersión y la precisión
+
+# Se importa los resultados del análisis bi-carácter y se crea las columna de "Escenarios" y "Analisis" ----
+
+est_LR_bi <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Estadisticos_LR_bi.txt', col_names = TRUE, delim = ' ') |>
+  separate(
+    col = Intervalo_confianza,
+    into =  c('ICI', 'ICS'),
+    sep  =  '_'
+    ) |>
+   mutate(
+    ICI = as.numeric(ICI),
+    ICS = as.numeric(ICS)
+    ) |>
+  mutate(
+    Escenarios = case_when(
+      Densidad_marcador == 'SNP_tags_val2' ~ 'E1',
+      Densidad_marcador == 'SNP_tags_val2_directo' ~ 'E1_D',
+      Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1_M',
+      Densidad_marcador == 'SNP_tags_val1' ~ 'E2',
+      Densidad_marcador == 'SNP_tags_val1_directo' ~ 'E2_D',
+      Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2_M',
+      Densidad_marcador == '50k' ~ 'E3',
+      Densidad_marcador == '50k_directo' ~ 'E3_D',
+      Densidad_marcador == '50k_materno' ~ 'E3_M',
+      Densidad_marcador == 'SNP_tags' ~ 'E4',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E4_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E4_M',
+      Densidad_marcador == 'SNP_tags_sing' ~ 'E5',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E5_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5_M',
+      Densidad_marcador == 'HD' ~ 'E6',
+      Densidad_marcador == 'HD_directo' ~ 'E6_D',
+      Densidad_marcador == 'HD_materno' ~ 'E6_M'
+      ),
+    Analisis = 'Bi-carácter'
+    )
+
+# Se importa los resultados del análisis uni-carácter y se crea las columna de "Escenarios" y "Analisis". Luego se deja el carácter de peso al destete ----
+
+est_LR_uni <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Estadisticos_LR.txt', col_names = TRUE, delim = ' ') |>
+  separate(
+    col = Intervalo_confianza,
+    into =  c('ICI', 'ICS'),
+    sep  =  '_'
+    ) |>
+   mutate(
+    ICI = as.numeric(ICI),
+    ICS = as.numeric(ICS)
+    ) |>
+  mutate(
+    Escenarios = case_when(
+      Densidad_marcador == 'SNP_tags_val2' ~ 'E1',
+      Densidad_marcador == 'SNP_tags_val2_directo' ~ 'E1_D',
+      Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1_M',
+      Densidad_marcador == 'SNP_tags_val1' ~ 'E2',
+      Densidad_marcador == 'SNP_tags_val1_directo' ~ 'E2_D',
+      Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2_M',
+      Densidad_marcador == '50k' ~ 'E3',
+      Densidad_marcador == '50k_directo' ~ 'E3_D',
+      Densidad_marcador == '50k_materno' ~ 'E3_M',
+      Densidad_marcador == 'SNP_tags' ~ 'E4',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E4_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E4_M',
+      Densidad_marcador == 'SNP_tags_sing' ~ 'E5',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E5_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5_M',
+      Densidad_marcador == 'HD' ~ 'E6',
+      Densidad_marcador == 'HD_directo' ~ 'E6_D',
+      Densidad_marcador == 'HD_materno' ~ 'E6_M'
+      ),
+    Analisis = 'Uni-carácter'
+    ) |>
+  filter(Carácter %in% c('Peso destete', 'Peso al destete'))
+
+# Se unen los resultados del análisis uni- y bi-carácter ----
+
+est_LR <- bind_rows(est_LR_uni, est_LR_bi)
+
+# Se visualizan los resultados ----
+
+orden_escenarios <- c('E1', 'E1_D', 'E1_M', 'E2', 'E2_D', 'E2_M', 'E3', 'E3_D', 'E3_M', 'E4', 'E4_D', 'E4_M', 'E5', 'E5_D', 'E5_M', 'E6', 'E6_D', 'E6_M') # Se define el orden deseado de las variables en el eje x.
+
+est_LR <- est_LR |>
+  mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
+
+#######
+# Sesgo
+#######
+
+# 1. Edad al primer parto ----
+
+sesgo <- est_LR |>
+  filter(Estadistico_LR == 'sesgo')
+
+sesgo_EPP <- ggplot(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+sesgo_EPP_IC <- ggplot(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.1, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_sesgo_EPP <- (sesgo_EPP_IC / sesgo_EPP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_EPP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 2. Intervalo entre el primer y el segundo parto ----
+
+sesgo_IEP <- ggplot(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+sesgo_IEP_IC <- ggplot(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_sesgo_IEP <- (sesgo_IEP_IC / sesgo_IEP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_IEP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 3. Peso al destete ----
+
+sesgo_PD <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  facet_wrap(~Efecto) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15),
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 13, colour = 'black', face = 'bold')
+    )
+
+sesgo_PD_IC <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.44, nudge_y = 0.1, colour = 'black') +
+  geom_text(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.1, colour = 'black') +
+  facet_wrap(~Efecto) +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank()
+    )
+
+graf_sesgo_PD <- (sesgo_PD_IC / sesgo_PD) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/sesgo_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+############
+# Dispersión
+############
+
+# 1. Edad al primer parto ----
+
+dispersion <- est_LR |>
+  filter(Estadistico_LR == 'dispersion')
+
+dispersion_EPP <- ggplot(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+dispersion_EPP_IC <- ggplot(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_dispersion_EPP <- (dispersion_EPP_IC / dispersion_EPP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_EPP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 2. Intervalo entre el primer y segundo parto ----
+
+dispersion_IEP <- ggplot(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+dispersion_IEP_IC <- ggplot(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_dispersion_IEP <- (dispersion_IEP_IC / dispersion_IEP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_IEP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 3. Peso al destete ----
+
+dispersion_PD <- ggplot(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  facet_wrap(~Efecto) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15),
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 13, colour = 'black', face = 'bold')
+    )
+
+dispersion_PD_IC <- ggplot(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.44, nudge_y = 0.0, colour = 'black') +
+  geom_text(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.0, colour = 'black') +
+  facet_wrap(~Efecto) +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank()
+    )
+
+graf_dispersion_PD <- (dispersion_PD_IC / dispersion_PD) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/dispersion_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+###########
+# Precisión
+###########
+
+# 1. Edad al primer parto ----
+
+correlacion <- est_LR |>
+  filter(Estadistico_LR == 'correlacion')
+
+correlacion_EPP <- ggplot(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+correlacion_EPP_IC <- ggplot(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_correlacion_EPP <- (correlacion_EPP_IC / correlacion_EPP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_EPP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 2. Intervalo entre el primer y segundo parto ----
+
+correlacion_IEP <- ggplot(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(x = Escenarios, y = Estimado, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+correlacion_IEP_IC <- ggplot(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_correlacion_IEP <- (correlacion_IEP_IC / correlacion_IEP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_IEP_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+
+# 3. Peso al destete ----
+
+correlacion_PD <- ggplot(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  facet_wrap(~Efecto) +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15),
+    strip.background = element_rect(colour = 'black', fill = 'white'),
+    strip.text = element_text(size = 13, colour = 'black', face = 'bold')
+    )
+
+correlacion_PD_IC <- ggplot(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.44, nudge_y = 0.0, colour = 'black') +
+  geom_text(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.0, colour = 'black') +
+  facet_wrap(~Efecto) +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank()
+    )
+
+graf_correlacion_PD <- (correlacion_PD_IC / correlacion_PD) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/correlacion_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
 ```

@@ -9268,7 +9268,7 @@ ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9278,7 +9278,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9295,7 +9295,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_5
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9303,7 +9303,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9384,7 +9384,7 @@ correlacion_50k <- bind_cols(correlacion_50k, IC_correlacion_50k)
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9394,7 +9394,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9411,7 +9411,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_H
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9419,7 +9419,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9500,7 +9500,7 @@ correlacion_HD <- bind_cols(correlacion_HD, IC_correlacion_HD)
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9510,7 +9510,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9527,7 +9527,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9535,7 +9535,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9616,7 +9616,7 @@ correlacion_SNP_tags <- bind_cols(correlacion_SNP_tags, IC_correlacion_SNP_tags)
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9626,7 +9626,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9643,7 +9643,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9651,7 +9651,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9732,7 +9732,7 @@ correlacion_SNP_tags_sing <- bind_cols(correlacion_SNP_tags_sing, IC_correlacion
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9742,7 +9742,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9759,7 +9759,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9767,7 +9767,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9848,7 +9848,7 @@ correlacion_SNP_tags_val1 <- bind_cols(correlacion_SNP_tags_val1, IC_correlacion
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9858,7 +9858,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9875,7 +9875,7 @@ ebv_EPP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -9883,7 +9883,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
-ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_EPP_datP_ped <- read_table(file = 'Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -9993,7 +9993,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10018,7 +10018,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10109,7 +10109,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10134,7 +10134,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10225,7 +10225,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10250,7 +10250,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10341,7 +10341,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10366,7 +10366,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10457,7 +10457,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10482,7 +10482,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10573,7 +10573,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10598,7 +10598,7 @@ ind_renum_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/r
     ) |>
   right_join(y = ind_IEP_LR, by = 'ID_original')
 
-ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_IEP_datP_ped <- read_table(file = 'Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10702,7 +10702,7 @@ ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10712,7 +10712,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10729,7 +10729,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10737,7 +10737,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10818,7 +10818,7 @@ correlacion_50k_directo <- bind_cols(correlacion_50k_directo, IC_correlacion_50k
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10828,7 +10828,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10845,7 +10845,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10853,7 +10853,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10938,7 +10938,7 @@ correlacion_50k_materno <- bind_cols(correlacion_50k_materno, IC_correlacion_50k
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10948,7 +10948,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -10965,7 +10965,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -10973,7 +10973,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11054,7 +11054,7 @@ correlacion_HD_directo <- bind_cols(correlacion_HD_directo, IC_correlacion_HD_di
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11064,7 +11064,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11081,7 +11081,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11089,7 +11089,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11174,7 +11174,7 @@ correlacion_HD_materno <- bind_cols(correlacion_HD_materno, IC_correlacion_HD_ma
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11184,7 +11184,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11201,7 +11201,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11209,7 +11209,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11290,7 +11290,7 @@ correlacion_SNP_tags_directo <- bind_cols(correlacion_SNP_tags_directo, IC_corre
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11300,7 +11300,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11317,7 +11317,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11325,7 +11325,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11410,7 +11410,7 @@ correlacion_SNP_tags_materno <- bind_cols(correlacion_SNP_tags_materno, IC_corre
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11420,7 +11420,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11437,7 +11437,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11445,7 +11445,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11526,7 +11526,7 @@ correlacion_SNP_tags_sing_directo <- bind_cols(correlacion_SNP_tags_sing_directo
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11536,7 +11536,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11553,7 +11553,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11561,7 +11561,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11646,7 +11646,7 @@ correlacion_SNP_tags_sing_materno <- bind_cols(correlacion_SNP_tags_sing_materno
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11656,7 +11656,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11673,7 +11673,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11681,7 +11681,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11762,7 +11762,7 @@ correlacion_SNP_tags_val1_directo <- bind_cols(correlacion_SNP_tags_val1_directo
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11772,7 +11772,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11789,7 +11789,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11797,7 +11797,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11882,7 +11882,7 @@ correlacion_SNP_tags_val1_materno <- bind_cols(correlacion_SNP_tags_val1_materno
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11892,7 +11892,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11909,7 +11909,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -11917,7 +11917,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -11998,7 +11998,7 @@ correlacion_SNP_tags_val2_directo <- bind_cols(correlacion_SNP_tags_val2_directo
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -12008,7 +12008,7 @@ ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_ta
 
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
-ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/Parcial/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
@@ -12025,7 +12025,7 @@ ebv_PD_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90"----
 
-ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -12033,7 +12033,7 @@ ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso
     ) |>
   right_join(y = ind_PD_LR, by = 'ID_original')
 
-ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+ebv_PD_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
   rename(
     `trait/effect` = X2,
     ID_renum = X3,
