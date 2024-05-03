@@ -5650,6 +5650,1013 @@ NOTA: Se obtiene a continuación una estima para poder calcular el incremento en
 ```{r}
 #| label: Incremento de precisión de pedigrí a genotipos
 
+######################
+# 1. Edad primer parto
+######################
+
 # Se importa el conjunto de datos con la ID original de los individuos focales ----
 
+ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
+  rename(ID_original = X1)
+
+############################
+# Densidad de marcador - 50k
+############################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_50k <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = '50k') |>
+  rename(correlacion = value)
+
+print(correlacion_50k)
+
+###########################
+# Densidad de marcador - HD
+###########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_HD <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'HD') |>
+  rename(correlacion = value)
+
+print(correlacion_HD)
+
+#################################
+# Densidad de marcador - SNP_tags
+#################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags)
+
+###############################################
+# Densidad de marcador - SNP-tags y singletones
+###############################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_sing <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_sing') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_sing)
+
+################################################
+# Densidad de marcador - SNP-tags (validación 1)
+################################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val1 <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val1') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val1)
+
+################################################
+# Densidad de marcador - SNP-tags (validación 2)
+################################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 1) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datP_geno, y = ebv_EPP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_parcial_geno, ebv_EPP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial_geno) * var(ebv_EPP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val2 <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val2') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val2)
+
+correlacion <- bind_rows(correlacion_50k, correlacion_HD, correlacion_SNP_tags, correlacion_SNP_tags_sing, correlacion_SNP_tags_val1, correlacion_SNP_tags_val2)
+
+correlacion_AG_EPP <- tribble(
+  ~'correlacion', ~'Densidad_marcador', ~'Carácter',
+  0.876, '50k', 'Edad al primer parto',
+  0.931, 'HD', 'Edad al primer parto',
+  0.929, 'SNP_tags', 'Edad al primer parto',
+  0.933, 'SNP_tags_sing', 'Edad al primer parto',
+  0.902, 'SNP_tags_val1', 'Edad al primer parto',
+  0.888, 'SNP_tags_val2', 'Edad al primer parto'
+  )
+
+##############################################
+# 2. Intervalo entre el primer y segundo parto
+##############################################
+
+ind_IEP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
+  rename(ID_original = X1)
+
+############################
+# Densidad de marcador - 50k
+############################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_50k <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = '50k') |>
+  rename(correlacion = value)
+
+print(correlacion_50k)
+
+###########################
+# Densidad de marcador - HD
+###########################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_HD <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'HD') |>
+  rename(correlacion = value)
+
+print(correlacion_HD)
+
+#################################
+# Densidad de marcador - SNP_tags
+#################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags)
+
+###############################################
+# Densidad de marcador - SNP-tags y singletones
+###############################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_sing <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_sing') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_sing)
+
+################################################
+# Densidad de marcador - SNP-tags (validación 1)
+################################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val1 <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val1') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val1)
+
+################################################
+# Densidad de marcador - SNP-tags (validación 2)
+################################################
+
+##########################################
+# Datos parciales con información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_geno <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_geno<- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_geno = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_geno, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_geno)
+
+##########################################
+# Datos parciales sin información genómica
+##########################################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datP_ped <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial_ped = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 11 & X1 == 2) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP_ped, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial_ped)
+
+######################################
+# Datos con y sin información genómica
+######################################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datP_geno, y = ebv_IEP_datP_ped, by = 'ID_original')
+
+# a) Se estima a continuación la correlación, rho_A,G, a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_parcial_geno, ebv_IEP$EBV_parcial_ped) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial_geno) * var(ebv_IEP$EBV_parcial_ped)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_SNP_tags_val2 <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'SNP_tags_val2') |>
+  rename(correlacion = value)
+
+print(correlacion_SNP_tags_val2)
+
+correlacion <- bind_rows(correlacion_50k, correlacion_HD, correlacion_SNP_tags, correlacion_SNP_tags_sing, correlacion_SNP_tags_val1, correlacion_SNP_tags_val2)
+
+correlacion_AG_IEP <- tribble(
+  ~'correlacion', ~'Densidad_marcador', ~'Carácter',
+  0.990, '50k', 'Intervalo entre el primer y segundo parto',
+  0.929, 'HD', 'Intervalo entre el primer y segundo parto',
+  0.930, 'SNP_tags', 'Intervalo entre el primer y segundo parto',
+  0.929, 'SNP_tags_sing', 'Intervalo entre el primer y segundo parto',
+  0.912, 'SNP_tags_val1', 'Intervalo entre el primer y segundo parto',
+  0.913, 'SNP_tags_val2', 'Intervalo entre el primer y segundo parto'
+  )
+```
+
+<!--
+NOTA: Se exporta los resultados (estimas) del estadístico del método LR anterior obtenidos para los distintos caracteres mediante el bi-carácter.
+-->
+
+```{r}
+#| label: Resultado para calcular el incremento de precisión de pedigrí a genotipos
+
+correlacion_AG <- bind_rows(correlacion_AG_EPP, correlacion_AG_IEP)
+
+correlacion_AG |>
+  relocate(
+    Carácter,
+    .before = correlacion
+    ) |>
+  relocate(
+    correlacion,
+    .after = Densidad_marcador
+    ) |>
+  write_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG_bi.txt', col_names = TRUE)
+```
+
+<!--
+Nota: Se calcula el incremento en precisión debido a la información genómica obtenidos mediante los análisis uni- y bi-carácter.
+-->
+
+```{r}
+#| label: Calculo de incremento en precisión debido a la información genómica
+
+# Se importa el conjunto de datos de interes del análisis uni-carácter ----
+
+correlacion_AG_uni <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG.txt', col_names = TRUE, delim = ' ') |>
+  select(-Intervalo_confianza) |>
+  filter(Carácter == 'Peso al destete') |>
+  mutate(Análisis = 'uni-caracter')
+
+# Se importa el conjunto de datos de interes del análisis bi-carácter ----
+
+correlacion_AG_bi <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/correlacion_AG_bi.txt', col_names = TRUE, delim = ' ') |>
+  mutate(Análisis = 'bi-caracter')
+
+# Se calcula el incremento en precisión debido a la información genómica ----
+
+inc_AG <- bind_rows(correlacion_AG_uni, correlacion_AG_bi) |>
+  mutate(Incremento_precision = ((correlacion)^-1) - 1)
 ```
