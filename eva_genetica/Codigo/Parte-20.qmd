@@ -29,6 +29,123 @@ NOTA: A continuación, se calcula la estadística de sesgo, del método LR, para
 ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
 
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
+
+# a) Se estima a continuación el sesgo (sesgo) a partir del método LR ----
+
+sesgo_ped <- ebv_EPP |>
+  summarise(
+    across(
+      .cols = c(EBV_completo, EBV_parcial),
+      .fns = mean
+    )
+  ) |>
+  mutate(
+    sesgo = EBV_parcial - EBV_completo,
+    Densidad_marcador = 'ped'
+    ) |>
+  select(sesgo, Densidad_marcador)
+
+print(sesgo_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_EPP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_EPP_boots) # Se observa que "ebv_EPP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_EPP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+sesgo <- function(data) {
+  data |>
+    summarise(across(.cols = c(EBV_completo, EBV_parcial), .fns = mean)) |>
+    mutate(Diferencia = EBV_parcial - EBV_completo)
+    } # Se crea esta función para calcular el sesgo.
+
+boots_sesgo <- ebv_EPP_boots |>
+  mutate(res_boots_sesgo = map(splits, ~sesgo(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_sesgo, n = 12)
+
+res_boots_sesgo <- unnest(boots_sesgo, res_boots_sesgo) # Para convertir la columna "res_boots_sesgo", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_sesgo, n = 12)
+
+IC_sesgo_ped <- quantile(res_boots_sesgo$Diferencia, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+sesgo_ped <- bind_cols(sesgo_ped, IC_sesgo_ped)
+
 ############################
 # Densidad de marcador - 50k
 ############################
@@ -733,10 +850,11 @@ sesgo_SNP_tags_val2 <- bind_cols(sesgo_SNP_tags_val2, IC_sesgo_SNP_tags_val2)
 
 # Se unen los objetos anteriores para tener un solo objeto con el sesgo y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-sesgo <- bind_rows(sesgo_50k, sesgo_HD, sesgo_SNP_tags, sesgo_SNP_tags_sing, sesgo_SNP_tags_val1, sesgo_SNP_tags_val2)
+sesgo <- bind_rows(sesgo_ped, sesgo_50k, sesgo_HD, sesgo_SNP_tags, sesgo_SNP_tags_sing, sesgo_SNP_tags_val1, sesgo_SNP_tags_val2)
 
 sesgo_EPP <- tribble(
   ~'sesgo', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  1.71, 'ped', '-0.597203765579366_3.94668862568386', 'Edad al primer parto', 
   0.927, '50k', '-1.4086787525172_3.22919158421693', 'Edad al primer parto',
   1.14, 'HD', '-1.17955524865344_3.43988438421429', 'Edad al primer parto',
   1.08, 'SNP_tags', '-1.24513013939947_3.35723657473148', 'Edad al primer parto',
@@ -751,6 +869,123 @@ sesgo_EPP <- tribble(
 
 ind_IEP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (intervalo entre el primer y segundo parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_IEP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datC, y = ebv_IEP_datP, by = 'ID_original')
+
+# a) Se estima a continuación el sesgo (sesgo) a partir del método LR ----
+
+sesgo_ped <- ebv_IEP |>
+  summarise(
+    across(
+      .cols = c(EBV_completo, EBV_parcial),
+      .fns = mean
+    )
+  ) |>
+  mutate(
+    sesgo = EBV_parcial - EBV_completo,
+    Densidad_marcador = 'ped'
+    ) |>
+  select(sesgo, Densidad_marcador)
+
+print(sesgo_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_IEP_boots <- bootstraps(ebv_IEP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_IEP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_IEP_boots) # Se observa que "ebv_IEP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_IEP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+sesgo <- function(data) {
+  data |>
+    summarise(across(.cols = c(EBV_completo, EBV_parcial), .fns = mean)) |>
+    mutate(Diferencia = EBV_parcial - EBV_completo)
+    } # Se crea esta función para calcular el sesgo.
+
+boots_sesgo <- ebv_IEP_boots |>
+  mutate(res_boots_sesgo = map(splits, ~sesgo(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_sesgo, n = 12)
+
+res_boots_sesgo <- unnest(boots_sesgo, res_boots_sesgo) # Para convertir la columna "res_boots_sesgo", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_sesgo, n = 12)
+
+IC_sesgo_ped <- quantile(res_boots_sesgo$Diferencia, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+sesgo_ped <- bind_cols(sesgo_ped, IC_sesgo_ped)
 
 ############################
 # Densidad de marcador - 50k
@@ -1456,10 +1691,11 @@ sesgo_SNP_tags_val2 <- bind_cols(sesgo_SNP_tags_val2, IC_sesgo_SNP_tags_val2)
 
 # Se unen los objetos anteriores para tener un solo objeto con el sesgo y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-sesgo <- bind_rows(sesgo_50k, sesgo_HD, sesgo_SNP_tags, sesgo_SNP_tags_sing, sesgo_SNP_tags_val1, sesgo_SNP_tags_val2)
+sesgo <- bind_rows(sesgo_ped, sesgo_50k, sesgo_HD, sesgo_SNP_tags, sesgo_SNP_tags_sing, sesgo_SNP_tags_val1, sesgo_SNP_tags_val2)
 
 sesgo_IEP <- tribble(
    ~'sesgo', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+   1.03, 'ped', '0.0832725430992368_1.98647048356679', 'Intervalo entre primer y segundo parto',
    0.129, '50k', '-0.492839816421756_0.747719466990458', 'Intervalo entre primer y segundo parto',
    1.48, 'HD', '0.43339077913168_2.51177852451717', 'Intervalo entre primer y segundo parto',
    1.46, 'SNP_tags', '0.417326769687023_2.4912628094313', 'Intervalo entre primer y segundo parto',
@@ -1472,8 +1708,246 @@ sesgo_IEP <- tribble(
 # 3. Peso al destete
 ####################
 
-ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (intervalo entre el primer y segundo parto) y de genotipo.
+ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (peso al destete) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación el sesgo (sesgo) a partir del método LR ----
+
+sesgo_ped_directo <- ebv_PD |>
+  summarise(
+    across(
+      .cols = c(EBV_completo, EBV_parcial),
+      .fns = mean
+    )
+  ) |>
+  mutate(
+    sesgo = EBV_parcial - EBV_completo,
+    Densidad_marcador = 'ped_directo'
+    ) |>
+  select(sesgo, Densidad_marcador)
+
+print(sesgo_ped_directo)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+sesgo <- function(data) {
+  data |>
+    summarise(across(.cols = c(EBV_completo, EBV_parcial), .fns = mean)) |>
+    mutate(Diferencia = EBV_parcial - EBV_completo)
+    } # Se crea esta función para calcular el sesgo.
+
+boots_sesgo <- ebv_PD_boots |>
+  mutate(res_boots_sesgo = map(splits, ~sesgo(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_sesgo, n = 12)
+
+res_boots_sesgo <- unnest(boots_sesgo, res_boots_sesgo) # Para convertir la columna "res_boots_sesgo", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_sesgo, n = 12)
+
+IC_sesgo_ped_directo <- quantile(res_boots_sesgo$Diferencia, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+sesgo_ped_directo <- bind_cols(sesgo_ped_directo, IC_sesgo_ped_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación el sesgo (sesgo) a partir del método LR ----
+
+sesgo_ped_materno <- ebv_PD |>
+  summarise(
+    across(
+      .cols = c(EBV_completo, EBV_parcial),
+      .fns = mean
+    )
+  ) |>
+  mutate(
+    sesgo = EBV_parcial - EBV_completo,
+    Densidad_marcador = 'ped_materno'
+    ) |>
+  select(sesgo, Densidad_marcador)
+
+print(sesgo_ped_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+sesgo <- function(data) {
+  data |>
+    summarise(across(.cols = c(EBV_completo, EBV_parcial), .fns = mean)) |>
+    mutate(Diferencia = EBV_parcial - EBV_completo)
+    } # Se crea esta función para calcular el sesgo.
+
+boots_sesgo <- ebv_PD_boots |>
+  mutate(res_boots_sesgo = map(splits, ~sesgo(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_sesgo, n = 12)
+
+res_boots_sesgo <- unnest(boots_sesgo, res_boots_sesgo) # Para convertir la columna "res_boots_sesgo", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_sesgo, n = 12)
+
+IC_sesgo_ped_materno <- quantile(res_boots_sesgo$Diferencia, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+sesgo_ped_materno <- bind_cols(sesgo_ped_materno, IC_sesgo_ped_materno)
 
 ############################
 # Densidad de marcador - 50k
@@ -2905,10 +3379,12 @@ sesgo_SNP_tags_val2_materno <- bind_cols(sesgo_SNP_tags_val2_materno, IC_sesgo_S
 
 # Se unen los objetos anteriores para tener un solo objeto con el sesgo y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-sesgo <- bind_rows(sesgo_50k_directo, sesgo_50k_materno, sesgo_HD_directo, sesgo_HD_materno, sesgo_SNP_tags_directo, sesgo_SNP_tags_materno, sesgo_SNP_tags_sing_directo, sesgo_SNP_tags_sing_materno, sesgo_SNP_tags_val1_directo, sesgo_SNP_tags_val1_materno, sesgo_SNP_tags_val2_directo, sesgo_SNP_tags_val2_materno)
+sesgo <- bind_rows(sesgo_ped_directo, sesgo_ped_materno, sesgo_50k_directo, sesgo_50k_materno, sesgo_HD_directo, sesgo_HD_materno, sesgo_SNP_tags_directo, sesgo_SNP_tags_materno, sesgo_SNP_tags_sing_directo, sesgo_SNP_tags_sing_materno, sesgo_SNP_tags_val1_directo, sesgo_SNP_tags_val1_materno, sesgo_SNP_tags_val2_directo, sesgo_SNP_tags_val2_materno)
 
 sesgo_PD <- tribble(
    ~'sesgo', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+   0.686, 'ped_directo', '-0.00508051052727269_1.36236704165568', 'Peso destete',
+   0.154, 'ped_materno', '-0.255179520545455_0.577499175082954', 'Peso destete',
    0.959, '50k_directo', '0.320959067615908_1.58655761372159', 'Peso destete',
    -0.136, '50k_materno', '-0.522013468003409_0.252267403052273', 'Peso destete',
    0.984, 'HD_directo', '0.343478059502273_1.62715088895341', 'Peso destete',
@@ -2939,6 +3415,124 @@ NOTA: A continuación, se calcula la estadística de dispersión, del método LR
 
 ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
+
+# a) Se estima a continuación la dispersión a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_completo, ebv_EPP$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+varianza <- var(ebv_EPP$EBV_parcial) # Se calcula la varianza de los valores genéticos del conjunto de datos parcial (EBV_parcial).
+
+dispersion_ped <- (covarianza / varianza) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped') |>
+  rename(dispersion = value)
+  
+print(dispersion_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_EPP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_EPP_boots) # Se observa que "ebv_EPP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_EPP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+dispersion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  varianza <- var(data$EBV_parcial)
+  
+  Pendiente <- covarianza / varianza
+  
+  return(Pendiente)
+  } # Se crea esta función para calcular la dispersión.
+
+boots_dispersion <- ebv_EPP_boots |>
+  mutate(res_boots_dispersion = map(splits, ~dispersion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_dispersion, n = 12)
+
+res_boots_dispersion <- unnest(boots_dispersion, res_boots_dispersion) # Para convertir la columna "res_boots_dispersion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_dispersion, n = 12)
+
+IC_dispersion_ped <- quantile(res_boots_dispersion$res_boots_dispersion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+dispersion_ped <- bind_cols(dispersion_ped, IC_dispersion_ped)
 
 ############################
 # Densidad de marcador - 50k
@@ -3654,6 +4248,7 @@ dispersion <- bind_rows(dispersion_50k, dispersion_HD, dispersion_SNP_tags, disp
 
 dispersion_EPP <- tribble(
   ~'dispersion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  0.966, 'ped', '0.863112748816892_1.062912931910', 'Edad al primer parto',
   0.916, '50k', '0.815980231386838_1.01141015779716', 'Edad al primer parto',
   0.958, 'HD', '0.853657087441636_1.05657624867453', 'Edad al primer parto',
   0.960, 'SNP_tags', '0.859234616884184_1.05502614945113', 'Edad al primer parto',
@@ -3668,6 +4263,124 @@ dispersion_EPP <- tribble(
 
 ind_IEP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (intervalo entre el primer y segundo parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_IEP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datC, y = ebv_IEP_datP, by = 'ID_original')
+
+# a) Se estima a continuación la dispersión a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_completo, ebv_IEP$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+varianza <- var(ebv_IEP$EBV_parcial) # Se calcula la varianza de los valores genéticos del conjunto de datos parcial (EBV_parcial).
+
+dispersion_ped <- (covarianza / varianza) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped') |>
+  rename(dispersion = value)
+  
+print(dispersion_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_IEP_boots <- bootstraps(ebv_IEP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_IEP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_IEP_boots) # Se observa que "ebv_IEP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_IEP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+dispersion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  varianza <- var(data$EBV_parcial)
+  
+  Pendiente <- covarianza / varianza
+  
+  return(Pendiente)
+  } # Se crea esta función para calcular la dispersión.
+
+boots_dispersion <- ebv_IEP_boots |>
+  mutate(res_boots_dispersion = map(splits, ~dispersion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_dispersion, n = 12)
+
+res_boots_dispersion <- unnest(boots_dispersion, res_boots_dispersion) # Para convertir la columna "res_boots_dispersion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_dispersion, n = 12)
+
+IC_dispersion_ped <- quantile(res_boots_dispersion$res_boots_dispersion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+dispersion_ped <- bind_cols(dispersion_ped, IC_dispersion_ped)
 
 ############################
 # Densidad de marcador - 50k
@@ -4383,6 +5096,7 @@ dispersion <- bind_rows(dispersion_50k, dispersion_HD, dispersion_SNP_tags, disp
 
 dispersion_IEP <- tribble(
   ~'dispersion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  1.60, 'ped', '1.4747022961558_1.73759027273313', 'Intervalo entre primer y segundo parto',
   0.829, '50k', '0.722634008782319_0.94533638024846', 'Intervalo entre primer y segundo parto',
   1.57, 'HD', '1.45544225622887_1.70824710646999', 'Intervalo entre primer y segundo parto',
   1.58, 'SNP_tags', '1.45588307285285_1.70825963645424', 'Intervalo entre primer y segundo parto',
@@ -4397,6 +5111,246 @@ dispersion_IEP <- tribble(
 
 ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (peso al destete) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación la dispersión a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_completo, ebv_PD$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+varianza <- var(ebv_PD$EBV_parcial) # Se calcula la varianza de los valores genéticos del conjunto de datos parcial (EBV_parcial).
+
+dispersion_ped_directo <- (covarianza / varianza) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped_directo') |>
+  rename(dispersion = value)
+  
+print(dispersion_ped_directo)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+dispersion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  varianza <- var(data$EBV_parcial)
+  
+  Pendiente <- covarianza / varianza
+  
+  return(Pendiente)
+  } # Se crea esta función para calcular la dispersión.
+
+boots_dispersion <- ebv_PD_boots |>
+  mutate(res_boots_dispersion = map(splits, ~dispersion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_dispersion, n = 12)
+
+res_boots_dispersion <- unnest(boots_dispersion, res_boots_dispersion) # Para convertir la columna "res_boots_dispersion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_dispersion, n = 12)
+
+IC_dispersion_ped_directo <- quantile(res_boots_dispersion$res_boots_dispersion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+dispersion_ped_directo <- bind_cols(dispersion_ped_directo, IC_dispersion_ped_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación la dispersión a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_completo, ebv_PD$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+varianza <- var(ebv_PD$EBV_parcial) # Se calcula la varianza de los valores genéticos del conjunto de datos parcial (EBV_parcial).
+
+dispersion_ped_materno <- (covarianza / varianza) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped_materno') |>
+  rename(dispersion = value)
+  
+print(dispersion_ped_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el sesgo ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+dispersion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  varianza <- var(data$EBV_parcial)
+  
+  Pendiente <- covarianza / varianza
+  
+  return(Pendiente)
+  } # Se crea esta función para calcular la dispersión.
+
+boots_dispersion <- ebv_PD_boots |>
+  mutate(res_boots_dispersion = map(splits, ~dispersion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~sesgo(analysis(.x)) dentro de map(), se aplica la función sesgo() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función sesgo.
+
+slice_head(boots_dispersion, n = 12)
+
+res_boots_dispersion <- unnest(boots_dispersion, res_boots_dispersion) # Para convertir la columna "res_boots_dispersion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_dispersion, n = 12)
+
+IC_dispersion_ped_materno <- quantile(res_boots_dispersion$res_boots_dispersion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+dispersion_ped_materno <- bind_cols(dispersion_ped_materno, IC_dispersion_ped_materno)
 
 ############################
 # Densidad de marcador - 50k
@@ -5840,10 +6794,12 @@ dispersion_SNP_tags_val2_materno <- bind_cols(dispersion_SNP_tags_val2_materno, 
 
 # Se unen los objetos anteriores para tener un solo objeto con el dispersion y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-dispersion <- bind_rows(dispersion_50k, dispersion_HD, dispersion_SNP_tags, dispersion_SNP_tags_sing, dispersion_SNP_tags_val1, dispersion_SNP_tags_val2)
+dispersion <- bind_rows(dispersion_ped_directo, dispersion_ped_materno, dispersion_50k_directo, dispersion_50k_materno, dispersion_HD_directo, dispersion_HD_materno, dispersion_SNP_tags_directo, dispersion_SNP_tags_materno, dispersion_SNP_tags_sing_directo, dispersion_SNP_tags_sing_materno, dispersion_SNP_tags_val1_directo, dispersion_SNP_tags_val1_materno, dispersion_SNP_tags_val2_directo, dispersion_SNP_tags_val2_materno)
 
 dispersion_PD <- tribble(
    ~'dispersion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+   0.889, 'ped_directo', '0.760842239707231_1.01124803083228', 'Peso destete',
+   0.780, 'ped_materno', '0.706421070295276_0.856245719915084', 'Peso destete',
    0.965, '50k_directo', '0.877455267273089_1.04720710988215', 'Peso destete',
    0.880, '50k_materno', '0.803123781578704_0.95545525051057', 'Peso destete',
    0.998, 'HD_directo', '0.911711928230649_1.07900527199632', 'Peso destete',
@@ -5874,6 +6830,124 @@ NOTA: A continuación, se calcula la estadística de precisión, del método LR,
 
 ind_EPP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_EPP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_EPP <- inner_join(x = ebv_EPP_datC, y = ebv_EPP_datP, by = 'ID_original')
+
+# a) Se estima a continuación la correlación a partir del método LR ----
+
+covarianza <- cov(ebv_EPP$EBV_completo, ebv_EPP$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_EPP$EBV_parcial) * var(ebv_EPP$EBV_completo)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_ped <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped') |>
+  rename(correlacion = value)
+  
+print(correlacion_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_EPP_boots <- bootstraps(ebv_EPP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_EPP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_EPP_boots) # Se observa que "ebv_EPP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_EPP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial) * var(data$EBV_completo))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_EPP_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_ped <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_ped <- bind_cols(correlacion_ped, IC_correlacion_ped)
 
 ############################
 # Densidad de marcador - 50k
@@ -6585,10 +7659,11 @@ correlacion_SNP_tags_val2 <- bind_cols(correlacion_SNP_tags_val2, IC_correlacion
 
 # Se unen los objetos anteriores para tener un solo objeto con el correlacion y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-correlacion <- bind_rows(correlacion_50k, correlacion_HD, correlacion_SNP_tags, correlacion_SNP_tags_sing, correlacion_SNP_tags_val1, correlacion_SNP_tags_val2)
+correlacion <- bind_rows(correlacion_ped, correlacion_50k, correlacion_HD, correlacion_SNP_tags, correlacion_SNP_tags_sing, correlacion_SNP_tags_val1, correlacion_SNP_tags_val2)
 
 correlacion_EPP <- tribble(
   ~'correlacion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  0.777, 'ped', '0.706329364071994_0.836840119939094', 'Edad al primer parto',
   0.812, '50k', '0.747470166398801_0.862910974716595', 'Edad al primer parto',
   0.808, 'HD', '0.743174385338114_0.8598434867646', 'Edad al primer parto',
   0.810, 'SNP_tags', '0.746344453872193_0.861082651228523', 'Edad al primer parto',
@@ -6603,6 +7678,124 @@ correlacion_EPP <- tribble(
 
 ind_IEP_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_IEP_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_IEP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 7) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_IEP <- inner_join(x = ebv_IEP_datC, y = ebv_IEP_datP, by = 'ID_original')
+
+# a) Se estima a continuación la correlación a partir del método LR ----
+
+covarianza <- cov(ebv_IEP$EBV_completo, ebv_IEP$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_IEP$EBV_parcial) * var(ebv_IEP$EBV_completo)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_ped <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped') |>
+  rename(correlacion = value)
+  
+print(correlacion_ped)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_IEP_boots <- bootstraps(ebv_IEP, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_IEP", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_IEP_boots) # Se observa que "ebv_IEP_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_IEP_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial) * var(data$EBV_completo))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_IEP_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_ped <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_ped <- bind_cols(correlacion_ped, IC_correlacion_ped)
 
 ############################
 # Densidad de marcador - 50k
@@ -7318,6 +8511,7 @@ correlacion <- bind_rows(correlacion_50k, correlacion_HD, correlacion_SNP_tags, 
 
 correlacion_IEP <- tribble(
   ~'correlacion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  0.866, 'ped', '0.807013613198357_0.906533449351895', 'Intervalo entre el primer y segundo parto',
   0.816, '50k', '0.751991549312233_0.863842462350368', 'Intervalo entre el primer y segundo parto',
   0.896, 'HD', '0.857523569799804_0.924141318051669', 'Intervalo entre el primer y segundo parto',
   0.895, 'SNP_tags', '0.855528057456703_0.923834709140097', 'Intervalo entre el primer y segundo parto',
@@ -7332,6 +8526,246 @@ correlacion_IEP <- tribble(
 
 ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+##########################
+# Densidad de marcador - 0
+##########################
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación la correlación a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_completo, ebv_PD$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial) * var(ebv_PD$EBV_completo)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_ped_directo <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped_directo') |>
+  rename(correlacion = value)
+  
+print(correlacion_ped_directo)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial) * var(data$EBV_completo))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_ped_directo <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_ped_directo <- bind_cols(correlacion_ped_directo, IC_correlacion_ped_directo)
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_PD_LR, by = 'ID_original')
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+#############################
+# Datos completos y parciales
+#############################
+
+ebv_PD <- inner_join(x = ebv_PD_datC, y = ebv_PD_datP, by = 'ID_original')
+
+# a) Se estima a continuación la correlación a partir del método LR ----
+
+covarianza <- cov(ebv_PD$EBV_completo, ebv_PD$EBV_parcial) # Se calcula la covarianza entrelos valores genéticos del conjunto de datos completo (EBV_completo) y el parcial (EBV_parcial).
+
+raiz_cuadrada <- sqrt(var(ebv_PD$EBV_parcial) * var(ebv_PD$EBV_completo)) # Se calcula la del producto de las varianzas de EBV_completo y EBV_parcial.
+
+correlacion_ped_materno <- (covarianza / raiz_cuadrada) |>
+  as_tibble() |>
+  mutate(Densidad_marcador = 'ped_materno') |>
+  rename(correlacion = value)
+  
+print(correlacion_ped_materno)
+
+# b) Mediante el bootstrap a continuación, se generan los intervalos de confianza para el correlación ----
+
+set.seed(1234) # Se establece una semilla para garantizar la reproducibilidad.
+
+ebv_PD_boots <- bootstraps(ebv_PD, times = 10000, apparent = FALSE) # Mediante bootstrap se generan diez mil replicas del conjunto de datos "ebv_PD", mediante muestreo aleatorio con reemplazo. 
+
+class(ebv_PD_boots) # Se observa que "ebv_PD_boots" es un objeto "rset", esto es, un conjunto de datos con una columna de "rsplit".
+slice_tail(ebv_PD_boots, n = 12) # Un objeto "rsplit" tiene dos componentes principales: un conjunto de datos de análisis y un conjunto de datos de evaluación, accesibles a través del código analysis(rsplit)y assessment(rsplit),respectivamente. En el muestreo mediante bootstrap, el conjunto de datos de análisis es el muestreo bootstrap en sí y el conjunto de datos de evaluación consta de todas las muestras listas para usar.
+
+correlacion <- function(data) {
+  
+  covarianza <- cov(data$EBV_completo, data$EBV_parcial)
+  
+  raiz_cuadrada <- sqrt(var(data$EBV_parcial) * var(data$EBV_completo))
+  
+  Precision <- covarianza / raiz_cuadrada
+  
+  return(Precision)
+  } # Se crea esta función para calcular la precisión.
+
+boots_correlacion <- ebv_PD_boots |>
+  mutate(res_boots_correlacion = map(splits, ~correlacion(analysis(.x)))) # Se usa la función map() del paquete "purrr" para aplicar la función anterior a cada una de las muestras del bootstrap. Con la formula ~correlación(analysis(.x)) dentro de map(), se aplica la función correlación() a cada muestra del bootstrap. Con analysis(.x) se extrae los datos de cada muestra individual del bootstrap para que puedan ser pasados a la función correlación.
+
+slice_head(boots_correlacion, n = 12)
+
+res_boots_correlacion <- unnest(boots_correlacion, res_boots_correlacion) # Para convertir la columna "res_boots_correlacion", que es una lista de tibbles, en una tibble separada con las mismas columnas, se usa la función unnest() del paquete "tidyr".
+
+slice_head(res_boots_correlacion, n = 12)
+
+IC_correlacion_ped_materno <- quantile(res_boots_correlacion$res_boots_correlacion, c(0.025, 0.975)) |> # Se calcula los intervalos de confianza usando el método de percentiles.
+  as_tibble() |>
+  pivot_wider(
+    names_from = value
+    ) |>
+  unite(
+    col = Intervalo_confianza,
+    sep = '_'
+    )
+
+correlacion_ped_materno <- bind_cols(correlacion_ped_materno, IC_correlacion_ped_materno)
 
 ############################
 # Densidad de marcador - 50k
@@ -8775,10 +10209,12 @@ correlacion_SNP_tags_val2_materno <- bind_cols(correlacion_SNP_tags_val2_materno
 
 # Se unen los objetos anteriores para tener un solo objeto con el correlacion y su intervalo de confianza de acuerdo a la densidad de marcador ----
 
-correlacion <- bind_rows(correlacion_50k_directo, correlacion_50k_materno, correlacion_HD_directo, correlacion_HD_materno, correlacion_SNP_tags_directo, correlacion_SNP_tags_materno, correlacion_SNP_tags_sing_directo, correlacion_SNP_tags_sing_materno, correlacion_SNP_tags_val1_directo, correlacion_SNP_tags_val1_materno, correlacion_SNP_tags_val2_directo, correlacion_SNP_tags_val2_materno)
+correlacion <- bind_rows(correlacion_ped_directo, correlacion_ped_materno, correlacion_50k_directo, correlacion_50k_materno, correlacion_HD_directo, correlacion_HD_materno, correlacion_SNP_tags_directo, correlacion_SNP_tags_materno, correlacion_SNP_tags_sing_directo, correlacion_SNP_tags_sing_materno, correlacion_SNP_tags_val1_directo, correlacion_SNP_tags_val1_materno, correlacion_SNP_tags_val2_directo, correlacion_SNP_tags_val2_materno)
 
 correlacion_PD <- tribble(
   ~'correlacion', ~'Densidad_marcador', ~'Intervalo_confianza', ~'Carácter',
+  0.680, 'ped_directo', '0.588040002242459_0.756598240363876', 'Peso al destete',
+  0.763, 'ped_materno', '0.70463984954616_0.815662586336453', 'Peso al destete',
   0.791, '50k_directo', '0.730175405988506_0.84248239358222 ', 'Peso al destete',
   0.823, '50k_materno', '0.778800723458972_0.861850701150229', 'Peso al destete',
   0.790, 'HD_directo', '0.729330199879777_0.841258100198913', 'Peso al destete',
@@ -8861,28 +10297,31 @@ est_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Estadisticos_LR.txt
     ) |>
   mutate(
     Escenarios = case_when(
-      Densidad_marcador == 'SNP_tags_val2' ~ 'E1',
-      Densidad_marcador == 'SNP_tags_val2_directo' ~ 'E1_D',
-      Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1_M',
-      Densidad_marcador == 'SNP_tags_val1' ~ 'E2',
-      Densidad_marcador == 'SNP_tags_val1_directo' ~ 'E2_D',
-      Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2_M',
-      Densidad_marcador == '50k' ~ 'E3',
-      Densidad_marcador == '50k_directo' ~ 'E3_D',
-      Densidad_marcador == '50k_materno' ~ 'E3_M',
-      Densidad_marcador == 'SNP_tags' ~ 'E4',
-      Densidad_marcador == 'SNP_tags_directo' ~ 'E4_D',
-      Densidad_marcador == 'SNP_tags_materno' ~ 'E4_M',
-      Densidad_marcador == 'SNP_tags_sing' ~ 'E5',
-      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E5_D',
-      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5_M',
-      Densidad_marcador == 'HD' ~ 'E6',
-      Densidad_marcador == 'HD_directo' ~ 'E6_D',
-      Densidad_marcador == 'HD_materno' ~ 'E6_M'
+      Densidad_marcador == 'ped' ~ 'E1',
+      Densidad_marcador == 'ped_directo' ~ 'E1_D',
+      Densidad_marcador == 'ped_materno' ~ 'E1_M',
+      Densidad_marcador == 'SNP_tags_val2' ~ 'E2',
+      Densidad_marcador == 'SNP_tags_val2_directo' ~ 'E2_D',
+      Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2_M',
+      Densidad_marcador == 'SNP_tags_val1' ~ 'E3',
+      Densidad_marcador == 'SNP_tags_val1_directo' ~ 'E3_D',
+      Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3_M',
+      Densidad_marcador == '50k' ~ 'E4',
+      Densidad_marcador == '50k_directo' ~ 'E4_D',
+      Densidad_marcador == '50k_materno' ~ 'E4_M',
+      Densidad_marcador == 'SNP_tags' ~ 'E5',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E5_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E5_M',
+      Densidad_marcador == 'SNP_tags_sing' ~ 'E6',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6_M',
+      Densidad_marcador == 'HD' ~ 'E7',
+      Densidad_marcador == 'HD_directo' ~ 'E7_D',
+      Densidad_marcador == 'HD_materno' ~ 'E7_M'
       )
     )
 
-orden_escenarios <- c('E1', 'E1_D', 'E1_M', 'E2', 'E2_D', 'E2_M', 'E3', 'E3_D', 'E3_M', 'E4', 'E4_D', 'E4_M', 'E5', 'E5_D', 'E5_M', 'E6', 'E6_D', 'E6_M') # Se define el orden deseado de las variables en el eje x.
+orden_escenarios <- c('E1', 'E1_D', 'E1_M', 'E2', 'E2_D', 'E2_M', 'E3', 'E3_D', 'E3_M', 'E4', 'E4_D', 'E4_M', 'E5', 'E5_D', 'E5_M', 'E6', 'E6_D', 'E6_M', 'E7', 'E7_D', 'E7_M') # Se define el orden deseado de las variables en el eje x.
 
 est_LR <- est_LR |>
   mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
@@ -8896,8 +10335,8 @@ sesgo_EPP <- ggplot(data = sesgo |> filter(Carácter == 'Edad al primer parto'),
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Sesgo', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -8913,8 +10352,8 @@ sesgo_EPP_IC <- ggplot(data = sesgo |> filter(Carácter == 'Edad al primer parto
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.1, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -8931,8 +10370,8 @@ sesgo_IEP <- ggplot(data = sesgo |> filter(Carácter == 'Intervalo entre primer 
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Sesgo', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -8948,8 +10387,8 @@ sesgo_IEP_IC <- ggplot(data = sesgo |> filter(Carácter == 'Intervalo entre prim
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -8962,14 +10401,14 @@ graf_sesgo_IEP <- (sesgo_IEP_IC / sesgo_IEP) +
 
 ggsave('eva_genetica/Datos/eva_genomica/sesgo_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
 
-sesgo_PD <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+sesgo_PD <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == 'ped_directo' | Densidad_marcador == 'ped_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   facet_wrap(~Efecto) +
   ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   ggrepel::geom_label_repel(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Sesgo', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -8989,8 +10428,8 @@ sesgo_PD_IC <- ggplot(data = sesgo |> filter(Carácter == 'Peso destete') |> mut
   geom_text(data = sesgo |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.1, colour = 'black') +
   facet_wrap(~Efecto) +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
-  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_colour_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9014,8 +10453,8 @@ dispersion_EPP <- ggplot(data = dispersion |> filter(Carácter == 'Edad al prime
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Dispersión', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9031,8 +10470,8 @@ dispersion_EPP_IC <- ggplot(data = dispersion |> filter(Carácter == 'Edad al pr
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9049,8 +10488,8 @@ dispersion_IEP <- ggplot(data = dispersion |> filter(Carácter == 'Intervalo ent
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Intervalo entre primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Dispersión', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9066,8 +10505,8 @@ dispersion_IEP_IC <- ggplot(data = dispersion |> filter(Carácter == 'Intervalo 
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9080,14 +10519,14 @@ graf_dispersion_IEP <- (dispersion_IEP_IC / dispersion_IEP) +
 
 ggsave('eva_genetica/Datos/eva_genomica/dispersion_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
 
-dispersion_PD <- ggplot(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+dispersion_PD <- ggplot(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == 'ped_directo' | Densidad_marcador == 'ped_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   facet_wrap(~Efecto) +
   ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   ggrepel::geom_label_repel(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Dispersión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9107,8 +10546,8 @@ dispersion_PD_IC <- ggplot(data = dispersion |> filter(Carácter == 'Peso destet
   geom_text(data = dispersion |> filter(Carácter == 'Peso destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.0, colour = 'black') +
   facet_wrap(~Efecto) +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
-  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_colour_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9132,8 +10571,8 @@ correlacion_EPP <- ggplot(data = correlacion |> filter(Carácter == 'Edad al pri
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Edad al primer parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Precisión', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9149,8 +10588,8 @@ correlacion_EPP_IC <- ggplot(data = correlacion |> filter(Carácter == 'Edad al 
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9167,8 +10606,8 @@ correlacion_IEP <- ggplot(data = correlacion |> filter(Carácter == 'Intervalo e
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Intervalo entre el primer y segundo parto'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Precisión', x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9184,8 +10623,8 @@ correlacion_IEP_IC <- ggplot(data = correlacion |> filter(Carácter == 'Interval
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
   geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 4.8, nudge_x = 0.24, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
@@ -9198,14 +10637,14 @@ graf_correlacion_IEP <- (correlacion_IEP_IC / correlacion_IEP) +
 
 ggsave('eva_genetica/Datos/eva_genomica/correlacion_IEP_uni.pdf', width = 40, height = 20, units = 'cm')
 
-correlacion_PD <- ggplot(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E3', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+correlacion_PD <- ggplot(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == 'ped_directo' | Densidad_marcador == 'ped_materno' ~ 'E1')), aes(x = Escenarios, y = Estimado, group = Escenarios, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   facet_wrap(~Efecto) +
   ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Directo'), aes(label = Estimado), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   ggrepel::geom_label_repel(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = round(Estimado, digits = 2)), size = 5.4, box.padding = 0.0, direction = 'x', fill = 'white', colour = 'black') +
   labs(y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
-  scale_colour_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
-  scale_fill_manual(values = c('orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
   theme_bw() +
   theme(
     axis.title = element_text(size = 16, face = 'bold'),
@@ -9225,8 +10664,8 @@ correlacion_PD_IC <- ggplot(data = correlacion |> filter(Carácter == 'Peso al d
   geom_text(data = correlacion |> filter(Carácter == 'Peso al destete') |> mutate(Efecto = ifelse(grepl('directo$', Densidad_marcador), 'Directo', 'Materno')) |> filter(Efecto == 'Materno'), aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = -0.44, nudge_y = 0.0, colour = 'black') +
   facet_wrap(~Efecto) +
   labs(y = NULL, x = NULL) +
-  scale_colour_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
-  scale_fill_manual(values = c('orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_colour_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
+  scale_fill_manual(values = c('brown', 'brown', 'orange', 'orange', 'yellow', 'yellow', 'cyan', 'cyan', 'red', 'red', 'black', 'black', 'green', 'green')) +
   theme_bw() +
   theme(
     legend.position = 'none',
