@@ -13599,11 +13599,11 @@ inc_AG <- correlacion_AG |>
 ```
 
 <!--
-NOTA: Hola
+NOTA: A continuaicón se obtienen las estimas del método LR mediante la función compute_LR_stats()
 -->
 
 ```{r}
-#| label: Hola
+#| label: Estimas del método LR con función compute_LR_stats()
 
 # Se carga la función que permitirá el calculo de los estadísticos del método LR ----
 
@@ -16685,4 +16685,354 @@ LR_est_PD_SNP_tags_val2_materno <- tribble(
   'peso_Dtte', 'SNP_tags_val2_materno', 'rho', 0.824695, 0.021627,
   'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.212569, 0.032183
   )
+
+# Se une los objetos donde se indica las estimas del método LR para las distintas densidades de marcadores ----
+
+LR_est_PD <- bind_rows(LR_est_PD_0k_directo, LR_est_PD_0k_materno, LR_est_PD_50k_directo, LR_est_PD_50k_materno, LR_est_PD_HD_directo, LR_est_PD_HD_materno, LR_est_PD_SNP_tags_directo, LR_est_PD_SNP_tags_materno, LR_est_PD_SNP_tags_sing_directo, LR_est_PD_SNP_tags_sing_materno, LR_est_PD_SNP_tags_val1_directo, LR_est_PD_SNP_tags_val1_materno, LR_est_PD_SNP_tags_val2_directo, LR_est_PD_SNP_tags_val2_materno)
+
+LR_est_PD |>
+  write_delim(file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/Estadisticos_LR_PD_uni.txt', col_names = TRUE)
+
+#################################
+# Visualización de los resultados
+#################################
+
+# Se importa los datos con las estimas y posteriormente se calcula los intervalos de confianza al 95% para cada estima ----
+
+LR_est_PD <- read_delim(file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/Estadisticos_LR_PD_uni.txt', col_names = TRUE, delim = ' ')
+
+lower_bounds <- vector() # Se crea un vector para almacenar los límites inferiores de los intervalos de confianza.
+upper_bounds <- vector() # Se crea un vector para almacenar los límites superiores de los intervalos de confianza.
+
+for (i in 1:nrow(LR_est_PD)) { # Mediante un ciclio for se calcula los intervalos de confianza al 95% para cada valor de estimación.
+  # Estimación:
+  valor <- LR_est_PD$Valor[i]
+  # Error estándar:
+  error_estandar <- LR_est_PD$Error_estandar[i]
+  # Calculo del límite inferior del intervalo de confianza:
+  lower_bound <- valor - 1.96 * error_estandar
+  # Calculo del límite superior del intervalo de confianza:
+  upper_bound <- valor + 1.96 * error_estandar
+  # Se agrega los límites a los vectores correspondientes:
+  lower_bounds <- c(lower_bounds, lower_bound)
+  upper_bounds <- c(upper_bounds, upper_bound)
+  }
+
+intervalos_confianza <- tibble(
+  ICI = lower_bounds,
+  ICS = upper_bounds
+  )
+
+LR_est_PD_2 <- bind_cols(LR_est_PD, intervalos_confianza) |>
+  mutate(
+    Escenarios = case_when(
+      Densidad_marcador == '0k_directo' ~ 'E1_D',
+      Densidad_marcador == '0k_materno' ~ 'E1_M',
+      Densidad_marcador == 'SNP_tags_val2_directo' ~ 'E2_D',
+      Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2_M',
+      Densidad_marcador == 'SNP_tags_val1_directo' ~ 'E3_D',
+      Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3_M',
+      Densidad_marcador == '50k_directo' ~ 'E4_D',
+      Densidad_marcador == '50k_materno' ~ 'E4_M',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E5_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E5_M',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6_M',
+      Densidad_marcador == 'HD_directo' ~ 'E7_D',
+      Densidad_marcador == 'HD_materno' ~ 'E7_M',
+      )
+    )
+
+orden_escenarios <- c('E1', 'E1_D', 'E1_M', 'E2', 'E2_D', 'E2_M', 'E3', 'E3_D', 'E3_M', 'E4', 'E4_D', 'E4_M', 'E5', 'E5_D', 'E5_M', 'E6', 'E6_D', 'E6_M', 'E7', 'E7_D', 'E7_M') # Se define el orden deseado de las variables en el eje x.
+
+LR_est_PD_2 <- LR_est_PD_2 |>
+  mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
+
+#######
+# Sesgo
+#######
+
+###################
+# 1. Efecto directo
+###################
+
+sesgo <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'level_bias_in_GSD',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+sesgo_PD_directo <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = 'Sesgo', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+sesgo_PD_IC_directo <- ggplot(data = sesgo, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto directo', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_sesgo_PD_directo <- (sesgo_PD_IC_directo / sesgo_PD_directo) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+###################
+# 2. Efecto materno
+###################
+
+sesgo <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'level_bias_in_GSD',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+sesgo_PD_materno <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+sesgo_PD_IC_materno <- ggplot(data = sesgo, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto materno', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_sesgo_PD_materno <- (sesgo_PD_IC_materno / sesgo_PD_materno) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+(graf_sesgo_PD_directo | graf_sesgo_PD_materno)
+
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/sesgo_PD_uni.pdf', width = 40, height = 20, units = 'cm')
+
+############
+# Dispersion
+############
+
+###################
+# 1. Efecto directo
+###################
+
+dispersion <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'dispersion_bias',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+dispersion_PD_directo <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = 'Dispersion', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+dispersion_PD_IC_directo <- ggplot(data = dispersion, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto directo', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_dispersion_PD_directo <- (dispersion_PD_IC_directo / dispersion_PD_directo) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+###################
+# 2. Efecto materno
+###################
+
+dispersion <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'dispersion_bias',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+dispersion_PD_materno <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+dispersion_PD_IC_materno <- ggplot(data = dispersion, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto materno', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_dispersion_PD_materno <- (dispersion_PD_IC_materno / dispersion_PD_materno) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+(graf_dispersion_PD_directo | graf_dispersion_PD_materno)
+
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/dispersion_PD_uni.pdf', width = 40, height = 20, units = 'cm')
+
+###########
+# Precisión
+###########
+
+###################
+# 1. Efecto directo
+###################
+
+precision <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'rho',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+precision_PD_IC_directo <- ggplot(data = precision, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto directo', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_precision_PD_directo <- (precision_PD_IC_directo / precision_PD_directo) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+###################
+# 2. Efecto materno
+###################
+
+precision <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'rho',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_materno' ~ 'E4', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E7', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_val1_directo' | Densidad_marcador == 'SNP_tags_val1_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_val2_directo' | Densidad_marcador == 'SNP_tags_val2_materno' ~ 'E2', Densidad_marcador == '0k_directo' | Densidad_marcador == '0k_materno' ~ 'E1')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision, aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 2.8, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 13, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 13)
+    )
+
+precision_PD_IC_materno <- ggplot(data = precision, aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.5, nudge_x = 0.34, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Efecto materno', x = NULL, y = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 13, face = 'bold'),
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_precision_PD_materno <- (precision_PD_IC_materno / precision_PD_materno) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+(graf_precision_PD_directo | graf_precision_PD_materno)
+
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/precision_PD_uni.pdf', width = 40, height = 20, units = 'cm')
 ```
