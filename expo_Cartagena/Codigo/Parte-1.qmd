@@ -1,0 +1,90 @@
+---
+title: "Parte 1: Hola"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('Plink/Datos/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: Usando PLINK, se pasan los archivos VCF que resultaron al imputar los genotipos mediante Beagle v 5.4 a datos PLINK binarios (.bed, .fam y .bim). Leugo se obtiene e importa el nombre de los marcadores.
+-->
+
+```{r}
+#| label: Hola
+
+plink('--cow --allow-extra-chr --vcf Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf --make-bed --out expo_Cartagena/Datos/Paso_1')
+
+id_Mar <- read_table(file = 'expo_Cartagena/Datos/Paso_1.bim', col_names = FALSE)
+
+id_Mar |>
+  select(X2) |>
+  write_delim(file = 'expo_Cartagena/Datos/nom_Mar.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: A continuación con PLINK, se calcula el desequilibrio de ligamiento entre marcadores. Las opciones de PLINK usadas en el fragmento a continuación, significan lo siguiente:
+
++ --ld-window-kb: Este valor especifica el tamaño de la ventana en kilobases (kb) dentro del cual se considerarán los marcadores para el cálculo de LD. Un valor común es 100 kb.
+
++ --ld-window: Este valor determina el número máximo de marcadores que pueden estar dentro de la ventana especificada por ld-window-kb. Se puede utilizar un valor grande, como 99999, para asegurar de que se consideren todos los marcadores dentro de la ventana.
+
++ --ld-window-r2: Este valor establece el umbral de R^2 para considerar que dos marcadores están en desequilibrio de ligamiento. Un valor típico es 0.2.
+
++ ----ld-snp-list: Aquí se indica el nombre del archivo que contiene la lista de marcadores para los que se desea calcular el desequilibrio de ligamiento.
+-->
+
+```{r}
+#| label: Bloques de desequilibrio de ligamiento 
+
+# Se cácula el desequilibrio de ligamiento (r2) entre marcadores ----
+
+plink('--cow --allow-extra-chr --bfile Plink/Datos/datQC/Paso_8 --r2 --ld-window-kb 100 --ld-window 99999 --ld-window-r2 0.2 --ld-snp-list Imputacion/Beagle/Datos/Precision/nomGen.txt --out expo_Cartagena/Datos/Paso_2')
+
+# Con los archivos PLINK generados, se visualiza los bloques de desequilibrio de ligamiento mediante un Heatmap de Desequilibrio de Ligamiento (R^2) ----
+
+ld_Mar <- read_table(file = 'expo_Cartagena/Datos/Paso_2.ld', col_names = TRUE) # Se importa el archivo "Paso_5.ld" donde se encuentran los valores R2.
+
+#############
+# Cromosoma 1
+#############
+
+ld_Mar_1 <- ld_Mar |>
+  filter(CHR_A == 1, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 1 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
+
+mR2 <- ld_Mar_1 %>%
+  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
+
+dfR2 <- reshape2::melt(mR2, id.vars = 'SNP_A') # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
+
+Cromo1 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = 'white', high = 'orange', name = 'R²') +
+  labs(title = 'Cromosoma 1', x = NULL, y = NULL) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 10, face = 'bold'),
+    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
+    axis.text.y = element_text(size = 8)
+    )
+```

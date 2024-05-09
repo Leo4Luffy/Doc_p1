@@ -1,5 +1,5 @@
 ---
-title: "Parte 17: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags e imputación hecha mediante grupos de validación basado en segmentos"
+title: "Parte 19: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags e imputación hecha mediante grupos de validación basado en segmentos"
 format: html
 ---
 

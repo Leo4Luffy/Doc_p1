@@ -1,0 +1,30 @@
+PLINK v1.90b7 64-bit (16 Jan 2023)
+Options in effect:
+  --allow-extra-chr
+  --cow
+  --make-bed
+  --out expo_Cartagena/Datos/Paso_1
+  --vcf Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf
+
+Hostname: leonardo
+Working directory: /home/leonardo/Escritorio/Doc_p1
+Start time: Wed May  8 16:29:25 2024
+
+Random number seed: 1715178566
+7816 MB RAM detected; reserving 3908 MB for main workspace.
+--vcf: expo_Cartagena/Datos/Paso_1-temporary.bed +
+expo_Cartagena/Datos/Paso_1-temporary.bim +
+expo_Cartagena/Datos/Paso_1-temporary.fam written.
+43421 variants loaded from .bim file.
+2970 cattle (0 males, 0 females, 2970 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to expo_Cartagena/Datos/Paso_1.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 2970 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is exactly 1.
+43421 variants and 2970 cattle pass filters and QC.
+Note: No phenotypes present.
+--make-bed to expo_Cartagena/Datos/Paso_1.bed + expo_Cartagena/Datos/Paso_1.bim
++ expo_Cartagena/Datos/Paso_1.fam ... done.
+
+End time: Wed May  8 16:29:49 2024
