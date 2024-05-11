@@ -96,11 +96,11 @@ data.frame(x = 1.0, y = 1.0) |>
   geom_curve(x = 1.073, xend = 1.067, y = 0.35, yend = 0.35, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
 
   # Se dibujan las fechas de los SNPs que por LD se transmiten juntos a la siguiente generación:
-  geom_curve(x = 1.0265, xend = 1.0435, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  geom_curve(x = 1.0465, xend = 1.0485, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  geom_curve(x = 1.0615, xend = 1.0535, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  geom_curve(x = 1.0765, xend = 1.0585, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  geom_curve(x = 1.0865, xend = 1.0635, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 1.0265, xend = 1.0435, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'longdash') +
+  geom_curve(x = 1.0465, xend = 1.0485, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'longdash') +
+  geom_curve(x = 1.0615, xend = 1.0535, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'longdash') +
+  geom_curve(x = 1.0765, xend = 1.0585, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'longdash') +
+  geom_curve(x = 1.0865, xend = 1.0635, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'longdash') +
 
   scale_x_continuous(limits = c(1.0, 1.18)) +
   scale_y_continuous(limits = c(0.0, 4.0)) +
@@ -109,5 +109,5 @@ data.frame(x = 1.0, y = 1.0) |>
         axis.ticks = element_blank(),
         axis.title = element_blank())
 
-ggsave('expo_Cartagena/Figuras/tag_SNP.pdf', width = 30, height = 20, units = 'cm')
+ggsave('expo_Cartagena/Figuras/tag_SNP.png', width = 30, height = 20, units = 'cm')
 ```
