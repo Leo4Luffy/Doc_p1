@@ -14,77 +14,57 @@ pacman::p_load(tidyverse)
 ```
 
 <!--
-NOTA: Se carga el software PLINK dentro del ambiente R.
--->
-
-```{r}
-#| label: Carga del software PLINK dentro del ambiente R
-
-# Función que permite ejecutar PLINK dentro de R:
-plink <- function(PLINKopciones = '') system(paste('Plink/Datos/plink', PLINKopciones))
-
-plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
-```
-
-<!--
-NOTA: Usando PLINK, se pasan los archivos VCF que resultaron al imputar los genotipos mediante Beagle v 5.4 a datos PLINK binarios (.bed, .fam y .bim). Leugo se obtiene e importa el nombre de los marcadores.
+NOTA: 
 -->
 
 ```{r}
 #| label: Hola
 
-plink('--cow --allow-extra-chr --vcf Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf --make-bed --out expo_Cartagena/Datos/Paso_1')
+data.frame(x = 1.0, y = 1.0) |>
+  ggplot(aes(x = x, y = y)) +
+  
+  # Se dibujan dos cromosomas:
+  annotate(geom = 'segment', x = 1.01, xend = 1.01, y = 3.0, yend = 4.0, colour = 'black', alpha = 0.1, linewidth = 4.8, linetype = 'solid', lineend = 'round') +
+  annotate(geom = 'segment', x = 1.02, xend = 1.02, y = 3.0, yend = 4.0, colour = 'black', alpha = 0.1, linewidth = 4.8, linetype = 'solid', lineend = 'round') +
 
-id_Mar <- read_table(file = 'expo_Cartagena/Datos/Paso_1.bim', col_names = FALSE)
+  # Se dibuja el locus donde estará el SNP:
+  annotate(geom = 'rect', xmin = 1.009, xmax = 1.011, ymin = 3.88, ymax = 3.9, colour = 'red', fill = 'red', alpha = 0.4, linewidth = 0.4, linetype = 'longdash') +
+  annotate(geom = 'rect', xmin = 1.019, xmax = 1.021, ymin = 3.88, ymax = 3.9, colour = 'red', fill = 'red', alpha = 0.4, linewidth = 0.4, linetype = 'longdash') +
+  annotate(geom = 'text', x = 1.005, y = 3.89, label = 'Locus', size = 3.2, colour = 'black') +
+  
+  # Se dibuja uno de los cromosomas más grande:
+  annotate(geom = 'segment', x = 1.05, xend = 1.10, y = 2.5, yend = 2.5, colour = 'black', alpha = 0.1, linewidth = 28.8, linetype = 'solid', lineend = 'round') +
+  annotate(geom = 'rect', xmin = 1.105, xmax = 1.107, ymin = 2.5, ymax = 2.5, colour = 'black', fill = 'black', alpha = 0.1, linewidth = 8.4) +
+  annotate(geom = 'segment', x = 1.112, xend = 1.162, y = 2.5, yend = 2.5, colour = 'black', alpha = 0.1, linewidth = 28.8, linetype = 'solid', lineend = 'round') +
 
-id_Mar |>
-  select(X2) |>
-  write_delim(file = 'expo_Cartagena/Datos/nom_Mar.txt', col_names = FALSE)
-```
+  # :
+  annotate(geom = 'rect', xmin = 1.05, xmax = 1.053, ymin = 2.40, ymax = 2.60, colour = 'red', fill = 'red', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.055, xmax = 1.058, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'rect', xmin = 1.060, xmax = 1.063, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'rect', xmin = 1.065, xmax = 1.068, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'rect', xmin = 1.070, xmax = 1.073, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'rect', xmin = 1.075, xmax = 1.078, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'rect', xmin = 1.080, xmax = 1.083, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
+  annotate(geom = 'text', x = 1.092, y = 2.50, label = 'ADN', size = 7.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.03, xmax = 1.033, ymin = 2.60, ymax = 2.80, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(geom = 'text', x = 1.0315, y = 2.75, label = 'A', size = 4.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.0315, y = 2.65, label = 'T', size = 4.2, colour = 'black') +
+  geom_curve(x = 1.05, xend = 1.035, y = 2.55, yend = 2.70, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'rect', xmin = 1.03, xmax = 1.033, ymin = 2.20, ymax = 2.40, colour = 'red', fill = 'red', alpha = 0.01) +
+  annotate(geom = 'text', x = 1.0315, y = 2.35, label = 'C', size = 4.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.0315, y = 2.25, label = 'G', size = 4.2, colour = 'black') +
+  geom_curve(x = 1.05, xend = 1.035, y = 2.45, yend = 2.30, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  annotate(geom = 'text', x = 1.054, y = 2.14, label = 'SNP', size = 3.2, colour = 'black') +
+  geom_curve(x = 1.052, xend = 1.0515, y = 2.16, yend = 2.315, arrow = arrow(length = unit(0.1, 'inch')), size = 0.4, color = 'black', curvature = -0.1, linetype = 'solid') +
+  geom_curve(x = 1.0215, xend = 1.0515, y = 3.89, yend = 2.745, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = -0.1, linetype = 'longdash') +
+  
 
-<!--
-NOTA: A continuación con PLINK, se calcula el desequilibrio de ligamiento entre marcadores. Las opciones de PLINK usadas en el fragmento a continuación, significan lo siguiente:
 
-+ --ld-window-kb: Este valor especifica el tamaño de la ventana en kilobases (kb) dentro del cual se considerarán los marcadores para el cálculo de LD. Un valor común es 100 kb.
 
-+ --ld-window: Este valor determina el número máximo de marcadores que pueden estar dentro de la ventana especificada por ld-window-kb. Se puede utilizar un valor grande, como 99999, para asegurar de que se consideren todos los marcadores dentro de la ventana.
-
-+ --ld-window-r2: Este valor establece el umbral de R^2 para considerar que dos marcadores están en desequilibrio de ligamiento. Un valor típico es 0.2.
-
-+ ----ld-snp-list: Aquí se indica el nombre del archivo que contiene la lista de marcadores para los que se desea calcular el desequilibrio de ligamiento.
--->
-
-```{r}
-#| label: Bloques de desequilibrio de ligamiento 
-
-# Se cácula el desequilibrio de ligamiento (r2) entre marcadores ----
-
-plink('--cow --allow-extra-chr --bfile Plink/Datos/datQC/Paso_8 --r2 --ld-window-kb 100 --ld-window 99999 --ld-window-r2 0.2 --ld-snp-list Imputacion/Beagle/Datos/Precision/nomGen.txt --out expo_Cartagena/Datos/Paso_2')
-
-# Con los archivos PLINK generados, se visualiza los bloques de desequilibrio de ligamiento mediante un Heatmap de Desequilibrio de Ligamiento (R^2) ----
-
-ld_Mar <- read_table(file = 'expo_Cartagena/Datos/Paso_2.ld', col_names = TRUE) # Se importa el archivo "Paso_5.ld" donde se encuentran los valores R2.
-
-#############
-# Cromosoma 1
-#############
-
-ld_Mar_1 <- ld_Mar |>
-  filter(CHR_A == 1, SNP_A != SNP_B) # Se realiza este filtro dejando solo los marcadores del cromosoma 1 y donde los marcadores en SNP_A y SNP_B fueran diferentes.
-
-mR2 <- ld_Mar_1 %>%
-  reshape2::dcast(SNP_A ~ SNP_B, value.var = 'R2', fun.aggregate = sum) # Con la función dcast() del paquete reshape se crea una matriz de R2 entre SNP_A y SNP_B.
-
-dfR2 <- reshape2::melt(mR2, id.vars = 'SNP_A') # Con reshape2::melt(), se convierte la matriz anteriormente creada en un dataframe para hacer el gráfico con ggplot2 a continuación.
-
-Cromo1 <- ggplot(dfR2, aes(x = SNP_A, y = variable, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient(low = 'white', high = 'orange', name = 'R²') +
-  labs(title = 'Cromosoma 1', x = NULL, y = NULL) +
+  scale_x_continuous(limits = c(1.0, 1.18)) +
+  scale_y_continuous(limits = c(0.0, 4.0)) +
   theme_bw() +
-  theme(
-    plot.title = element_text(size = 10, face = 'bold'),
-    axis.text.x = element_text(size = 10, angle = 45, vjust = 0.5),
-    axis.text.y = element_text(size = 8)
-    )
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
 ```
