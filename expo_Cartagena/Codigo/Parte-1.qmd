@@ -1,5 +1,5 @@
 ---
-title: "Parte 1: Hola"
+title: "Parte 1: Visualizaciones para la presentación"
 format: html
 ---
 
@@ -14,11 +14,11 @@ pacman::p_load(tidyverse)
 ```
 
 <!--
-NOTA: 
+NOTA: Se realiza una visualización que ayudará a explicar que son los tag SNPs.
 -->
 
 ```{r}
-#| label: Hola
+#| label: Gráfica de tag SNP
 
 data.frame(x = 1.0, y = 1.0) |>
   ggplot(aes(x = x, y = y)) +
@@ -26,18 +26,19 @@ data.frame(x = 1.0, y = 1.0) |>
   # Se dibujan dos cromosomas:
   annotate(geom = 'segment', x = 1.01, xend = 1.01, y = 3.0, yend = 4.0, colour = 'black', alpha = 0.1, linewidth = 4.8, linetype = 'solid', lineend = 'round') +
   annotate(geom = 'segment', x = 1.02, xend = 1.02, y = 3.0, yend = 4.0, colour = 'black', alpha = 0.1, linewidth = 4.8, linetype = 'solid', lineend = 'round') +
+  annotate(geom = 'text', x = 1.015, y = 2.9, label = 'Cromosomas', size = 7.2, colour = 'black') +
 
   # Se dibuja el locus donde estará el SNP:
   annotate(geom = 'rect', xmin = 1.009, xmax = 1.011, ymin = 3.88, ymax = 3.9, colour = 'red', fill = 'red', alpha = 0.4, linewidth = 0.4, linetype = 'longdash') +
   annotate(geom = 'rect', xmin = 1.019, xmax = 1.021, ymin = 3.88, ymax = 3.9, colour = 'red', fill = 'red', alpha = 0.4, linewidth = 0.4, linetype = 'longdash') +
-  annotate(geom = 'text', x = 1.005, y = 3.89, label = 'Locus', size = 3.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.003, y = 3.89, label = 'Locus', size = 4.2, colour = 'black') +
   
   # Se dibuja uno de los cromosomas más grande:
   annotate(geom = 'segment', x = 1.05, xend = 1.10, y = 2.5, yend = 2.5, colour = 'black', alpha = 0.1, linewidth = 28.8, linetype = 'solid', lineend = 'round') +
   annotate(geom = 'rect', xmin = 1.105, xmax = 1.107, ymin = 2.5, ymax = 2.5, colour = 'black', fill = 'black', alpha = 0.1, linewidth = 8.4) +
   annotate(geom = 'segment', x = 1.112, xend = 1.162, y = 2.5, yend = 2.5, colour = 'black', alpha = 0.1, linewidth = 28.8, linetype = 'solid', lineend = 'round') +
 
-  # :
+  # Se dibujan los maracdores (SNPs):
   annotate(geom = 'rect', xmin = 1.05, xmax = 1.053, ymin = 2.40, ymax = 2.60, colour = 'red', fill = 'red', alpha = 0.4) +
   annotate(geom = 'rect', xmin = 1.055, xmax = 1.058, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
   annotate(geom = 'rect', xmin = 1.060, xmax = 1.063, ymin = 2.40, ymax = 2.60, colour = 'black', fill = 'black', alpha = 0.01) +
@@ -54,12 +55,52 @@ data.frame(x = 1.0, y = 1.0) |>
   annotate(geom = 'text', x = 1.0315, y = 2.35, label = 'C', size = 4.2, colour = 'black') +
   annotate(geom = 'text', x = 1.0315, y = 2.25, label = 'G', size = 4.2, colour = 'black') +
   geom_curve(x = 1.05, xend = 1.035, y = 2.45, yend = 2.30, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  annotate(geom = 'text', x = 1.054, y = 2.14, label = 'SNP', size = 3.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.054, y = 2.10, label = 'SNP', size = 4.2, colour = 'black') +
   geom_curve(x = 1.052, xend = 1.0515, y = 2.16, yend = 2.315, arrow = arrow(length = unit(0.1, 'inch')), size = 0.4, color = 'black', curvature = -0.1, linetype = 'solid') +
   geom_curve(x = 1.0215, xend = 1.0515, y = 3.89, yend = 2.745, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = -0.1, linetype = 'longdash') +
   
+  # Se dibujan los SNPs en desequilibrio de ligamiento (LD):
+  annotate(geom = 'text', x = 1.0265, y = 1.32, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.025, xmax = 1.028, ymin = 1.05, ymax = 1.25, colour = 'red', fill = 'red', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.030, xmax = 1.033, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'rect', xmin = 1.035, xmax = 1.038, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'rect', xmin = 1.040, xmax = 1.043, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'text', x = 1.0465, y = 1.32, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.045, xmax = 1.048, ymin = 1.05, ymax = 1.25, colour = 'cyan', fill = 'cyan', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.050, xmax = 1.053, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'rect', xmin = 1.055, xmax = 1.058, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'text', x = 1.0615, y = 1.32, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.060, xmax = 1.063, ymin = 1.05, ymax = 1.25, colour = 'orange', fill = 'orange', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.065, xmax = 1.068, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'rect', xmin = 1.070, xmax = 1.073, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'text', x = 1.0765, y = 1.32, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.075, xmax = 1.078, ymin = 1.05, ymax = 1.25, colour = 'green', fill = 'green', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.080, xmax = 1.083, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'text', x = 1.0865, y = 1.32, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.085, xmax = 1.088, ymin = 1.05, ymax = 1.25, colour = 'yellow', fill = 'yellow', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.090, xmax = 1.093, ymin = 1.05, ymax = 1.25, colour = 'black', fill = 'black', alpha = 0.001) +
+  annotate(geom = 'text', x = 1.123, y = 1.23, label = 'SNPs en desequili-', size = 7.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.123, y = 1.07, label = 'brio de ligamiento', size = 7.2, colour = 'black') +
+  geom_curve(x = 1.1, xend = 1.095, y = 1.15, yend = 1.15, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
 
+  # Se dibujan los SNPs en haplotipos, entre ellos el tag SNP:
+  #annotate(geom = 'text', x = 1.0435, y = 0.49, label = 'QTL', size = 3.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.042, xmax = 1.045, ymin = 0.25, ymax = 0.45, colour = 'red', fill = 'red', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.047, xmax = 1.050, ymin = 0.25, ymax = 0.45, colour = 'cyan', fill = 'cyan', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.052, xmax = 1.055, ymin = 0.25, ymax = 0.45, colour = 'orange', fill = 'orange', alpha = 0.4) +
+  annotate(geom = 'text', x = 1.0585, y = 0.19, label = 'tag', size = 5.2, colour = 'black') +
+  annotate(geom = 'text', x = 1.0585, y = 0.07, label = 'SNP', size = 5.2, colour = 'black') +
+  annotate(geom = 'rect', xmin = 1.057, xmax = 1.060, ymin = 0.25, ymax = 0.45, colour = 'green', fill = 'green', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.062, xmax = 1.065, ymin = 0.25, ymax = 0.45, colour = 'yellow', fill = 'yellow', alpha = 0.4) +
+  annotate(geom = 'text', x = 1.085, y = 0.35, label = 'Haplotipo', size = 7.2, colour = 'black') +
+  geom_curve(x = 1.073, xend = 1.067, y = 0.35, yend = 0.35, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
 
+  # Se dibujan las fechas de los SNPs que por LD se transmiten juntos a la siguiente generación:
+  geom_curve(x = 1.0265, xend = 1.0435, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 1.0465, xend = 1.0485, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 1.0615, xend = 1.0535, y = 1.02, yend = 0.50, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 1.0765, xend = 1.0585, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 1.0865, xend = 1.0635, y = 1.02, yend = 0.54, arrow = arrow(length = unit(0.1, 'inch')), size = 0.8, color = 'black', curvature = 0.0, linetype = 'solid') +
 
   scale_x_continuous(limits = c(1.0, 1.18)) +
   scale_y_continuous(limits = c(0.0, 4.0)) +
@@ -67,4 +108,6 @@ data.frame(x = 1.0, y = 1.0) |>
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         axis.title = element_blank())
+
+ggsave('expo_Cartagena/Figuras/tag_SNP.pdf', width = 30, height = 20, units = 'cm')
 ```
