@@ -119,7 +119,7 @@ mD_VC <- vfold_cv(data = mD, v = 10) # Se genera un subconjunto de validación u
 # Se especifica el modelo de k-means ----
 
 k_med_1 <- k_means(num_clusters = tune()) |> # Como el objetivo aquí será seleccionar la cantidad adecuada de clúteres, se usa tune().
-  set_engine('stats', algorithm = 'Hartigan-Wong') # Se indica aquí los detalles algorítmicos: implementación stats::kmeans (este sería el motor del modelo)  y "Hartigan-Wong" como algoritmo dentro de esta implementación.
+  set_engine('stats', algorithm = 'Hartigan-Wong') # Se indica aquí los detalles algorítmicos: stats::kmeans (este sería el motor del modelo)  y "Hartigan-Wong" como algoritmo dentro de esta implementación.
 
 # Se ajusta el modelo de k-means ----
 

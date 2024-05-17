@@ -3,17 +3,17 @@ ulimit -s unlimited
 #!/bin/bash
 
 ####
-# Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el caracter edad al primer parto.
+# Titulo: Bash para calcular mediante blupf90 los valores genéticos en datos parciales y completos para el caracter peso al destete.
 # Autor(es): Jorge Leonardo López Martínez; Cristina Meneses González; Marisol Londoño Gil.
-# Requerimientos: renumf90, blupf90+.
+# Requerimientos: renumf90, gibbsf90.
 ####
 
 # Conjunto de datos completo
 
-cd ../../eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto_blup/Completo
+cd ../Datos/eva_genomica/SNP_tags_val2/peso_Dtte_blup/Completo
 
 echo "DATAFILE
-EPP.txt
+pDtte.txt
 TRAITS
 2
 FIELDS_PASSED TO OUTPUT
@@ -23,25 +23,19 @@ WEIGHT(S)
 RESIDUAL_VARIANCE
 1.0
 EFFECT
-3 cross alpha # Grupo de comparación para la edad al primer parto. Se trata como aleatorio para los dos caracteres de fertilidad.
-RANDOM
-diagonal
-(CO)VARIANCES
-1.0
+3 cov # Edad al destete como covariable.
 EFFECT
-4 cross alpha # Identificación del toro (como efecto ambiental permanente del toro o la componente del toro que es común a todas las hembras que se cubren con el mismo reproductor).
-RANDOM
-diagonal
-(CO)VARIANCES
-1.0
+4 cross alpha # Sexo del individuo como efecto fijo.
 EFFECT
-5 cross alpha # Sexo de la cría en el primer parto.
+5 cross alpha # Edad de la madre (clasificado en seis grupos) como efecto fijo.
 EFFECT
-6 cross alpha # Edad del toro en el primer parto (< 3 años, >= 3 años, < 4 años >= 4 años, < 5 años).
+6 cross alpha # Grupo de comparación como efecto fijo.
 EFFECT
 1 cross alpha # Posición del individuo.
 RANDOM
 animal
+OPTIONAL
+mat mpe
 FILE
 ../../../Pedigri.txt
 FILE_POS
@@ -49,8 +43,11 @@ FILE_POS
 SNP_FILE
 ../../Genotipos_2.txt
 PED_DEPTH
-0 # Profundidad de búsqueda de pedigrí (predeterminado igual a 3); todos los pedigríes se cargan si p = 0.
+0
 (CO)VARIANCES
+1.0   0.1    
+0.1   1.0
+(CO)VARIANCES_MPE
 1.0
 OPTION remove_all_missing" > renum.par
 

@@ -1,5 +1,5 @@
 ---
-title: "Parte 20: Calculo de los estadísticos del método LR en el modelo uni-carácter"
+title: "Parte 21: Calculo de los estadísticos del método LR en el modelo uni-carácter"
 format: html
 ---
 
@@ -13609,25 +13609,6 @@ NOTA: A continuaicón se obtienen las estimas del método LR mediante la funció
 
 source('eva_genetica/Codigo/compute_LR_stats.R')
 
-# Se calcula el coeficiente de consanguinidad basado en la información de pedigrí ----
-
-ped <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/Pedigri.txt', col_names = FALSE) |>
-  mutate(
-    ID_pad = replace(X2, X2 == 0, NA),
-    ID_mad = replace(X3, X3 == 0, NA)
-    ) |> # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
-  rename(ID_ind = X1) |>
-  select(ID_ind, ID_pad, ID_mad)
-
-ped_prep <- optiSel::prePed(Pedig = ped) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
-
-inbre <- optiSel::pedInbreeding(Pedig = ped_prep) |> # Se calcula la endogamia (o coeficiente de consanguinidad) basada en el pedigrí de los 108819 individuos.
-  rename(ID_original = Indiv)
-
-write_delim(x = inbre, file = 'eva_genetica/Datos/metodo_LR/inbre.txt', col_names = TRUE) # Se exportan los datos con el coeficiente de consanguinidad para los 108819 individuos.
-
-inb <- read.table('eva_genetica/Datos/metodo_LR/inbre.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
-
 ######################
 # 1. Edad primer parto
 ######################
@@ -13653,6 +13634,42 @@ prom_EPP_inbre <- summarise(
 ##########################
 # Densidad de marcador - 0
 ##########################
+
+# Se calcula el coeficiente de consanguinidad basado en la información de pedigrí ----
+
+ped <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/Pedigri.txt', col_names = FALSE) |>
+  mutate(
+    ID_pad = replace(X2, X2 == 0, NA),
+    ID_mad = replace(X3, X3 == 0, NA)
+    ) |> # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+  rename(ID_ind = X1) |>
+  select(ID_ind, ID_pad, ID_mad)
+
+ped_prep <- optiSel::prePed(Pedig = ped) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
+
+inbre <- optiSel::pedInbreeding(Pedig = ped_prep) |> # Se calcula la endogamia (o coeficiente de consanguinidad) basada en el pedigrí de los 108819 individuos.
+  rename(ID_original = Indiv)
+
+write_delim(x = inbre, file = 'eva_genetica/Datos/metodo_LR/inbre.txt', col_names = TRUE) # Se exportan los datos con el coeficiente de consanguinidad para los 108819 individuos.
+
+inb <- read.table('eva_genetica/Datos/metodo_LR/inbre.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.# Se calcula el coeficiente de consanguinidad basado en la información de pedigrí ----
+
+ped <- read_delim(file = 'eva_genetica/Datos/eva_tradicional/Pedigri.txt', col_names = FALSE) |>
+  mutate(
+    ID_pad = replace(X2, X2 == 0, NA),
+    ID_mad = replace(X3, X3 == 0, NA)
+    ) |> # Los valores en cero en las columnas de padre y madre deben pasarse a NA.
+  rename(ID_ind = X1) |>
+  select(ID_ind, ID_pad, ID_mad)
+
+ped_prep <- optiSel::prePed(Pedig = ped) # Se prepara el pedigrí con la función prePed(). Esta función ordena el pedigrí, agrega nuevas líneas para los fundadores y corrige algunos errores de pedigrí en caso de que los tuviera.
+
+inbre <- optiSel::pedInbreeding(Pedig = ped_prep) |> # Se calcula la endogamia (o coeficiente de consanguinidad) basada en el pedigrí de los 108819 individuos.
+  rename(ID_original = Indiv)
+
+write_delim(x = inbre, file = 'eva_genetica/Datos/metodo_LR/inbre.txt', col_names = TRUE) # Se exportan los datos con el coeficiente de consanguinidad para los 108819 individuos.
+
+inb <- read.table('eva_genetica/Datos/metodo_LR/inbre.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
 #################
 # Datos completos
@@ -13748,6 +13765,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 # Densidad de marcador - 50k
 ############################
 
+f_50k <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_50k |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02337258.
+
 #################
 # Datos completos
 #################
@@ -13818,7 +13852,12 @@ ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Ed
 
 write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_50k.txt', col_names = TRUE)
 
-part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_0k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_50k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
 
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
@@ -13828,12 +13867,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_50k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', '50k', 'level_bias', 3.012855, 1.324343,
-  'Edad_primer_parto', '50k', 'level_bias_in_GSD', 0.066813, 0.029369,
-  'Edad_primer_parto', '50k', 'dispersion_bias', 1.019591, 0.063505,
-  'Edad_primer_parto', '50k', 'accuracy_partial', 0.456465, 0.027180,
-  'Edad_primer_parto', '50k', 'rho', 0.746612, 0.039129,
-  'Edad_primer_parto', '50k', 'inc_acc', 1.339385, 0.072643
+  'Edad_primer_parto', '50k', 'level_bias', 0.927246, 1.186973,
+  'Edad_primer_parto', '50k', 'level_bias_in_GSD', 0.020563, 0.026322,
+  'Edad_primer_parto', '50k', 'dispersion_bias', 0.915583, 0.049289,
+  'Edad_primer_parto', '50k', 'accuracy_partial', 0.517488, 0.030136,
+  'Edad_primer_parto', '50k', 'average_F', -0.023995, 0.004813,
+  'Edad_primer_parto', '50k', 'rho', 0.811656, 0.029424,
+  'Edad_primer_parto', '50k', 'inc_acc', 1.232048, 0.045699
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -13841,6 +13881,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 ###########################
 # Densidad de marcador - HD
 ###########################
+
+f_HD <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_HD |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02773686.
 
 #################
 # Datos completos
@@ -13914,6 +13971,11 @@ write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_P
 
 part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_HD.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_EPP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 2075.04, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2) # En el argumento "VAR_A" se coloca la varianza genética del caracter en el conjunto de datos completo.
@@ -13922,12 +13984,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_HD <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'HD', 'level_bias', 1.141972, 1.184395,
-  'Edad_primer_parto', 'HD', 'level_bias_in_GSD', 0.025069, 0.026001,
-  'Edad_primer_parto', 'HD', 'dispersion_bias', 0.958076, 0.051785,
-  'Edad_primer_parto', 'HD', 'accuracy_partial', 0.502185, 0.030765,
-  'Edad_primer_parto', 'HD', 'rho', 0.807810, 0.030021,
-  'Edad_primer_parto', 'HD', 'inc_acc', 1.237916, 0.046928
+  'Edad_primer_parto', 'HD', 'level_bias', 1.141972, 1.187893,
+  'Edad_primer_parto', 'HD', 'level_bias_in_GSD', 0.025069, 0.026077,
+  'Edad_primer_parto', 'HD', 'dispersion_bias', 0.958076, 0.051778,
+  'Edad_primer_parto', 'HD', 'accuracy_partial', 0.494818, 0.030652,
+  'Edad_primer_parto', 'HD', 'average_F', -0.029998, 0.005572,
+  'Edad_primer_parto', 'HD', 'rho', 0.807810, 0.030438,
+  'Edad_primer_parto', 'HD', 'inc_acc', 1.237916, 0.047655
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -13935,6 +13998,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 #################################
 # Densidad de marcador - SNP-tags
 #################################
+
+f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02788351.
 
 #################
 # Datos completos
@@ -14008,6 +14088,11 @@ write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_P
 
 part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_SNP_tags.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_EPP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 2064.62, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2) # En el argumento "VAR_A" se coloca la varianza genética del caracter en el conjunto de datos completo.
@@ -14016,12 +14101,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags', 'level_bias', 1.075978, 1.177004,
-  'Edad_primer_parto', 'SNP_tags', 'level_bias_in_GSD', 0.023680, 0.025903,
-  'Edad_primer_parto', 'SNP_tags', 'dispersion_bias', 0.959725, 0.050769,
-  'Edad_primer_parto', 'SNP_tags', 'accuracy_partial', 0.505408, 0.030341,
-  'Edad_primer_parto', 'SNP_tags', 'rho', 0.810026, 0.029676,
-  'Edad_primer_parto', 'SNP_tags', 'inc_acc', 1.234529, 0.046305
+  'Edad_primer_parto', 'SNP_tags', 'level_bias', 1.075978, 1.185226,
+  'Edad_primer_parto', 'SNP_tags', 'level_bias_in_GSD', 0.023680, 0.026084,
+  'Edad_primer_parto', 'SNP_tags', 'dispersion_bias', 0.959725, 0.049814,
+  'Edad_primer_parto', 'SNP_tags', 'accuracy_partial', 0.497984, 0.030218,
+  'Edad_primer_parto', 'SNP_tags', 'average_F', -0.030035, 0.005577,
+  'Edad_primer_parto', 'SNP_tags', 'rho', 0.810026, 0.029649,
+  'Edad_primer_parto', 'SNP_tags', 'inc_acc', 1.234529, 0.046149
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -14029,6 +14115,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 ###############################################
 # Densidad de marcador - SNP-tags y singletones
 ###############################################
+
+f_SNP_tags_sing <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_sing |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02828093.
 
 #################
 # Datos completos
@@ -14102,6 +14205,11 @@ write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_P
 
 part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_SNP_tags_sing.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_EPP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 2067.52, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2) # En el argumento "VAR_A" se coloca la varianza genética del caracter en el conjunto de datos completo.
@@ -14110,12 +14218,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_sing <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias', 1.173947, 1.172297,
-  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias_in_GSD', 0.025818, 0.025782,
-  'Edad_primer_parto', 'SNP_tags_sing', 'dispersion_bias', 0.970854, 0.051548,
-  'Edad_primer_parto', 'SNP_tags_sing', 'accuracy_partial', 0.500214, 0.030128,
-  'Edad_primer_parto', 'SNP_tags_sing', 'rho', 0.810055, 0.029814,
-  'Edad_primer_parto', 'SNP_tags_sing', 'inc_acc', 1.234485, 0.046465
+  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias', 1.173947, 1.182651,
+  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias_in_GSD', 0.025818, 0.026009,
+  'Edad_primer_parto', 'SNP_tags_sing', 'dispersion_bias', 0.970854, 0.051312,
+  'Edad_primer_parto', 'SNP_tags_sing', 'accuracy_partial', 0.492796, 0.029246,
+  'Edad_primer_parto', 'SNP_tags_sing', 'average_F', -0.030333, 0.005699,
+  'Edad_primer_parto', 'SNP_tags_sing', 'rho', 0.810055, 0.029534,
+  'Edad_primer_parto', 'SNP_tags_sing', 'inc_acc', 1.234485, 0.046018
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -14123,6 +14232,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 ################################################
 # Densidad de marcador - SNP-tags (validación 1)
 ################################################
+
+f_SNP_tags_val1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val1 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val1/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02671283.
 
 #################
 # Datos completos
@@ -14196,6 +14322,11 @@ write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_P
 
 part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_SNP_tags_val1.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_EPP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 1995.29, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2) # En el argumento "VAR_A" se coloca la varianza genética del caracter en el conjunto de datos completo.
@@ -14204,12 +14335,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_val1 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias', 1.509599, 1.154386,
-  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias_in_GSD', 0.033795, 0.025843,
-  'Edad_primer_parto', 'SNP_tags_val1', 'dispersion_bias', 0.928253, 0.052519,
-  'Edad_primer_parto', 'SNP_tags_val1', 'accuracy_partial', 0.486778, 0.029378,
-  'Edad_primer_parto', 'SNP_tags_val1', 'rho', 0.796711, 0.031488,
-  'Edad_primer_parto', 'SNP_tags_val1', 'inc_acc', 1.255160, 0.050747
+  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias', 1.509599, 1.160311,
+  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias_in_GSD', 0.033795, 0.025976,
+  'Edad_primer_parto', 'SNP_tags_val1', 'dispersion_bias', 0.928253, 0.053104,
+  'Edad_primer_parto', 'SNP_tags_val1', 'accuracy_partial', 0.479946, 0.028621,
+  'Edad_primer_parto', 'SNP_tags_val1', 'average_F', -0.028676, 0.005388,
+  'Edad_primer_parto', 'SNP_tags_val1', 'rho', 0.796711, 0.031513,
+  'Edad_primer_parto', 'SNP_tags_val1', 'inc_acc', 1.255160, 0.050971
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -14217,6 +14349,23 @@ LR_est_EPP$plot # Se observa el gráfico.
 ################################################
 # Densidad de marcador - SNP-tags (validación 2)
 ################################################
+
+f_SNP_tags_val2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val2 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val2/Edad_Primer_Parto/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02618541.
 
 #################
 # Datos completos
@@ -14290,6 +14439,11 @@ write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/Edad_Primer_P
 
 part <- read.table('eva_genetica/Datos/metodo_LR/Edad_Primer_Parto/dat_P_SNP_tags_val2.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_EPP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 1976.57, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2) # En el argumento "VAR_A" se coloca la varianza genética del caracter en el conjunto de datos completo.
@@ -14298,12 +14452,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_val2 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias', 1.521035, 1.129621,
-  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias_in_GSD', 0.034212, 0.025408,
-  'Edad_primer_parto', 'SNP_tags_val2', 'dispersion_bias', 0.938756, 0.050461,
-  'Edad_primer_parto', 'SNP_tags_val2', 'accuracy_partial', 0.497881, 0.030450,
-  'Edad_primer_parto', 'SNP_tags_val2', 'rho', 0.809669, 0.029885,
-  'Edad_primer_parto', 'SNP_tags_val2', 'inc_acc', 1.235073, 0.046713
+  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias', 1.521035, 1.134623,
+  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias_in_GSD', 0.034212, 0.025521,
+  'Edad_primer_parto', 'SNP_tags_val2', 'dispersion_bias', 0.938756, 0.049392,
+  'Edad_primer_parto', 'SNP_tags_val2', 'accuracy_partial', 0.490981, 0.029928,
+  'Edad_primer_parto', 'SNP_tags_val2', 'average_F', -0.028306, 0.005396,
+  'Edad_primer_parto', 'SNP_tags_val2', 'rho', 0.809669, 0.029568,
+  'Edad_primer_parto', 'SNP_tags_val2', 'inc_acc', 1.235073, 0.046153
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -14515,6 +14670,8 @@ prom_IEP_inbre <- summarise(
 # Densidad de marcador - 0
 ##########################
 
+inb <- read.table('eva_genetica/Datos/metodo_LR/inbre.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
 #################
 # Datos completos
 #################
@@ -14609,6 +14766,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 # Densidad de marcador - 50k
 ############################
 
+f_50k <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_50k |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02337258.
+
 #################
 # Datos completos
 #################
@@ -14679,7 +14853,12 @@ ebv_IEP_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/in
 
 write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_50k.txt', col_names = TRUE)
 
-part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_0k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_50k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
 
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
@@ -14689,12 +14868,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_50k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', '50k', 'level_bias', 1.297981, 0.283824,
-  'intervalo_P1_P2', '50k', 'level_bias_in_GSD', 0.074542, 0.016300,
-  'intervalo_P1_P2', '50k', 'dispersion_bias', 1.030109, 0.044356,
-  'intervalo_P1_P2', '50k', 'accuracy_partial', 0.289954, 0.024427,
-  'intervalo_P1_P2', '50k', 'rho', 0.843939, 0.028837,
-  'intervalo_P1_P2', '50k', 'inc_acc', 1.184919, 0.041644
+  'intervalo_P1_P2', '50k', 'level_bias', 0.128651, 0.316155,
+  'intervalo_P1_P2', '50k', 'level_bias_in_GSD', 0.007388, 0.018157,
+  'intervalo_P1_P2', '50k', 'dispersion_bias', 0.828573, 0.057517,
+  'intervalo_P1_P2', '50k', 'accuracy_partial', 0.309052, 0.023731,
+  'intervalo_P1_P2', '50k', 'average_F', -0.023392, 0.005623,
+  'intervalo_P1_P2', '50k', 'rho', 0.816128, 0.028652,
+  'intervalo_P1_P2', '50k', 'inc_acc', 1.225298, 0.044302
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -14702,6 +14882,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 ###########################
 # Densidad de marcador - HD
 ###########################
+
+f_HD <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_HD |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02773686.
 
 #################
 # Datos completos
@@ -14775,6 +14972,11 @@ write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_HD.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_IEP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 342.41, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
@@ -14783,12 +14985,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_HD <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'HD', 'level_bias', 1.477996, 0.525523,
-  'intervalo_P1_P2', 'HD', 'level_bias_in_GSD', 0.079873, 0.028400,
-  'intervalo_P1_P2', 'HD', 'dispersion_bias', 1.573487, 0.063700,
-  'intervalo_P1_P2', 'HD', 'accuracy_partial', 0.421351, 0.031727,
-  'intervalo_P1_P2', 'HD', 'rho', 0.896480, 0.017112,
-  'intervalo_P1_P2', 'HD', 'inc_acc', 1.115474, 0.021606
+  'intervalo_P1_P2', 'HD', 'level_bias', 1.477996, 0.521731,
+  'intervalo_P1_P2', 'HD', 'level_bias_in_GSD', 0.079873, 0.028195,
+  'intervalo_P1_P2', 'HD', 'dispersion_bias', 1.573487, 0.064641,
+  'intervalo_P1_P2', 'HD', 'accuracy_partial', 0.415585, 0.030539,
+  'intervalo_P1_P2', 'HD', 'average_F', -0.027940, 0.006454,
+  'intervalo_P1_P2', 'HD', 'rho', 0.896480, 0.016982,
+  'intervalo_P1_P2', 'HD', 'inc_acc', 1.115474, 0.016982
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -14796,6 +14999,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 #################################
 # Densidad de marcador - SNP-tags
 #################################
+
+f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02788351.
 
 #################
 # Datos completos
@@ -14869,6 +15089,11 @@ write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_SNP_tags.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_IEP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 342.86, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
@@ -14877,12 +15102,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags', 'level_bias', 1.462902, 0.529316,
-  'intervalo_P1_P2', 'SNP_tags', 'level_bias_in_GSD', 0.079005, 0.028586,
-  'intervalo_P1_P2', 'SNP_tags', 'dispersion_bias', 1.576046, 0.064389,
-  'intervalo_P1_P2', 'SNP_tags', 'accuracy_partial', 0.418283, 0.030991,
-  'intervalo_P1_P2', 'SNP_tags', 'rho', 0.895463, 0.017482,
-  'intervalo_P1_P2', 'SNP_tags', 'inc_acc', 1.116740, 0.022155
+  'intervalo_P1_P2', 'SNP_tags', 'level_bias', 1.462902, 0.525197,
+  'intervalo_P1_P2', 'SNP_tags', 'level_bias_in_GSD', 0.079005, 0.028364,
+  'intervalo_P1_P2', 'SNP_tags', 'dispersion_bias', 1.576046, 0.064339,
+  'intervalo_P1_P2', 'SNP_tags', 'accuracy_partial', 0.412581, 0.030308,
+  'intervalo_P1_P2', 'SNP_tags', 'average_F', -0.027830, 0.006398,
+  'intervalo_P1_P2', 'SNP_tags', 'rho', 0.895463, 0.017274,
+  'intervalo_P1_P2', 'SNP_tags', 'inc_acc', 1.116740, 0.021857
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -14890,6 +15116,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 ###############################################
 # Densidad de marcador - SNP-tags y singletones
 ###############################################
+
+f_SNP_tags_sing <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_sing |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_sing/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02828093.
 
 #################
 # Datos completos
@@ -14963,6 +15206,11 @@ write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_SNP_tags_sing.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_IEP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 342.53, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
@@ -14971,12 +15219,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_sing <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias', 1.429736, 0.523377,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias_in_GSD', 0.077251, 0.028279,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'dispersion_bias', 1.566213, 0.064983,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'accuracy_partial', 0.414158, 0.030295,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'rho', 0.891670, 0.017656,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'inc_acc', 1.121491, 0.022547
+  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias', 1.429736, 0.516099,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias_in_GSD', 0.077251, 0.027886,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'dispersion_bias', 1.566213, 0.064874,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'accuracy_partial', 0.408488, 0.030242,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'average_F', -0.027956, 0.006542,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'rho', 0.891670, 0.017808,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'inc_acc', 1.121491, 0.022731
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -14984,6 +15233,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 ################################################
 # Densidad de marcador - SNP-tags (validación 1)
 ################################################
+
+f_SNP_tags_val1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val1 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val1/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02671283.
 
 #################
 # Datos completos
@@ -15057,6 +15323,11 @@ write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_SNP_tags_val1.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_IEP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 329.23, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
@@ -15065,12 +15336,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_val1 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias', 1.439058, 0.498175,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias_in_GSD', 0.079310, 0.027456,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'dispersion_bias', 1.514290, 0.060412,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'accuracy_partial', 0.411245, 0.031537,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'rho', 0.891292, 0.018429,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'inc_acc', 1.121967, 0.023598
+  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias', 1.439058, 0.492575,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias_in_GSD', 0.079310, 0.027147,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'dispersion_bias', 1.514290, 0.061247,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'accuracy_partial', 0.405825, 0.031520,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'average_F', -0.026886, 0.006295,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'rho', 0.891292, 0.018801,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'inc_acc', 1.121967, 0.024128
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -15078,6 +15350,23 @@ LR_est_IEP$plot # Se observa el gráfico.
 ################################################
 # Densidad de marcador - SNP-tags (validación 2)
 ################################################
+
+f_SNP_tags_val2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val2 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val2/intervalo_P1_P2/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02618541.
 
 #################
 # Datos completos
@@ -15151,6 +15440,11 @@ write_delim(x = ebv_IEP_datP, file = 'eva_genetica/Datos/metodo_LR/intervalo_P1_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/dat_P_SNP_tags_val2.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
 LR_est_IEP <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 309.05, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
@@ -15159,12 +15453,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_val2 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias', 1.402691, 0.456737,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias_in_GSD', 0.079790, 0.025981,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'dispersion_bias', 1.493029, 0.058066,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'accuracy_partial', 0.422544, 0.033039,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'rho', 0.903118, 0.016437,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'inc_acc', 1.107275, 0.020466
+  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias', 1.402691, 0.458264,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias_in_GSD', 0.079790, 0.026068,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'dispersion_bias', 1.493029, 0.058714,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'accuracy_partial', 0.416972, 0.032545,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'average_F', -0.026904, 0.006171,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'rho', 0.903118, 0.016470,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'inc_acc', 1.107275, 0.020521
   )
 
 LR_est_IEP$plot # Se observa el gráfico.

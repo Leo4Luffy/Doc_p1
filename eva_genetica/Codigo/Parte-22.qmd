@@ -1,5 +1,5 @@
 ---
-title: "Parte 21: Calculo de los estadísticos del método LR en el modelo bi-carácter"
+title: "Parte 22: Calculo de los estadísticos del método LR en el modelo bi-carácter"
 format: html
 ---
 

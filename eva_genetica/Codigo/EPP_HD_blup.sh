@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 # Conjunto de datos completo
 
-cd ../../eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto_blup/Completo
+cd ../../eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto_blup/Completo
 
 echo "DATAFILE
 EPP.txt
@@ -59,6 +59,7 @@ echo renum.par | ../../../../../BLUPF90/renumf90 | tee renum.log
 sed -i '/OPTION/d' renf90.par # Se insertan nuevas opciones en el renf90.par.
  
 echo "OPTION SNP_file ../../Genotipos_2.txt
+OPTION maxsnp 700000
 OPTION excludeSample 2383
 OPTION saveCleanSNPs
 OPTION createGInverse 0
