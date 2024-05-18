@@ -15649,6 +15649,8 @@ ggsave('eva_genetica/Datos/metodo_LR/intervalo_P1_P2/precision_IEP_uni.pdf', wid
 # 3. Peso al destete
 ####################
 
+# Se importa el conjunto de datos con la ID original de los individuos focales. Luego se obtiene el coeficiente de consanguinidad de estos individuos y se calcula el promedio de este parámetro ----
+
 ind_PD_LR <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 220 individuos con información de fenotipo (peso al destete) y de genotipo.
   rename(ID_original = X1)
 
@@ -15668,6 +15670,8 @@ prom_PD_inbre <- summarise(
 ##########################
 # Densidad de marcador - 0
 ##########################
+
+inb <- read.table('eva_genetica/Datos/metodo_LR/inbre.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
 #########################
 # Efecto genético directo
@@ -15857,6 +15861,23 @@ LR_est_PD_0k_materno <- tribble(
 # Densidad de marcador - 50k
 ############################
 
+f_50k <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_50k |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02331521.
+
 #########################
 # Efecto genético directo
 #########################
@@ -15933,20 +15954,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_50k_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 216.02, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 216.02, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_50k_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', '50k_directo', 'level_bias', 0.958878, 0.327864,
-  'peso_Dtte', '50k_directo', 'level_bias_in_GSD', 0.065240, 0.022307,
-  'peso_Dtte', '50k_directo', 'dispersion_bias', 0.965001, 0.044148,
-  'peso_Dtte', '50k_directo', 'accuracy_partial', 0.433756, 0.026556,
-  'peso_Dtte', '50k_directo', 'rho', 0.791485, 0.028963,
-  'peso_Dtte', '50k_directo', 'inc_acc', 1.263448, 0.047100
+  'peso_Dtte', '50k_directo', 'level_bias', 0.958878, 0.325569,
+  'peso_Dtte', '50k_directo', 'level_bias_in_GSD', 0.065240, 0.022151,
+  'peso_Dtte', '50k_directo', 'dispersion_bias', 0.965001, 0.043761,
+  'peso_Dtte', '50k_directo', 'accuracy_partial', 0.426622, 0.025742,
+  'peso_Dtte', '50k_directo', 'average_F', -0.033722, 0.005188,
+  'peso_Dtte', '50k_directo', 'rho', 0.791485, 0.028675,
+  'peso_Dtte', '50k_directo', 'inc_acc', 1.263448, 0.046645
   )
 
 #########################
@@ -16025,25 +16052,48 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_50k_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 110.40, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 110.40, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_50k_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', '50k_materno', 'level_bias', -0.136433, 0.196948,
-  'peso_Dtte', '50k_materno', 'level_bias_in_GSD', -0.012985, 0.018744,
-  'peso_Dtte', '50k_materno', 'dispersion_bias', 0.879868, 0.039676,
-  'peso_Dtte', '50k_materno', 'accuracy_partial', 0.419642, 0.020590,
-  'peso_Dtte', '50k_materno', 'rho', 0.823011, 0.021562,
-  'peso_Dtte', '50k_materno', 'inc_acc', 1.215051, 0.032203
+  'peso_Dtte', '50k_materno', 'level_bias', -0.136433, 0.197033,
+  'peso_Dtte', '50k_materno', 'level_bias_in_GSD', -0.012985, 0.018752,
+  'peso_Dtte', '50k_materno', 'dispersion_bias', 0.879868, 0.039809,
+  'peso_Dtte', '50k_materno', 'accuracy_partial', 0.412740, 0.020454,
+  'peso_Dtte', '50k_materno', 'average_F', -0.033722, 0.005107,
+  'peso_Dtte', '50k_materno', 'rho', 0.823011, 0.021836,
+  'peso_Dtte', '50k_materno', 'inc_acc', 1.215051, 0.032633
   )
 
 ###########################
 # Densidad de marcador - HD
 ###########################
+
+f_HD <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_HD |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_HD/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02766246.
 
 #########################
 # Efecto genético directo
@@ -16121,20 +16171,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_HD_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 218.89, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 218.89, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_HD_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'HD_directo', 'level_bias', 0.984391, 0.330926,
-  'peso_Dtte', 'HD_directo', 'level_bias_in_GSD', 0.066536, 0.022368,
-  'peso_Dtte', 'HD_directo', 'dispersion_bias', 0.997852, 0.042644,
-  'peso_Dtte', 'HD_directo', 'accuracy_partial', 0.431137, 0.026792,
-  'peso_Dtte', 'HD_directo', 'rho', 0.790490, 0.028417,
-  'peso_Dtte', 'HD_directo', 'inc_acc', 1.265037, 0.046437
+  'peso_Dtte', 'HD_directo', 'level_bias', 0.984391, 0.331308,
+  'peso_Dtte', 'HD_directo', 'level_bias_in_GSD', 0.066536, 0.022393,
+  'peso_Dtte', 'HD_directo', 'dispersion_bias', 0.997852, 0.042730,
+  'peso_Dtte', 'HD_directo', 'accuracy_partial', 0.422604, 0.026309,
+  'peso_Dtte', 'HD_directo', 'average_F', -0.040789, 0.005627,
+  'peso_Dtte', 'HD_directo', 'rho', 0.790490, 0.028798,
+  'peso_Dtte', 'HD_directo', 'inc_acc', 1.265037, 0.047041
   )
 
 #########################
@@ -16213,25 +16269,47 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_HD_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.94, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.94, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_HD_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'HD_materno', 'level_bias', -0.125027, 0.196658,
-  'peso_Dtte', 'HD_materno', 'level_bias_in_GSD', -0.011817, 0.018587,
-  'peso_Dtte', 'HD_materno', 'dispersion_bias', 0.881118, 0.038726,
-  'peso_Dtte', 'HD_materno', 'accuracy_partial', 0.391527, 0.018877,
-  'peso_Dtte', 'HD_materno', 'rho', 0.805808, 0.023422,
-  'peso_Dtte', 'HD_materno', 'inc_acc', 1.240991, 0.036540
+  'peso_Dtte', 'HD_materno', 'level_bias', -0.125027, 0.193187,
+  'peso_Dtte', 'HD_materno', 'level_bias_in_GSD', -0.011817, 0.018259,
+  'peso_Dtte', 'HD_materno', 'dispersion_bias', 0.881118, 0.039038,
+  'peso_Dtte', 'HD_materno', 'accuracy_partial', 0.383778, 0.018547,
+  'peso_Dtte', 'HD_materno', 'average_F', -0.040789, 0.005709,
+  'peso_Dtte', 'HD_materno', 'rho', 0.805808, 0.023425,
+  'peso_Dtte', 'HD_materno', 'inc_acc', 1.240991, 0.036465
   )
 
 #################################
 # Densidad de marcador - SNP-tags
 #################################
+
+f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.0278087.
 
 #########################
 # Efecto genético directo
@@ -16309,20 +16387,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 218.43, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 218.43, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_directo', 'level_bias', 0.988098, 0.331477,
-  'peso_Dtte', 'SNP_tags_directo', 'level_bias_in_GSD', 0.066857, 0.022428,
-  'peso_Dtte', 'SNP_tags_directo', 'dispersion_bias', 1.005907, 0.041800,
-  'peso_Dtte', 'SNP_tags_directo', 'accuracy_partial', 0.431189, 0.027239,
-  'peso_Dtte', 'SNP_tags_directo', 'rho', 0.791900, 0.028578,
-  'peso_Dtte', 'SNP_tags_directo', 'inc_acc', 1.262786, 0.046438
+  'peso_Dtte', 'SNP_tags_directo', 'level_bias', 0.988098, 0.331413,
+  'peso_Dtte', 'SNP_tags_directo', 'level_bias_in_GSD', 0.066857, 0.022424,
+  'peso_Dtte', 'SNP_tags_directo', 'dispersion_bias', 1.005907, 0.041679,
+  'peso_Dtte', 'SNP_tags_directo', 'accuracy_partial', 0.422642, 0.026415,
+  'peso_Dtte', 'SNP_tags_directo', 'average_F', -0.040852, 0.005631,
+  'peso_Dtte', 'SNP_tags_directo', 'rho', 0.791900, 0.028032,
+  'peso_Dtte', 'SNP_tags_directo', 'inc_acc', 1.262786, 0.045534
   )
 
 #########################
@@ -16401,25 +16485,48 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.35, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.35, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_materno', 'level_bias', -0.122809, 0.195416,
-  'peso_Dtte', 'SNP_tags_materno', 'level_bias_in_GSD', -0.011638, 0.018519,
-  'peso_Dtte', 'SNP_tags_materno', 'dispersion_bias', 0.883025, 0.039577,
-  'peso_Dtte', 'SNP_tags_materno', 'accuracy_partial', 0.391199, 0.019256,
-  'peso_Dtte', 'SNP_tags_materno', 'rho', 0.805281, 0.023625,
-  'peso_Dtte', 'SNP_tags_materno', 'inc_acc', 1.241802, 0.036863
+  'peso_Dtte', 'SNP_tags_materno', 'level_bias', -0.122809, 0.192973,
+  'peso_Dtte', 'SNP_tags_materno', 'level_bias_in_GSD', -0.011638, 0.018287,
+  'peso_Dtte', 'SNP_tags_materno', 'dispersion_bias', 0.883025, 0.039494,
+  'peso_Dtte', 'SNP_tags_materno', 'accuracy_partial', 0.383348, 0.018867,
+  'peso_Dtte', 'SNP_tags_materno', 'average_F', -0.040852, 0.005788,
+  'peso_Dtte', 'SNP_tags_materno', 'rho', 0.805281, 0.023614,
+  'peso_Dtte', 'SNP_tags_materno', 'inc_acc', 1.241802, 0.036948
   )
 
 ###############################################
 # Densidad de marcador - SNP-tags y singletones
 ###############################################
+
+f_SNP_tags_sing <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_sing |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02820447.
 
 #########################
 # Efecto genético directo
@@ -16497,20 +16604,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_sing_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_sing_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias', 0.919204, 0.329622,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias_in_GSD', 0.062354, 0.022360,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'dispersion_bias', 0.996717, 0.041333,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'accuracy_partial', 0.430359, 0.027564,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'rho', 0.790341, 0.029407,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'inc_acc', 1.265276, 0.047962
+  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias', 0.919204, 0.332889,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias_in_GSD', 0.062354, 0.022581,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'dispersion_bias', 0.996717, 0.041636,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'accuracy_partial', 0.421722, 0.026915,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'average_F', -0.041380, 0.005732,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'rho', 0.790341, 0.029204,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'inc_acc', 1.265276, 0.047692
   )
 
 #########################
@@ -16589,25 +16702,48 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_sing_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 112.13, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 112.13, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_sing_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias', -0.089526, 0.195877,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias_in_GSD', -0.008455, 0.018498,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'dispersion_bias', 0.873215, 0.039774,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'accuracy_partial', 0.391159, 0.018848,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'rho', 0.805725, 0.022753,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'inc_acc', 1.241118, 0.035425
+  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias', -0.089526, 0.195684,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias_in_GSD', -0.008455, 0.018480,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'dispersion_bias', 0.873215, 0.039358,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'accuracy_partial', 0.383308, 0.018728,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'average_F', -0.041380, 0.005828,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'rho', 0.805725, 0.023302,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'inc_acc', 1.241118, 0.036380
   )
 
 ################################################
 # Densidad de marcador - SNP-tags (validación 1)
 ################################################
+
+f_SNP_tags_val1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val1 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val1/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02664133.
 
 #########################
 # Efecto genético directo
@@ -16685,20 +16821,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_val1_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 215.45, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 215.45, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val1_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias', 0.942331, 0.318863,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias_in_GSD', 0.064199, 0.021724,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'dispersion_bias', 0.965670, 0.044354,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'accuracy_partial', 0.428564, 0.026176,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'rho', 0.791620, 0.028217,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'inc_acc', 1.263233, 0.045935
+  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias', 0.942331, 0.320697,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias_in_GSD', 0.064199, 0.021848,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'dispersion_bias', 0.965670, 0.043483,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'accuracy_partial', 0.420266, 0.025820,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'average_F', -0.039875, 0.005548,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'rho', 0.791620, 0.028269,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'inc_acc', 1.263233, 0.046038
   )
 
 #########################
@@ -16777,25 +16919,46 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_val1_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 105.96, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 105.96, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val1_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias', -0.075557, 0.185426,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias_in_GSD', -0.007340, 0.018014,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'dispersion_bias', 0.867881, 0.039491,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'accuracy_partial', 0.391972, 0.021415,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'rho', 0.812247, 0.023865,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'inc_acc', 1.231153, 0.036702
+  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias', -0.075557, 0.185476,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias_in_GSD', -0.007340, 0.018018,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'dispersion_bias', 0.867881, 0.039160,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'accuracy_partial', 0.384383, 0.020517,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'average_F', -0.039875, 0.005660,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'rho', 0.812247, 0.023399,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'inc_acc', 1.231153, 0.036037
   )
 
 ################################################
 # Densidad de marcador - SNP-tags (validación 2)
 ################################################
+
+f_SNP_tags_val2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_val2 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_val2/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02611609.
 
 #########################
 # Efecto genético directo
@@ -16873,20 +17036,26 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_val2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 213.52, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 213.52, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val2_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias', 0.919529, 0.313793,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias_in_GSD', 0.062928, 0.021475,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'dispersion_bias', 0.974289, 0.043017,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'accuracy_partial', 0.440795, 0.025313,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'rho', 0.808861, 0.024779,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'inc_acc', 1.236306, 0.038510
+  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias', 0.919529, 0.311349,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias_in_GSD', 0.062928, 0.021307,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'dispersion_bias', 0.974289, 0.044095,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'accuracy_partial', 0.432508, 0.024903,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'average_F', -0.038688, 0.005490,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'rho', 0.808861, 0.024953,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'inc_acc', 1.236306, 0.038807
   )
 
 #########################
@@ -16965,20 +17134,25 @@ write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_
 
 part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_val2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
 # Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
 
-LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 106.64, inbreeding = inb, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 106.64, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
 
 LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val2_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias', -0.022840, 0.187643,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias_in_GSD', -0.002212, 0.018171,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'dispersion_bias', 0.896025, 0.040070,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'accuracy_partial', 0.407491, 0.020333,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'rho', 0.824695, 0.021672,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.212569, 0.032347
+  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias', -0.022840, 0.188689,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias_in_GSD', -0.002212, 0.018272,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'dispersion_bias', 0.896025, 0.040393,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'accuracy_partial', 0.399830, 0.020085,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'rho', 0.824695, 0.021591,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.212569, 0.032184
   )
 
 # Se une los objetos donde se indica las estimas del método LR para las distintas densidades de marcadores ----
