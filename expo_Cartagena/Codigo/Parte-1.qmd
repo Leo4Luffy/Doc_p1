@@ -155,7 +155,7 @@ ggsave('expo_Cartagena/Figuras/ped_nadiv.png', width = 10, height = 10, units = 
 ```
 
 <!--
-NOTA: Se realiza una visualización donde se representen los marcadores a densidad media (50k) y alta (HD).
+NOTA: Se realiza una visualización donde se representen los marcadores a densidad media (50k) y alta (HD), los tag SNPs y los tag SNPs + Singletons.
 -->
 
 ```{r}
@@ -197,6 +197,28 @@ ggplot() +
         axis.title = element_blank())
 
 ggsave('expo_Cartagena/Figuras/geno_HD.png', width = 10, height = 10, units = 'cm')
+
+# Se dibuja la matriz de Singletons ----
+
+ggplot() +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'red', fill = 'red', alpha = 0.4) +
+  theme_bw() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+
+ggsave('expo_Cartagena/Figuras/geno_Singletons.png', width = 10, height = 10, units = 'cm')
+
+# Se dibuja la matriz de tags ----
+
+ggplot() +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'orange', fill = 'orange', alpha = 0.4) +
+  theme_bw() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+
+ggsave('expo_Cartagena/Figuras/geno_tags.png', width = 10, height = 10, units = 'cm')
 ```
 
 <!--
@@ -204,50 +226,299 @@ NOTA: Se realiza una visualización donde se observa como se realizo el método 
 -->
 
 ```{r}
-#| label: Hola
+#| label: Método LR
 
 data.frame(x = 1.0, y = 1.0) |>
   ggplot() +
 
   # Se dibujan los datos completos y paciales:
-  annotate(geom = 'rect', xmin = 1.0, xmax = 9.0, ymin = 1.0, ymax = 1.25, colour = 'orange', fill = 'orange', alpha = 0.2) +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 12.0, ymin = 1.75, ymax = 2.0, colour = 'orange', fill = 'orange', alpha = 0.2) +
-  annotate(geom = 'rect', xmin = 10.5, xmax = 12.0, ymin = 1.0, ymax = 1.25, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 9.0, ymin = 1.0, ymax = 1.15, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 12.0, ymin = 1.75, ymax = 1.9, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 10.5, xmax = 12.0, ymin = 1.0, ymax = 1.15, colour = 'orange', fill = 'orange', alpha = 0.2) +
 
   
   # Se dibuja una línea que corresponde a los individuos focales (o de validación):
-  annotate(geom = 'segment', x = 9.0, xend = 9.0, y = 0.95, yend = 2.05, colour = 'black', alpha = 1.2, linewidth = 0.8, linetype = 'longdash') +
-  annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 0.95, yend = 2.05, colour = 'black', alpha = 1.2, linewidth = 0.8, linetype = 'longdash') +
-  geom_curve(x = 11.1, xend = 10.1, y = 1.68, yend = 1.73, arrow = arrow(length = unit(0.1, 'inch')), size = 0.4, color = 'black', curvature = -0.2, linetype = 'solid') +
-  annotate(geom = 'text', x = 12.5, y = 1.65, label = 'Validación', size = 3.8, colour = 'black') +
+  annotate(geom = 'segment', x = 9.0, xend = 9.0, y = 1.0, yend = 1.9, colour = 'black', alpha = 1.2, linewidth = 1.0, linetype = 'longdash') +
+  annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.0, yend = 1.9, colour = 'black', alpha = 1.2, linewidth = 1.0, linetype = 'longdash') +
+  #geom_curve(x = 11.1, xend = 10.1, y = 1.68, yend = 1.73, arrow = arrow(length = unit(0.1, 'inch')), size = 0.4, color = 'black', curvature = -0.2, linetype = 'solid') +
+  #annotate(geom = 'text', x = 11.9, y = 1.65, label = 'Validación', size = 3.8, colour = 'black') +
 
   # Se indica los EBV completos y parciales:
-  annotate(geom = 'text', x = 14.8, y = 1.125, label = 'EBV completo', size = 4.8, colour = 'black') +
-  annotate(geom = 'text', x = 14.8, y = 1.875, label = 'EBV parcial', size = 4.8, colour = 'black') +
+  annotate(geom = 'text', x = 14.8, y = 1.125, label = '(G)EBV parcial', size = 4.8, colour = 'black') +
+  annotate(geom = 'text', x = 14.8, y = 1.875, label = '(G)EBV completo', size = 4.8, colour = 'black') +
   geom_curve(x = 12.2, xend = 12.8, y = 1.125, yend = 1.125, arrow = arrow(length = unit(0.1, 'inch')), size = 1.8, color = 'black', curvature = 0.0, linetype = 'solid') +
   geom_curve(x = 12.2, xend = 12.8, y = 1.875, yend = 1.875, arrow = arrow(length = unit(0.1, 'inch')), size = 1.8, color = 'black', curvature = 0.0, linetype = 'solid') +
   
   # Se escriben las formulas del método LR:
-  geom_curve(x = 16.2, xend = 16.8, y = 1.5, yend = 1.5, arrow = arrow(length = unit(0.1, 'inch')), size = 1.8, color = 'black', curvature = 0.0, linetype = 'solid') +
-  annotate(geom = 'rect', xmin = 17.2, xmax = 21.2, ymin = 0.95, ymax = 2.05, colour = 'black', fill = 'black', alpha = 0.01) +
-  annotate(geom = 'text', x = 19.2, y = 1.875, label = 'Delta[p] == mu[p] - mu[w]', size = 3.8, colour = 'black', parse = TRUE) +
-  annotate(geom = 'text', x = 19.2, y = 1.5, label = 'b[p] == frac(cov(mu[p] - mu[w]), var(mu[p]))', size = 3.8, colour = 'black', parse = TRUE) +
-  annotate(geom = 'text', x = 19.2, y = 1.125, label = 'hat(acc[p])', size = 3.8, colour = 'black', parse = TRUE) +
+  #geom_curve(x = 16.2, xend = 16.8, y = 1.5, yend = 1.5, arrow = arrow(length = unit(0.1, 'inch')), size = 1.8, color = 'black', curvature = 0.0, linetype = 'solid') +
+  #annotate(geom = 'rect', xmin = 17.2, xmax = 21.2, ymin = 0.95, ymax = 2.05, colour = 'black', fill = 'black', alpha = 0.01) +
+  #annotate(geom = 'text', x = 19.2, y = 1.875, label = 'Delta[p] == mu[p] - mu[w]', size = 3.8, colour = 'black', parse = TRUE) +
+  #annotate(geom = 'text', x = 19.2, y = 1.5, label = 'b[p] == frac(cov(mu[p] - mu[w]), var(mu[p]))', size = 3.8, colour = 'black', parse = TRUE) +
+  #annotate(geom = 'text', x = 19.2, y = 1.125, label = 'hat(acc[p])', size = 3.8, colour = 'black', parse = TRUE) +
 
   # Se dibujan los años de toma de datos:
-  annotate(geom = 'text', x = 1.0, y = 2.06, label = '1984', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 8.7, y = 2.06, label = '2017', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 10.9, y = 2.06, label = '2019', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 12.0, y = 2.06, label = '2023', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 1.0, y = 1.31, label = '1984', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 8.7, y = 1.31, label = '2017', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 10.9, y = 1.31, label = '2019', size = 2.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 12.0, y = 1.31, label = '2023', size = 2.4, colour = 'black', angle = 45) +
-
+  annotate(geom = 'text', x = 1.0, y = 1.21, label = '1984', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 1.0, xend = 1.0, y = 1.15, yend = 1.18, colour = 'orange') +
+  #annotate(geom = 'text', x = 8.7, y = 1.21, label = '2017', size = 3.4, colour = 'black', angle = 45) +
+  #annotate(geom = 'text', x = 10.9, y = 1.21, label = '2019', size = 3.4, colour = 'black', angle = 45) +
+  annotate(geom = 'text', x = 12.0, y = 1.21, label = '2023', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 12.0, xend = 12.0, y = 1.15, yend = 1.18, colour = 'orange') +
+  annotate(geom = 'text', x = 1.0, y = 1.96, label = '1984', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 1.0, xend = 1.0, y = 1.9, yend = 1.93, colour = 'orange') +
+  annotate(geom = 'text', x = 8.7, y = 1.96, label = '2017', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 9.0, xend = 9.0, y = 1.9, yend = 1.93, colour = 'orange') +
+  annotate(geom = 'text', x = 10.9, y = 1.96, label = '2019', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.9, yend = 1.93, colour = 'orange') +
+  annotate(geom = 'text', x = 12.0, y = 1.96, label = '2023', size = 3.4, colour = 'black') +
+  annotate(geom = 'segment', x = 12.0, xend = 12.0, y = 1.9, yend = 1.93, colour = 'orange') +
+  
+  labs(title = 'Descripción esquemática de la validación mediante el método LR', x = NULL, y = NULL) +
+  scale_x_continuous(limits = c(1.0, 16.2)) +
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
-        axis.title = element_blank())
+        axis.title = element_blank(),
+        plot.title = element_text(size = 10, face = 'bold'))
 
 ggsave('expo_Cartagena/Figuras/metodo_LR.png', width = 20, height = 8, units = 'cm')
+```
+
+<!--
+NOTA: Hola
+-->
+
+```{r}
+#| label: Hola
+
+# Se importa los datos con las estimas para el caracter peso al destete (del análisis uni-caracter) y posteriormente se calcula los intervalos de confianza al 95% para cada estima ----
+
+LR_est_PD <- read_delim(file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/Estadisticos_LR_PD_uni.txt', col_names = TRUE, delim = ' ')
+
+lower_bounds <- vector() # Se crea un vector para almacenar los límites inferiores de los intervalos de confianza.
+upper_bounds <- vector() # Se crea un vector para almacenar los límites superiores de los intervalos de confianza.
+
+for (i in 1:nrow(LR_est_PD)) { # Mediante un ciclio for se calcula los intervalos de confianza al 95% para cada valor de estimación.
+  # Estimación:
+  valor <- LR_est_PD$Valor[i]
+  # Error estándar:
+  error_estandar <- LR_est_PD$Error_estandar[i]
+  # Calculo del límite inferior del intervalo de confianza:
+  lower_bound <- valor - 1.96 * error_estandar
+  # Calculo del límite superior del intervalo de confianza:
+  upper_bound <- valor + 1.96 * error_estandar
+  # Se agrega los límites a los vectores correspondientes:
+  lower_bounds <- c(lower_bounds, lower_bound)
+  upper_bounds <- c(upper_bounds, upper_bound)
+  }
+
+intervalos_confianza <- tibble(
+  ICI = lower_bounds,
+  ICS = upper_bounds
+  )
+
+LR_est_PD_2 <- bind_cols(LR_est_PD, intervalos_confianza) |>
+  mutate(
+    Escenarios = case_when(
+      Densidad_marcador == '50k_directo' ~ 'E1_D',
+      Densidad_marcador == '50k_materno' ~ 'E1_M',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E3_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E3_M',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4_M',
+      Densidad_marcador == 'HD_directo' ~ 'E2_D',
+      Densidad_marcador == 'HD_materno' ~ 'E2_M'
+      )
+    )
+
+# Se importa los datos con las estimas para los caracteres edad al primer partor e intervalo entre el primer y segundo parto (del análisis bi-caracter) y posteriormente se calcula los intervalos de confianza al 95% para cada estima ----
+
+LR_est_EPP_IEP <- read_delim(file = 'eva_genetica/Datos/metodo_LR/EPP_IEP/Estadisticos_LR_EPP_IEP_bi.txt', col_names = TRUE, delim = ' ')
+
+lower_bounds <- vector() # Se crea un vector para almacenar los límites inferiores de los intervalos de confianza.
+upper_bounds <- vector() # Se crea un vector para almacenar los límites superiores de los intervalos de confianza.
+
+for (i in 1:nrow(LR_est_EPP_IEP)) { # Mediante un ciclio for se calcula los intervalos de confianza al 95% para cada valor de estimación.
+  # Estimación:
+  valor <- LR_est_EPP_IEP$Valor[i]
+  # Error estándar:
+  error_estandar <- LR_est_EPP_IEP$Error_estandar[i]
+  # Calculo del límite inferior del intervalo de confianza:
+  lower_bound <- valor - 1.96 * error_estandar
+  # Calculo del límite superior del intervalo de confianza:
+  upper_bound <- valor + 1.96 * error_estandar
+  # Se agrega los límites a los vectores correspondientes:
+  lower_bounds <- c(lower_bounds, lower_bound)
+  upper_bounds <- c(upper_bounds, upper_bound)
+  }
+
+intervalos_confianza <- tibble(
+  ICI = lower_bounds,
+  ICS = upper_bounds
+  )
+
+LR_est_EPP_IEP_2 <- bind_cols(LR_est_EPP_IEP, intervalos_confianza) |>
+  mutate(
+    Escenarios = case_when(
+      Densidad_marcador == '50k' ~ 'E1',
+      Densidad_marcador == 'SNP_tags' ~ 'E3',
+      Densidad_marcador == 'SNP_tags_sing' ~ 'E4',
+      Densidad_marcador == 'HD' ~ 'E2'
+      )
+    )
+
+# Se unen los resultados del análisis uni- y bi-carácter ----
+
+LR_est <- bind_rows(LR_est_PD_2, LR_est_EPP_IEP_2)
+
+# Se visualizan los resultados ----
+
+orden_escenarios <- c('E1', 'E1_D', 'E1_M', 'E2', 'E2_D', 'E2_M', 'E3', 'E3_D', 'E3_M', 'E4', 'E4_D', 'E4_M') # Se define el orden deseado de las variables en el eje x.
+
+LR_est <- LR_est |>
+  mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
+
+#####################################################################
+# 1. Edad al primer parto e intervalo entre el primer y segundo parto
+#####################################################################
+
+#######
+# Sesgo
+#######
+
+sesgo <- LR_est |>
+  filter(Estadistico == 'level_bias_in_GSD')
+
+sesgo_EPP <- ggplot(data = sesgo |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 5), '±', round(Error_estandar, digits = 2))), size = 5.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete', y = 'Sesgo', x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/sesgo_EPP_uni_bi.png', width = 26, height = 26, units = 'cm')
+
+sesgo_IEP <- ggplot(data = sesgo |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 5), '±', round(Error_estandar, digits = 2))), size = 5.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Intervalo entre el primer y el segundo parto', y = NULL, x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/sesgo_IEP_uni_bi.png', width = 26, height = 26, units = 'cm')
+
+############
+# Dispersión
+############
+
+dispersion <- LR_est |>
+  filter(Estadistico == 'dispersion_bias')
+
+dispersion_EPP <- ggplot(data = dispersion |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete', y = 'Dispersión', x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/dispersion_EPP_uni_bi.png', width = 26, height = 26, units = 'cm')
+
+dispersion_IEP <- ggplot(data = dispersion |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Intervalo entre el primer y el segundo parto', y = NULL, x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/dispersion_IEP_uni_bi.png', width = 26, height = 26, units = 'cm')
+
+###########
+# Precisión
+###########
+
+precision <- LR_est |>
+  filter(Estadistico == 'rho')
+
+precision_EPP <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete', y = 'Precisión', x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_EPP_uni_bi.png', width = 26, height = 26, units = 'cm')
+
+precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Intervalo entre el primer y el segundo parto', y = NULL, x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_IEP_uni_bi.png', width = 26, height = 26, units = 'cm')
 ```
