@@ -15922,7 +15922,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 62.6
+  )
 
 #################
 # Datos parciales
@@ -15967,13 +15967,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_50k_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', '50k_directo', 'level_bias', 0.958878, 0.325569,
-  'peso_Dtte', '50k_directo', 'level_bias_in_GSD', 0.065240, 0.022151,
-  'peso_Dtte', '50k_directo', 'dispersion_bias', 0.965001, 0.043761,
-  'peso_Dtte', '50k_directo', 'accuracy_partial', 0.426622, 0.025742,
+  'peso_Dtte', '50k_directo', 'level_bias', 0.868273, 0.384052,
+  'peso_Dtte', '50k_directo', 'level_bias_in_GSD', 0.059076, 0.026130,
+  'peso_Dtte', '50k_directo', 'dispersion_bias', 0.920920, 0.069270,
+  'peso_Dtte', '50k_directo', 'accuracy_partial', 0.384980, 0.020279,
   'peso_Dtte', '50k_directo', 'average_F', -0.033722, 0.005188,
-  'peso_Dtte', '50k_directo', 'rho', 0.791485, 0.028675,
-  'peso_Dtte', '50k_directo', 'inc_acc', 1.263448, 0.046645
+  'peso_Dtte', '50k_directo', 'rho', 0.697725, 0.035295,
+  'peso_Dtte', '50k_directo', 'inc_acc', 1.433230, 0.074280
   )
 
 #########################
@@ -16065,13 +16065,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_50k_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', '50k_materno', 'level_bias', -0.136433, 0.197033,
-  'peso_Dtte', '50k_materno', 'level_bias_in_GSD', -0.012985, 0.018752,
-  'peso_Dtte', '50k_materno', 'dispersion_bias', 0.879868, 0.039809,
-  'peso_Dtte', '50k_materno', 'accuracy_partial', 0.412740, 0.020454,
+  'peso_Dtte', '50k_materno', 'level_bias', -0.353533, 0.242811,
+  'peso_Dtte', '50k_materno', 'level_bias_in_GSD', -0.033647, 0.023109,
+  'peso_Dtte', '50k_materno', 'dispersion_bias', 0.903044, 0.057824,
+  'peso_Dtte', '50k_materno', 'accuracy_partial', 0.351260, 0.019772,
   'peso_Dtte', '50k_materno', 'average_F', -0.033722, 0.005107,
-  'peso_Dtte', '50k_materno', 'rho', 0.823011, 0.021836,
-  'peso_Dtte', '50k_materno', 'inc_acc', 1.215051, 0.032633
+  'peso_Dtte', '50k_materno', 'rho', 0.709584, 0.034495,
+  'peso_Dtte', '50k_materno', 'inc_acc', 1.409277, 0.070024
   )
 
 ###########################
@@ -16184,13 +16184,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_HD_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'HD_directo', 'level_bias', 0.984391, 0.331308,
-  'peso_Dtte', 'HD_directo', 'level_bias_in_GSD', 0.066536, 0.022393,
-  'peso_Dtte', 'HD_directo', 'dispersion_bias', 0.997852, 0.042730,
-  'peso_Dtte', 'HD_directo', 'accuracy_partial', 0.422604, 0.026309,
+  'peso_Dtte', 'HD_directo', 'level_bias', 0.953780, 0.376886,
+  'peso_Dtte', 'HD_directo', 'level_bias_in_GSD', 0.064467, 0.025474,
+  'peso_Dtte', 'HD_directo', 'dispersion_bias', 0.977384, 0.068328,
+  'peso_Dtte', 'HD_directo', 'accuracy_partial', 0.384186, 0.022073,
   'peso_Dtte', 'HD_directo', 'average_F', -0.040789, 0.005627,
-  'peso_Dtte', 'HD_directo', 'rho', 0.790490, 0.028798,
-  'peso_Dtte', 'HD_directo', 'inc_acc', 1.265037, 0.047041
+  'peso_Dtte', 'HD_directo', 'rho', 0.711220, 0.035255,
+  'peso_Dtte', 'HD_directo', 'inc_acc', 1.406034, 0.071435
   )
 
 #########################
@@ -16281,13 +16281,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_HD_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'HD_materno', 'level_bias', -0.125027, 0.193187,
-  'peso_Dtte', 'HD_materno', 'level_bias_in_GSD', -0.011817, 0.018259,
-  'peso_Dtte', 'HD_materno', 'dispersion_bias', 0.881118, 0.039038,
-  'peso_Dtte', 'HD_materno', 'accuracy_partial', 0.383778, 0.018547,
+  'peso_Dtte', 'HD_materno', 'level_bias', -0.378961, 0.240407,
+  'peso_Dtte', 'HD_materno', 'level_bias_in_GSD', -0.035818, 0.022722,
+  'peso_Dtte', 'HD_materno', 'dispersion_bias', 0.874052, 0.054666,
+  'peso_Dtte', 'HD_materno', 'accuracy_partial', 0.325384, 0.018816,
   'peso_Dtte', 'HD_materno', 'average_F', -0.040789, 0.005709,
-  'peso_Dtte', 'HD_materno', 'rho', 0.805808, 0.023425,
-  'peso_Dtte', 'HD_materno', 'inc_acc', 1.240991, 0.036465
+  'peso_Dtte', 'HD_materno', 'rho', 0.680455, 0.037278,
+  'peso_Dtte', 'HD_materno', 'inc_acc', 1.469605, 0.082719
   )
 
 #################################
@@ -16400,13 +16400,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_directo', 'level_bias', 0.988098, 0.331413,
-  'peso_Dtte', 'SNP_tags_directo', 'level_bias_in_GSD', 0.066857, 0.022424,
-  'peso_Dtte', 'SNP_tags_directo', 'dispersion_bias', 1.005907, 0.041679,
-  'peso_Dtte', 'SNP_tags_directo', 'accuracy_partial', 0.422642, 0.026415,
+  'peso_Dtte', 'SNP_tags_directo', 'level_bias', 0.972263, 0.382081,
+  'peso_Dtte', 'SNP_tags_directo', 'level_bias_in_GSD', 0.065785, 0.025852,
+  'peso_Dtte', 'SNP_tags_directo', 'dispersion_bias', 0.990989, 0.069244,
+  'peso_Dtte', 'SNP_tags_directo', 'accuracy_partial', 0.382660, 0.021803,
   'peso_Dtte', 'SNP_tags_directo', 'average_F', -0.040852, 0.005631,
-  'peso_Dtte', 'SNP_tags_directo', 'rho', 0.791900, 0.028032,
-  'peso_Dtte', 'SNP_tags_directo', 'inc_acc', 1.262786, 0.045534
+  'peso_Dtte', 'SNP_tags_directo', 'rho', 0.711650, 0.034712,
+  'peso_Dtte', 'SNP_tags_directo', 'inc_acc', 1.405186, 0.070324
   )
 
 #########################
@@ -16498,13 +16498,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_materno', 'level_bias', -0.122809, 0.192973,
-  'peso_Dtte', 'SNP_tags_materno', 'level_bias_in_GSD', -0.011638, 0.018287,
-  'peso_Dtte', 'SNP_tags_materno', 'dispersion_bias', 0.883025, 0.039494,
-  'peso_Dtte', 'SNP_tags_materno', 'accuracy_partial', 0.383348, 0.018867,
+  'peso_Dtte', 'SNP_tags_materno', 'level_bias', -0.402172, 0.241086,
+  'peso_Dtte', 'SNP_tags_materno', 'level_bias_in_GSD', -0.038112, 0.022847,
+  'peso_Dtte', 'SNP_tags_materno', 'dispersion_bias', 0.873066, 0.056243,
+  'peso_Dtte', 'SNP_tags_materno', 'accuracy_partial', 0.323963, 0.018787,
   'peso_Dtte', 'SNP_tags_materno', 'average_F', -0.040852, 0.005788,
-  'peso_Dtte', 'SNP_tags_materno', 'rho', 0.805281, 0.023614,
-  'peso_Dtte', 'SNP_tags_materno', 'inc_acc', 1.241802, 0.036948
+  'peso_Dtte', 'SNP_tags_materno', 'rho', 0.676514, 0.037286,
+  'peso_Dtte', 'SNP_tags_materno', 'inc_acc', 1.478166, 0.083491
   )
 
 ###############################################
@@ -16617,13 +16617,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_sing_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias', 0.919204, 0.332889,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias_in_GSD', 0.062354, 0.022581,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'dispersion_bias', 0.996717, 0.041636,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'accuracy_partial', 0.421722, 0.026915,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias', 0.891427, 0.384119,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'level_bias_in_GSD', 0.060469, 0.026056,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'dispersion_bias', 0.983549, 0.070030,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'accuracy_partial', 0.381794, 0.021903,
   'peso_Dtte', 'SNP_tags_sing_directo', 'average_F', -0.041380, 0.005732,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'rho', 0.790341, 0.029204,
-  'peso_Dtte', 'SNP_tags_sing_directo', 'inc_acc', 1.265276, 0.047692
+  'peso_Dtte', 'SNP_tags_sing_directo', 'rho', 0.710770, 0.035769,
+  'peso_Dtte', 'SNP_tags_sing_directo', 'inc_acc', 1.406924, 0.072655
   )
 
 #########################
@@ -16715,13 +16715,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_sing_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias', -0.089526, 0.195684,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias_in_GSD', -0.008455, 0.018480,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'dispersion_bias', 0.873215, 0.039358,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'accuracy_partial', 0.383308, 0.018728,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias', -0.345936, 0.238254,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'level_bias_in_GSD', -0.032669, 0.022500,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'dispersion_bias', 0.874360, 0.057703,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'accuracy_partial', 0.321909, 0.018162,
   'peso_Dtte', 'SNP_tags_sing_materno', 'average_F', -0.041380, 0.005828,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'rho', 0.805725, 0.023302,
-  'peso_Dtte', 'SNP_tags_sing_materno', 'inc_acc', 1.241118, 0.036380
+  'peso_Dtte', 'SNP_tags_sing_materno', 'rho', 0.677105, 0.036246,
+  'peso_Dtte', 'SNP_tags_sing_materno', 'inc_acc', 1.476877, 0.080923
   )
 
 ################################################
@@ -16834,13 +16834,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val1_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias', 0.942331, 0.320697,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias_in_GSD', 0.064199, 0.021848,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'dispersion_bias', 0.965670, 0.043483,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'accuracy_partial', 0.420266, 0.025820,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias', 0.843326, 0.364625,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'level_bias_in_GSD', 0.057454, 0.024841,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'dispersion_bias', 0.957122, 0.065547,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'accuracy_partial', 0.381642, 0.022374,
   'peso_Dtte', 'SNP_tags_val1_directo', 'average_F', -0.039875, 0.005548,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'rho', 0.791620, 0.028269,
-  'peso_Dtte', 'SNP_tags_val1_directo', 'inc_acc', 1.263233, 0.046038
+  'peso_Dtte', 'SNP_tags_val1_directo', 'rho', 0.715677, 0.034730,
+  'peso_Dtte', 'SNP_tags_val1_directo', 'inc_acc', 1.397278, 0.069773
   )
 
 #########################
@@ -16930,13 +16930,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val1_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias', -0.075557, 0.185476,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias_in_GSD', -0.007340, 0.018018,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'dispersion_bias', 0.867881, 0.039160,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'accuracy_partial', 0.384383, 0.020517,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias', -0.254959, 0.231496,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'level_bias_in_GSD', -0.024768, 0.022489,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'dispersion_bias', 0.796407, 0.054064,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'accuracy_partial', 0.335063, 0.020916,
   'peso_Dtte', 'SNP_tags_val1_materno', 'average_F', -0.039875, 0.005660,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'rho', 0.812247, 0.023399,
-  'peso_Dtte', 'SNP_tags_val1_materno', 'inc_acc', 1.231153, 0.036037
+  'peso_Dtte', 'SNP_tags_val1_materno', 'rho', 0.678246, 0.038834,
+  'peso_Dtte', 'SNP_tags_val1_materno', 'inc_acc', 1.474392, 0.086956
   )
 
 ################################################
@@ -17049,13 +17049,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val2_directo <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias', 0.919529, 0.311349,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias_in_GSD', 0.062928, 0.021307,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'dispersion_bias', 0.974289, 0.044095,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'accuracy_partial', 0.432508, 0.024903,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias', 0.814669, 0.359064,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'level_bias_in_GSD', 0.055752, 0.024573,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'dispersion_bias', 0.976092, 0.063487,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'accuracy_partial', 0.394087, 0.022468,
   'peso_Dtte', 'SNP_tags_val2_directo', 'average_F', -0.038688, 0.005490,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'rho', 0.808861, 0.024953,
-  'peso_Dtte', 'SNP_tags_val2_directo', 'inc_acc', 1.236306, 0.038807
+  'peso_Dtte', 'SNP_tags_val2_directo', 'rho', 0.737689, 0.030695,
+  'peso_Dtte', 'SNP_tags_val2_directo', 'inc_acc', 1.355585, 0.057609
   )
 
 #########################
@@ -17147,12 +17147,13 @@ LR_est_PD$stats # Se ven los resultados.
 
 LR_est_PD_SNP_tags_val2_materno <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias', -0.022840, 0.188689,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias_in_GSD', -0.002212, 0.018272,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'dispersion_bias', 0.896025, 0.040393,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'accuracy_partial', 0.399830, 0.020085,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'rho', 0.824695, 0.021591,
-  'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.212569, 0.032184
+  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias', -0.213763, 0.227721,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'level_bias_in_GSD', -0.020700, 0.022052,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'dispersion_bias', 0.892402, 0.049689,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'accuracy_partial', 0.355107, 0.019536,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'average_F', -0.038688, 0.005488,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'rho', 0.730967, 0.031878,
+  'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.368051, 0.060885
   )
 
 # Se une los objetos donde se indica las estimas del método LR para las distintas densidades de marcadores ----

@@ -6785,7 +6785,7 @@ ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Pa
   right_join(y = ind_renum_datP, by = 'ID_renum') |>
   select(ID_original, EBV_parcial)
 
-write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', col_names = TRUE)
+write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', col_names = TRUE) # NOTA: FALTA MODIFICAR ESTO CON EL GRUPO DE VALIDACIön BIEN.
 
 part <- read.table('eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
@@ -6868,7 +6868,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 271.0
+  )
 
 #################
 # Datos parciales
@@ -6913,13 +6913,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_50k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', '50k', 'level_bias', -0.019717, 1.167249,
-  'Edad_primer_parto', '50k', 'level_bias_in_GSD', -0.000443, 0.026216,
-  'Edad_primer_parto', '50k', 'dispersion_bias', 0.926213, 0.050374,
-  'Edad_primer_parto', '50k', 'accuracy_partial', 0.513326, 0.029919,
-  'Edad_primer_parto', '50k', 'average_F', -0.023995, 0.004761,
-  'Edad_primer_parto', '50k', 'rho', 0.813277, 0.030328,
-  'Edad_primer_parto', '50k', 'inc_acc', 1.229593, 0.046795
+  'Edad_primer_parto', '50k', 'level_bias', 4.612109, 1.240843,
+  'Edad_primer_parto', '50k', 'level_bias_in_GSD', 0.103586, 0.027869,
+  'Edad_primer_parto', '50k', 'dispersion_bias', 1.047747, 0.059263,
+  'Edad_primer_parto', '50k', 'accuracy_partial', 0.463537, 0.028374,
+  'Edad_primer_parto', '50k', 'average_F', -0.023995, 0.004819,
+  'Edad_primer_parto', '50k', 'rho', 0.781093, 0.032546,
+  'Edad_primer_parto', '50k', 'inc_acc', 1.280257, 0.054879
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -6985,7 +6985,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 726.0
+  )
 
 #################
 # Datos parciales
@@ -7030,13 +7030,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_HD <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'HD', 'level_bias', 0.208131, 1.165506,
-  'Edad_primer_parto', 'HD', 'level_bias_in_GSD', 0.004596, 0.025737,
-  'Edad_primer_parto', 'HD', 'dispersion_bias', 0.961376, 0.053716,
-  'Edad_primer_parto', 'HD', 'accuracy_partial', 0.481008, 0.029542,
-  'Edad_primer_parto', 'HD', 'average_F', -0.029998, 0.005606,
-  'Edad_primer_parto', 'HD', 'rho', 0.804249, 0.031729,
-  'Edad_primer_parto', 'HD', 'inc_acc', 1.243396, 0.050138
+  'Edad_primer_parto', 'HD', 'level_bias', 4.760797, 1.244472,
+  'Edad_primer_parto', 'HD', 'level_bias_in_GSD', 0.105128, 0.027480,
+  'Edad_primer_parto', 'HD', 'dispersion_bias', 1.098732, 0.062307,
+  'Edad_primer_parto', 'HD', 'accuracy_partial', 0.431693, 0.028011,
+  'Edad_primer_parto', 'HD', 'average_F', -0.029998, 0.005587,
+  'Edad_primer_parto', 'HD', 'rho', 0.771636, 0.034361,
+  'Edad_primer_parto', 'HD', 'inc_acc', 1.295948, 0.059399
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7102,7 +7102,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 732.0
+  )
 
 #################
 # Datos parciales
@@ -7147,13 +7147,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags', 'level_bias', 0.160902, 1.154254,
-  'Edad_primer_parto', 'SNP_tags', 'level_bias_in_GSD', 0.003563, 0.025559,
-  'Edad_primer_parto', 'SNP_tags', 'dispersion_bias', 0.965623, 0.051705,
-  'Edad_primer_parto', 'SNP_tags', 'accuracy_partial', 0.485312, 0.029389,
+  'Edad_primer_parto', 'SNP_tags', 'level_bias', 4.659460, 1.248118,
+  'Edad_primer_parto', 'SNP_tags', 'level_bias_in_GSD', 0.103175, 0.027637,
+  'Edad_primer_parto', 'SNP_tags', 'dispersion_bias', 1.096845, 0.060912,
+  'Edad_primer_parto', 'SNP_tags', 'accuracy_partial', 0.436630, 0.028412,
   'Edad_primer_parto', 'SNP_tags', 'average_F', -0.030035, 0.005651,
-  'Edad_primer_parto', 'SNP_tags', 'rho', 0.807774, 0.030875,
-  'Edad_primer_parto', 'SNP_tags', 'inc_acc', 1.237969, 0.048435
+  'Edad_primer_parto', 'SNP_tags', 'rho', 0.774552, 0.034290,
+  'Edad_primer_parto', 'SNP_tags', 'inc_acc', 1.291069, 0.058740
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7219,7 +7219,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 724.0
+  )
 
 #################
 # Datos parciales
@@ -7264,13 +7264,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_sing <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias', 0.248522, 1.145234,
-  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias_in_GSD', 0.005500, 0.025343,
-  'Edad_primer_parto', 'SNP_tags_sing', 'dispersion_bias', 0.976298, 0.051678,
-  'Edad_primer_parto', 'SNP_tags_sing', 'accuracy_partial', 0.479324, 0.028683,
+  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias', 4.753982, 1.251597,
+  'Edad_primer_parto', 'SNP_tags_sing', 'level_bias_in_GSD', 0.105203, 0.027697,
+  'Edad_primer_parto', 'SNP_tags_sing', 'dispersion_bias', 1.113941, 0.060718,
+  'Edad_primer_parto', 'SNP_tags_sing', 'accuracy_partial', 0.429817, 0.027573,
   'Edad_primer_parto', 'SNP_tags_sing', 'average_F', -0.030333, 0.005768,
-  'Edad_primer_parto', 'SNP_tags_sing', 'rho', 0.807171, 0.030885,
-  'Edad_primer_parto', 'SNP_tags_sing', 'inc_acc', 1.238895, 0.048441
+  'Edad_primer_parto', 'SNP_tags_sing', 'rho', 0.773144, 0.033828,
+  'Edad_primer_parto', 'SNP_tags_sing', 'inc_acc', 1.293421, 0.058040
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7336,7 +7336,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 657.0
+  )
 
 #################
 # Datos parciales
@@ -7381,13 +7381,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_val1 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias', 0.515900, 1.134107,
-  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias_in_GSD', 0.011624, 0.025553,
-  'Edad_primer_parto', 'SNP_tags_val1', 'dispersion_bias', 0.930054, 0.053927,
+  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias', 4.939751, 1.216928,
+  'Edad_primer_parto', 'SNP_tags_val1', 'level_bias_in_GSD', 0.111301, 0.027419,
+  'Edad_primer_parto', 'SNP_tags_val1', 'dispersion_bias', 1.059239, 0.064866,
   'Edad_primer_parto', 'SNP_tags_val1', 'average_F', -0.028676, 0.005328,
-  'Edad_primer_parto', 'SNP_tags_val1', 'accuracy_partial', 0.476089, 0.028708,
-  'Edad_primer_parto', 'SNP_tags_val1', 'rho', 0.795024, 0.032724,
-  'Edad_primer_parto', 'SNP_tags_val1', 'inc_acc', 1.257823, 0.053184
+  'Edad_primer_parto', 'SNP_tags_val1', 'accuracy_partial', 0.421447, 0.027045,
+  'Edad_primer_parto', 'SNP_tags_val1', 'rho', 0.761759, 0.034842,
+  'Edad_primer_parto', 'SNP_tags_val1', 'inc_acc', 1.312752, 0.061967
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7453,7 +7453,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 665.0
+  )
 
 #################
 # Datos parciales
@@ -7498,13 +7498,13 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_SNP_tags_val2 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias', 0.498153, 1.111120,
-  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias_in_GSD', 0.011283, 0.025166,
-  'Edad_primer_parto', 'SNP_tags_val2', 'dispersion_bias', 0.945655, 0.050424,
-  'Edad_primer_parto', 'SNP_tags_val2', 'accuracy_partial', 0.479128, 0.029380,
+  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias', 5.033372, 1.194673,
+  'Edad_primer_parto', 'SNP_tags_val2', 'level_bias_in_GSD', 0.114001, 0.027058,
+  'Edad_primer_parto', 'SNP_tags_val2', 'dispersion_bias', 1.066438, 0.060647,
+  'Edad_primer_parto', 'SNP_tags_val2', 'accuracy_partial', 0.432543, 0.027972,
   'Edad_primer_parto', 'SNP_tags_val2', 'average_F', -0.028306, 0.005363,
-  'Edad_primer_parto', 'SNP_tags_val2', 'rho', 0.808956, 0.030616,
-  'Edad_primer_parto', 'SNP_tags_val2', 'inc_acc', 1.236161, 0.048000
+  'Edad_primer_parto', 'SNP_tags_val2', 'rho', 0.775540, 0.033527,
+  'Edad_primer_parto', 'SNP_tags_val2', 'inc_acc', 1.289425, 0.057324
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7688,7 +7688,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 34.0
+  )
 
 #################
 # Datos parciales
@@ -7733,13 +7733,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_50k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', '50k', 'level_bias', 0.267096, 0.454478,
-  'intervalo_P1_P2', '50k', 'level_bias_in_GSD', 0.015445, 0.026281,
-  'intervalo_P1_P2', '50k', 'dispersion_bias', 1.331379, 0.061235,
-  'intervalo_P1_P2', '50k', 'accuracy_partial', 0.435881, 0.030802,
+  'intervalo_P1_P2', '50k', 'level_bias', 1.278905, 0.482494,
+  'intervalo_P1_P2', '50k', 'level_bias_in_GSD', 0.073954, 0.027901,
+  'intervalo_P1_P2', '50k', 'dispersion_bias', 1.457205, 0.070716,
+  'intervalo_P1_P2', '50k', 'accuracy_partial', 0.413678, 0.030201,
   'intervalo_P1_P2', '50k', 'average_F', -0.028901, 0.006263,
-  'intervalo_P1_P2', '50k', 'rho', 0.882642, 0.017230,
-  'intervalo_P1_P2', '50k', 'inc_acc', 1.132963, 0.022436
+  'intervalo_P1_P2', '50k', 'rho', 0.876371, 0.018089,
+  'intervalo_P1_P2', '50k', 'inc_acc', 1.141069, 0.023901
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -7805,7 +7805,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 105.0
+  )
 
 #################
 # Datos parciales
@@ -7850,13 +7850,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_HD <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'HD', 'level_bias', 0.091584, 0.449435,
-  'intervalo_P1_P2', 'HD', 'level_bias_in_GSD', 0.005078, 0.024921,
-  'intervalo_P1_P2', 'HD', 'dispersion_bias', 1.354814, 0.058948,
-  'intervalo_P1_P2', 'HD', 'accuracy_partial', 0.428465, 0.031273,
+  'intervalo_P1_P2', 'HD', 'level_bias', 1.051453, 0.476064,
+  'intervalo_P1_P2', 'HD', 'level_bias_in_GSD', 0.058302, 0.026397,
+  'intervalo_P1_P2', 'HD', 'dispersion_bias', 1.467625, 0.066212,
+  'intervalo_P1_P2', 'HD', 'accuracy_partial', 0.408990, 0.030664,
   'intervalo_P1_P2', 'HD', 'average_F', -0.036465, 0.007327,
-  'intervalo_P1_P2', 'HD', 'rho', 0.894848, 0.016280,
-  'intervalo_P1_P2', 'HD', 'inc_acc', 1.117508, 0.020601
+  'intervalo_P1_P2', 'HD', 'rho', 0.889027, 0.017671,
+  'intervalo_P1_P2', 'HD', 'inc_acc', 1.124826, 0.022684
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -7922,7 +7922,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 104.0
+  )
 
 #################
 # Datos parciales
@@ -7967,13 +7967,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags', 'level_bias', 0.104591, 0.448878,
-  'intervalo_P1_P2', 'SNP_tags', 'level_bias_in_GSD', 0.005799, 0.024886,
-  'intervalo_P1_P2', 'SNP_tags', 'dispersion_bias', 1.350585, 0.058715,
-  'intervalo_P1_P2', 'SNP_tags', 'accuracy_partial', 0.427790, 0.031093,
+  'intervalo_P1_P2', 'SNP_tags', 'level_bias', 1.046267, 0.471737,
+  'intervalo_P1_P2', 'SNP_tags', 'level_bias_in_GSD', 0.058005, 0.026153,
+  'intervalo_P1_P2', 'SNP_tags', 'dispersion_bias', 1.464558, 0.065870,
+  'intervalo_P1_P2', 'SNP_tags', 'accuracy_partial', 0.408134, 0.030116,
   'intervalo_P1_P2', 'SNP_tags', 'average_F', -0.036584, 0.007337,
-  'intervalo_P1_P2', 'SNP_tags', 'rho', 0.894615, 0.016465,
-  'intervalo_P1_P2', 'SNP_tags', 'inc_acc', 1.117799, 0.020854
+  'intervalo_P1_P2', 'SNP_tags', 'rho', 0.888794, 0.017691,
+  'intervalo_P1_P2', 'SNP_tags', 'inc_acc', 1.125121, 0.022715
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -8039,7 +8039,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 102.0
+  )
 
 #################
 # Datos parciales
@@ -8084,13 +8084,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_sing <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias', 0.065194, 0.444724,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias_in_GSD', 0.003618, 0.024679,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'dispersion_bias', 1.344704, 0.058777,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'accuracy_partial', 0.423279, 0.030941,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias', 1.011363, 0.475897,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'level_bias_in_GSD', 0.056124, 0.026409,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'dispersion_bias', 1.463431, 0.066640,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'accuracy_partial', 0.403263, 0.029660,
   'intervalo_P1_P2', 'SNP_tags_sing', 'average_F', -0.037047, 0.007450,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'rho', 0.891657, 0.017050,
-  'intervalo_P1_P2', 'SNP_tags_sing', 'inc_acc', 1.121507, 0.021768
+  'intervalo_P1_P2', 'SNP_tags_sing', 'rho', 0.886201, 0.017791,
+  'intervalo_P1_P2', 'SNP_tags_sing', 'inc_acc', 1.128412, 0.022996
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -8156,7 +8156,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 93.3
+  )
 
 #################
 # Datos parciales
@@ -8201,13 +8201,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_val1 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias', 0.088662, 0.421965,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias_in_GSD', 0.005009, 0.023841,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'dispersion_bias', 1.278764, 0.052445,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'accuracy_partial', 0.418610, 0.032694,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias', 1.040129, 0.452836,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'level_bias_in_GSD', 0.058768, 0.025586,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'dispersion_bias', 1.394117, 0.058474,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'accuracy_partial', 0.399781, 0.031213,
   'intervalo_P1_P2', 'SNP_tags_val1', 'average_F', -0.035250, 0.007029,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'rho', 0.882502, 0.019793,
-  'intervalo_P1_P2', 'SNP_tags_val1', 'inc_acc', 1.133142, 0.025917
+  'intervalo_P1_P2', 'SNP_tags_val1', 'rho', 0.879999, 0.020413,
+  'intervalo_P1_P2', 'SNP_tags_val1', 'inc_acc', 1.136365, 0.026867
   )
 
 LR_est_IEP$plot # Se observa el gráfico.
@@ -8273,7 +8273,7 @@ varA <- summarise(
     .cols = EBV_completo,
     .fns = \(x) var(x, na.rm = TRUE)
     )
-  ) # El resultado es 87.9
+  )
 
 #################
 # Datos parciales
@@ -8318,13 +8318,13 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_SNP_tags_val2 <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias', 0.016029, 0.397228,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias_in_GSD', 0.000938, 0.023258,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'dispersion_bias', 1.253090, 0.049570,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'accuracy_partial', 0.430868, 0.033867,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias', 1.038574, 0.417933,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'level_bias_in_GSD', 0.060808, 0.024470,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'dispersion_bias', 1.381293, 0.056684,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'accuracy_partial', 0.408979, 0.032741,
   'intervalo_P1_P2', 'SNP_tags_val2', 'average_F', -0.034952, 0.007014,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'rho', 0.894014, 0.017588,
-  'intervalo_P1_P2', 'SNP_tags_val2', 'inc_acc', 1.118551, 0.022363
+  'intervalo_P1_P2', 'SNP_tags_val2', 'rho', 0.890949, 0.018565,
+  'intervalo_P1_P2', 'SNP_tags_val2', 'inc_acc', 1.122399, 0.023771
   )
 
 LR_est_IEP$plot # Se observa el gráfico.

@@ -146,7 +146,7 @@ OPTION verify_parentage 3" >> renf90.par
 
 ../../../../../BLUPF90/gibbsf90+ <<AA > gibbs.log
 renf90.par
-70000 10000
+200000 50000
 50
 AA
 

@@ -143,8 +143,8 @@ datGeno_4 |>
 
 datProd_2 <- pDtte |>
   right_join(x = ID_ind_3, by = 'ID') |>
-  filter(año_Nac %in% c(2017, 2018, 2019)) |>
-  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 5562 individuos, en los que se incluyen los 220 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 220 individuos con genotipo y fenotipo.
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 11434 individuos, en los que se incluyen los 220 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 220 individuos con genotipo y fenotipo.
 
 ######################
 # Edad al primer parto
@@ -222,8 +222,8 @@ datGeno_4 |>
 
 datProd_2 <- EPP |>
   right_join(x = ID_ind_3, by = 'ID') |>
-  filter(año_Nac %in% c(2017, 2018, 2019)) |>
-  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 3027 individuos, en los que se incluyen los 189 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 189 individuos con genotipo y fenotipo.
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 3776 individuos, en los que se incluyen los 189 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 189 individuos con genotipo y fenotipo.
 
 ###########################################
 # Intervalo entre el primer y segundo parto
@@ -301,8 +301,8 @@ datGeno_4 |>
 
 datProd_2 <- IEP |>
   right_join(x = ID_ind_3, by = 'ID') |>
-  filter(año_Nac %in% c(2017, 2018, 2019)) |>
-  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 1383 individuos, en los que se incluyen los 131 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 131 individuos con genotipo y fenotipo.
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 1414 individuos, en los que se incluyen los 131 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los tres años, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 131 individuos con genotipo y fenotipo.
 
 ####################################################################
 # Bi-carácter entre edad al primer parto e intervalo parto uno y dos
@@ -384,7 +384,7 @@ pDtte_2 <- pDtte |>
     .after = Pdtte
     )
 
-pDtte_2 |> count(Pdtte_NA) # Hay 5562 individuos con valores de 0 para el peso al destete, que corresponde a los años de nacimiento 2017, 2018 y 2019.
+pDtte_2 |> count(Pdtte_NA) # Hay 11434 individuos con valores de 0 para el peso al destete, que corresponde a los años de nacimiento 2017 a 2023.
 
 pDtte_3 <- pDtte_2 |>
   mutate(
@@ -404,7 +404,7 @@ pDtte_3 |>
 
 pDtte_3 |>
   select(ID, Pdtte_NA, ends_with('_pdtte')) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/pDtte.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/peso_Dtte/Parcial/pDtte_2.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
 
 ######################
 # Edad al primer parto
@@ -425,7 +425,7 @@ EPP_2 <- EPP |>
     .after = EPP
     )
 
-EPP_2 |> count(EPP_NA) # Hay 3027 individuos con valores de 0 para la edad al primer parto, que corresponde a los años de nacimiento 2017, 2018 y 2019.
+EPP_2 |> count(EPP_NA) # Hay 3776 individuos con valores de 0 para la edad al primer parto, que corresponde a los años de nacimiento 2017 a 2023.
 
 EPP_3 <- EPP_2 |>
   mutate(
@@ -445,7 +445,7 @@ EPP_3 |>
 
 EPP_3 |>
   select(ID, EPP_NA, ends_with(c('_EPP', 'P1'))) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/EPP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/EPP_2.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
 
 ###########################################
 # Intervalo entre el primer y segundo parto
@@ -466,7 +466,7 @@ IEP_2 <- IEP |>
     .after = IEP
     )
 
-IEP_2 |> count(IEP_NA) # Hay 1383 individuos con valores de 0 para el intervalo entre el primer y segundo parto, que corresponde a los años de nacimiento 2017, 2018 y 2019.
+IEP_2 |> count(IEP_NA) # Hay 1414 individuos con valores de 0 para el intervalo entre el primer y segundo parto, que corresponde a los años de nacimiento 2017, 2018 y 2019.
 
 IEP_3 <- IEP_2 |>
   mutate(
@@ -486,7 +486,7 @@ IEP_3 |>
 
 IEP_3 |>
   select(ID, IEP_NA, ends_with(c('_IEP', 'P2')), Raza_toro) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/IEP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/IEP_2.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
 
 ####################################################################
 # Bi-carácter entre edad al primer parto e intervalo parto uno y dos
@@ -529,7 +529,7 @@ EPP_IEP |>
 # Parcial
 #########
 
-EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/EPP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para la edad al primer parto.
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/Parcial/EPP_2.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para la edad al primer parto.
   rename(
     ID = X1,
     EPP_NA = X2,
@@ -539,7 +539,7 @@ EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer
     Edad_toro_P1 = X6    
     )
 
-IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/IEP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para el intervalo entre el primer y segundo parto.
+IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/Parcial/IEP_2.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para el intervalo entre el primer y segundo parto.
   rename(
     ID = X1,
     IEP_NA = X2,
@@ -556,7 +556,7 @@ EPP_IEP <- full_join(x = EPP, y = IEP, by = 'ID') |>
   select(ID, EPP_NA, ends_with(c('_EPP', 'P1')), -EPP_IEP, IEP_NA, ends_with(c('_IEP', 'P2')), Raza_toro)
   
 EPP_IEP |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Parcial/EPP_IEP.txt', col_names = FALSE)
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Parcial/EPP_IEP_2.txt', col_names = FALSE)
 ```
 
 <!--

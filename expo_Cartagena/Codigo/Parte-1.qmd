@@ -155,31 +155,130 @@ ggsave('expo_Cartagena/Figuras/ped_nadiv.png', width = 10, height = 10, units = 
 ```
 
 <!--
-NOTA: Se realiza una visualización donde se representen los marcadores a densidad media (50k) y alta (HD), los tag SNPs y los tag SNPs + Singletons.
+NOTA: Se realiza una visualización donde se observa la imputación de 50k a HD, y de HD a 50k.
+-->
+
+```{r}
+#| label: Imputación a densidades posteriores al control de calidad
+
+Venn <- tibble(
+  x = c(0.866, -0.866),
+  y = c(-0.5, -0.5),
+  Densidades = c('HD', '50k')
+  )
+
+# Número de individuos en cada densidad ----
+
+ind_marc <- tibble(
+  individuos = c(284, 2894)
+  ) %>%
+  mutate(
+    x = c(1.5, -1.5),
+    y = c(-0.5, -0.5),
+    label = paste(individuos, '\nindividuos')
+    )
+
+imput_1 <- ggplot(data = Venn) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) + 
+  coord_fixed() +
+  scale_colour_manual(values = c('black', 'orange'), name = 'Densidad de marcador') +
+  scale_fill_manual(values = c('white', 'orange'), name = 'Densidad de marcador') +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(
+    legend.text = element_text(size = 28),
+    legend.title = element_text(size = 28, face = 'bold'),
+    legend.position = 'none',
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  annotate('text', x = ind_marc$x, y = ind_marc$y, label = ind_marc$label, size = 11.5)
+
+ggsave('expo_Cartagena/Figuras/imput_1.png', width = 20, height = 20, units = 'cm')
+
+imput_2 <- ggplot(data = Venn) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) + 
+  coord_fixed() +
+  scale_colour_manual(values = c('black', 'orange'), name = 'Densidad de marcador') +
+  scale_fill_manual(values = c('black', 'white'), name = 'Densidad de marcador') +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(
+    legend.text = element_text(size = 28),
+    legend.title = element_text(size = 28, face = 'bold'),
+    legend.position = 'none',
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  annotate('text', x = ind_marc$x, y = ind_marc$y, label = ind_marc$label, size = 11.5)
+
+ggsave('expo_Cartagena/Figuras/imput_2.png', width = 20, height = 20, units = 'cm')
+
+imput_3 <- ggplot(data = Venn) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) + 
+  coord_fixed() +
+  scale_colour_manual(values = c('black', 'orange'), name = 'Densidad') +
+  scale_fill_manual(values = c('black', 'orange'), name = 'Densidad') +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(
+    legend.text = element_text(size = 28),
+    legend.title = element_text(size = 28, face = 'bold'),
+    legend.position = 'left',
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  annotate('text', x = ind_marc$x, y = ind_marc$y, label = ind_marc$label, size = 11.5)
+
+ggsave('expo_Cartagena/Figuras/ley_imput.png', width = 20, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se realiza una visualización que representa los genotipos a HD.
+-->
+
+```{r}
+#| label: Hola
+
+Circulo <- tibble(
+  x = c(0.866),
+  y = c(-0.5),
+  Densidad = 'HD'
+  )
+
+den_HD <- ggplot(data = Circulo) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidad, colour = Densidad), alpha = 0.2, size = 1.0) + 
+  coord_fixed() +
+  scale_colour_manual(values = 'orange', name = 'Densidad') +
+  scale_fill_manual(values = 'orange', name = 'Densidad') +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(
+    legend.text = element_text(size = 28),
+    legend.title = element_text(size = 28, face = 'bold'),
+    legend.position = 'left',
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+ggsave('expo_Cartagena/Figuras/den_HD.png', width = 20, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se realiza una visualización donde se representen los marcadores a densidad media (50k) y alta (HD).
 -->
 
 ```{r}
 #| label: Graficas de densidades 50k y HD
 
-# Se dibuja dos matriz matrices que representen la unión de ambas densidades y así formar una matriz de densidades combinadas ----
-
-data.frame(x = 1.0, y = 1.0) |>
-  ggplot() +
-
-  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'black', fill = 'black', alpha = 0.2) +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 3.0, ymin = 1.0, ymax = 3.0, colour = 'black', fill = 'black', alpha = 0.01, linewidth = 1.2, linetype = 'dashed', ) +
-    
-  theme_bw() +
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank())
-
-ggsave('expo_Cartagena/Figuras/geno_50k-HD.png', width = 10, height = 10, units = 'cm')
-
-# Se dibuja la matriz de 50k ----
+# Se dibuja la densidad de 50k ----
 
 ggplot() +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'green', fill = 'green', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'black', fill = 'black', alpha = 0.2) +
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
@@ -190,35 +289,62 @@ ggsave('expo_Cartagena/Figuras/geno_50k.png', width = 10, height = 10, units = '
 # Se dibuja la matriz de HD ----
 
 ggplot() +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'cyan', fill = 'cyan', alpha = 0.4) +
+  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'orange', fill = 'orange', alpha = 0.2) +
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         axis.title = element_blank())
 
 ggsave('expo_Cartagena/Figuras/geno_HD.png', width = 10, height = 10, units = 'cm')
+```
 
-# Se dibuja la matriz de Singletons ----
+<!--
+NOTA: Hola
+-->
 
-ggplot() +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'red', fill = 'red', alpha = 0.4) +
+```{r}
+#| label: Hola
+
+ssGBLUP <- data.frame(
+  x = 1.0, y = 1.0
+  ) %>%
+  ggplot() +
+  #geom_blank() +
+  
+  annotate(geom = 'rect', xmin = 1.5, xmax = 4.25, ymin = 7.5, ymax = 9.5, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(geom = 'text', x = 2.875, y = 8.5, label = 'A', size = 8.4, colour = 'black') +
+  annotate(geom = 'text', x = 1.1, y = 8.5, label = 'Matriz A', size = 7.6, angle = 90, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 7.0, xmax = 8.75, ymin = 7.75, ymax = 9.0, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(geom = 'text', x = 7.875, y = 8.375, label = 'G', size = 8.4, colour = 'black') +
+  annotate(geom = 'text', x = 6.6, y = 8.375, label = 'Matriz G', size = 7.6, angle = 90, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 6.0, xmax = 8.75, ymin = 3.75, ymax = 5.75, colour = 'black', fill = 'white', alpha = 0.2) +
+  annotate(geom = 'rect', xmin = 6.8, xmax = 8.55, ymin = 3.95, ymax = 5.05, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(geom = 'text', x = 5.6, y = 4.75, label = 'Matriz H', size = 7.6, angle = 90, colour = 'black') +
+  
+  annotate(geom = 'rect', xmin = 6.275, xmax = 8.475, ymin = 1.4, ymax = 2.2, colour = 'black', fill = 'white', alpha = 0.2, linetype = 'dashed') +
+  annotate(geom = 'text', x = 7.375, y = 1.8, label = 'ssGBLUP', size = 7.6, colour = 'black') +
+  geom_curve(x = 7.375, xend = 7.375, y = 3.45, yend = 2.5, arrow = arrow(length = unit(0.1, 'inch')), size = 1.2, color = 'black', curvature = 0.0, linetype = 'dashed') +
+  
+  #annotate(geom = 'rect', xmin = 1.55, xmax = 3.75, ymin = 1.4, ymax = 2.2, colour = 'black', fill = 'white', alpha = 0.2, linetype = 'dashed') +
+  #annotate(geom = 'text', x = 2.65, y = 1.8, label = 'BLUP', size = 7.6, colour = 'black') +
+  
+  geom_curve(x = 3.0, xend = 5.2, y = 7.3, yend = 4.9, arrow = arrow(length = unit(0.1, 'inch')), size = 1.2, color = 'black', curvature = 0.0, linetype = 'solid') +
+  geom_curve(x = 7.875, xend = 7.875, y = 7.45, yend = 6.05, arrow = arrow(length = unit(0.1, 'inch')), size = 1.2, color = 'black', curvature = 0.0, linetype = 'solid') +
+  #geom_curve(x = 2.65, xend = 2.65, y = 7.3, yend = 2.5, arrow = arrow(length = unit(0.1, 'inch')), size = 1.2, color = 'black', curvature = 0.0, linetype = 'dashed') +
+  
+  #scale_x_continuous(limits = c(0.45, 9.4)) +
+  #scale_y_continuous(limits = c(1.0, 9.9)) +
+  
   theme_bw() +
+  #labs(title = 'ssGBLUP') +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
-        axis.title = element_blank())
+        axis.title = element_blank(),
+        plot.title = element_text(size = 11, face = 'bold'))
 
-ggsave('expo_Cartagena/Figuras/geno_Singletons.png', width = 10, height = 10, units = 'cm')
-
-# Se dibuja la matriz de tags ----
-
-ggplot() +
-  annotate(geom = 'rect', xmin = 1.0, xmax = 2.0, ymin = 1.0, ymax = 2.0, colour = 'orange', fill = 'orange', alpha = 0.4) +
-  theme_bw() +
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank())
-
-ggsave('expo_Cartagena/Figuras/geno_tags.png', width = 10, height = 10, units = 'cm')
+ggsave('expo_Cartagena/Figuras/ssGBLUP.png', width = 20, height = 20, units = 'cm')
 ```
 
 <!--
@@ -234,12 +360,12 @@ data.frame(x = 1.0, y = 1.0) |>
   # Se dibujan los datos completos y paciales:
   annotate(geom = 'rect', xmin = 1.0, xmax = 9.0, ymin = 1.0, ymax = 1.15, colour = 'orange', fill = 'orange', alpha = 0.2) +
   annotate(geom = 'rect', xmin = 1.0, xmax = 12.0, ymin = 1.75, ymax = 1.9, colour = 'orange', fill = 'orange', alpha = 0.2) +
-  annotate(geom = 'rect', xmin = 10.5, xmax = 12.0, ymin = 1.0, ymax = 1.15, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  #annotate(geom = 'rect', xmin = 10.5, xmax = 12.0, ymin = 1.0, ymax = 1.15, colour = 'orange', fill = 'orange', alpha = 0.2) +
 
   
   # Se dibuja una línea que corresponde a los individuos focales (o de validación):
   annotate(geom = 'segment', x = 9.0, xend = 9.0, y = 1.0, yend = 1.9, colour = 'black', alpha = 1.2, linewidth = 1.0, linetype = 'longdash') +
-  annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.0, yend = 1.9, colour = 'black', alpha = 1.2, linewidth = 1.0, linetype = 'longdash') +
+  #annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.0, yend = 1.9, colour = 'black', alpha = 1.2, linewidth = 1.0, linetype = 'longdash') +
   #geom_curve(x = 11.1, xend = 10.1, y = 1.68, yend = 1.73, arrow = arrow(length = unit(0.1, 'inch')), size = 0.4, color = 'black', curvature = -0.2, linetype = 'solid') +
   #annotate(geom = 'text', x = 11.9, y = 1.65, label = 'Validación', size = 3.8, colour = 'black') +
 
@@ -261,14 +387,14 @@ data.frame(x = 1.0, y = 1.0) |>
   annotate(geom = 'segment', x = 1.0, xend = 1.0, y = 1.15, yend = 1.18, colour = 'orange') +
   #annotate(geom = 'text', x = 8.7, y = 1.21, label = '2017', size = 3.4, colour = 'black', angle = 45) +
   #annotate(geom = 'text', x = 10.9, y = 1.21, label = '2019', size = 3.4, colour = 'black', angle = 45) +
-  annotate(geom = 'text', x = 12.0, y = 1.21, label = '2023', size = 3.4, colour = 'black') +
-  annotate(geom = 'segment', x = 12.0, xend = 12.0, y = 1.15, yend = 1.18, colour = 'orange') +
+  #annotate(geom = 'text', x = 12.0, y = 1.21, label = '2023', size = 3.4, colour = 'black') +
+  #annotate(geom = 'segment', x = 12.0, xend = 12.0, y = 1.15, yend = 1.18, colour = 'orange') +
   annotate(geom = 'text', x = 1.0, y = 1.96, label = '1984', size = 3.4, colour = 'black') +
   annotate(geom = 'segment', x = 1.0, xend = 1.0, y = 1.9, yend = 1.93, colour = 'orange') +
   annotate(geom = 'text', x = 8.7, y = 1.96, label = '2017', size = 3.4, colour = 'black') +
   annotate(geom = 'segment', x = 9.0, xend = 9.0, y = 1.9, yend = 1.93, colour = 'orange') +
-  annotate(geom = 'text', x = 10.9, y = 1.96, label = '2019', size = 3.4, colour = 'black') +
-  annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.9, yend = 1.93, colour = 'orange') +
+  #annotate(geom = 'text', x = 10.9, y = 1.96, label = '2019', size = 3.4, colour = 'black') +
+  #annotate(geom = 'segment', x = 10.5, xend = 10.5, y = 1.9, yend = 1.93, colour = 'orange') +
   annotate(geom = 'text', x = 12.0, y = 1.96, label = '2023', size = 3.4, colour = 'black') +
   annotate(geom = 'segment', x = 12.0, xend = 12.0, y = 1.9, yend = 1.93, colour = 'orange') +
   
@@ -391,7 +517,7 @@ sesgo <- LR_est |>
 sesgo_EPP <- ggplot(data = sesgo |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = sesgo |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 5), '±', round(Error_estandar, digits = 2))), size = 5.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
-  labs(title = 'Peso al destete', y = 'Sesgo', x = NULL) +
+  labs(title = 'Edad al primer parto', y = 'Sesgo', x = NULL) +
   scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
   scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
   theme_bw() +
@@ -438,7 +564,7 @@ dispersion <- LR_est |>
 dispersion_EPP <- ggplot(data = dispersion |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = dispersion |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
-  labs(title = 'Peso al destete', y = 'Dispersión', x = NULL) +
+  labs(title = 'Edad al primer parto', y = 'Dispersión', x = NULL) +
   scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
   scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
   theme_bw() +
@@ -480,12 +606,70 @@ ggsave('expo_Cartagena/Figuras/dispersion_IEP_uni_bi.png', width = 26, height = 
 ###########
 
 precision <- LR_est |>
-  filter(Estadistico == 'rho')
+  filter(Estadistico == 'accuracy_partial')
 
 precision_EPP <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
-  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
-  labs(title = 'Peso al destete', y = 'Precisión', x = NULL) +
+  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'Edad_primer_parto' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2))), size = 8.4, box.padding = 0.4, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'EPP', y = 'Precisión', x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 24, face = 'bold'),
+    axis.title = element_text(size = 24, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 23, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 24, face = 'bold'),
+    legend.text = element_text(size = 23)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_EPP_uni_bi.png', width = 20, height = 20, units = 'cm')
+
+precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 4))), size = 8.4, box.padding = 0.4, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'IEP', y = NULL, x = NULL) +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 24, face = 'bold'),
+    axis.title = element_text(size = 24, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 23, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 22, face = 'bold'),
+    legend.text = element_text(size = 21)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_IEP_uni_bi.png', width = 20, height = 20, units = 'cm')
+
+####################
+# 2. Peso al destete
+####################
+
+#######
+# Sesgo
+#######
+
+#####################
+# 3.1. Efecto directo
+#####################
+
+sesgo <- LR_est |>
+  filter(
+    Estadistico == 'level_bias_in_GSD',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+sesgo_PD_directo <- ggplot(data = sesgo |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')), aes(label = paste(round(Valor, digits = 4), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete - efecto directo', y = 'Sesgo', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
   scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
   scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
   theme_bw() +
@@ -500,12 +684,22 @@ precision_EPP <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_part
     legend.text = element_text(size = 17)
     )
 
-ggsave('expo_Cartagena/Figuras/precision_EPP_uni_bi.png', width = 26, height = 26, units = 'cm')
+ggsave('expo_Cartagena/Figuras/sesgo_PD_uni_bi_dir.pdf', width = 40, height = 20, units = 'cm')
 
-precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+#####################
+# 3.2. Efecto materno
+#####################
+
+sesgo <- LR_est |>
+  filter(
+    Estadistico == 'level_bias_in_GSD',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+sesgo_PD_materno <- ggplot(data = sesgo |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_materno' | Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' | Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' | Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
-  ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'intervalo_P1_P2' & Densidad_marcador %in% c('50k', 'HD', 'SNP_tags', 'SNP_tags_sing')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
-  labs(title = 'Intervalo entre el primer y el segundo parto', y = NULL, x = NULL) +
+  ggrepel::geom_label_repel(data = sesgo |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')), aes(label = paste(round(Valor, digits = 4), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete - efecto materno', y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
   scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
   scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
   theme_bw() +
@@ -520,5 +714,133 @@ precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2'
     legend.text = element_text(size = 17)
     )
 
-ggsave('expo_Cartagena/Figuras/precision_IEP_uni_bi.png', width = 26, height = 26, units = 'cm')
+ggsave('expo_Cartagena/Figuras/sesgo_PD_uni_bi_mat.pdf', width = 40, height = 20, units = 'cm')
+
+############
+# Dispersion
+############
+
+###################
+# 1. Efecto directo
+###################
+
+dispersion <- LR_est |>
+  filter(
+    Estadistico == 'dispersion_bias',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+dispersion_PD_directo <- ggplot(data = dispersion |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete - efecto directo', y = 'Dispersion', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/dispersion_PD_uni_bi_dir.png', width = 20, height = 20, units = 'cm')
+
+###################
+# 2. Efecto materno
+###################
+
+dispersion <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'dispersion_bias',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+dispersion_PD_materno <- ggplot(data = dispersion |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_materno' | Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' | Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' | Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = dispersion |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')), aes(label = paste(round(Valor, digits = 2), '±', round(Error_estandar, digits = 2))), size = 4.4, box.padding = 0.0, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'Peso al destete - efecto materno', y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    axis.title = element_text(size = 18, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 17, face = 'bold'),
+    legend.position = 'rihgt',
+    legend.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 17)
+    )
+
+ggsave('expo_Cartagena/Figuras/dispersion_PD_uni_bi_mat.png', width = 20, height = 20, units = 'cm')
+
+###########
+# Precisión
+###########
+
+###################
+# 1. Efecto directo
+###################
+
+precision <- LR_est |>
+  filter(
+    Estadistico == 'accuracy_partial',
+    str_detect(Densidad_marcador, '_directo')
+    )
+
+precision_PD_directo <- ggplot(data = precision |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_directo' | Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' | Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' | Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' | Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision |> filter(Densidad_marcador %in% c('50k_directo', 'HD_directo', 'SNP_tags_directo', 'SNP_tags_sing_directo')), aes(label = paste(round(Valor, digits = 4))), size = 8.4, box.padding = 0.4, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'PD - efecto directo', y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 24, face = 'bold'),
+    axis.title = element_text(size = 24, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 23, face = 'bold'),
+    legend.position = 'none',
+    legend.title = element_text(size = 24, face = 'bold'),
+    legend.text = element_text(size = 23)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_PD_uni_bi_dir.png', width = 20, height = 20, units = 'cm')
+
+###################
+# 2. Efecto materno
+###################
+
+precision <- LR_est_PD_2 |>
+  filter(
+    Estadistico == 'accuracy_partial',
+    str_detect(Densidad_marcador, '_materno')
+    )
+
+precision_PD_materno <- ggplot(data = precision |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')) |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '50k_materno' | Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' | Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' | Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' | Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4')), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = precision |> filter(Densidad_marcador %in% c('50k_materno', 'HD_materno', 'SNP_tags_materno', 'SNP_tags_sing_materno')), aes(label = paste(round(Valor, digits = 4))), size = 8.4, box.padding = 0.4, direction = 'y', fill = 'white', colour = 'black') +
+  labs(title = 'PD - efecto materno', y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  scale_colour_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  scale_fill_manual(values = c('cyan', 'green', 'red', 'orange')) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 24, face = 'bold'),
+    axis.title = element_text(size = 24, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 23, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 24, face = 'bold'),
+    legend.text = element_text(size = 23)
+    )
+
+ggsave('expo_Cartagena/Figuras/precision_PD_uni_bi_mat.png', width = 20, height = 20, units = 'cm')
 ```
