@@ -591,3 +591,118 @@ ggplot() +
 
 ggsave('../../single_tags/Imagenes/dis_sing.pdf', width = 40, height = 20, units = 'cm')
 ```
+
+<!--
+NOTA: Se observa a continuación el número de Singletons luego del control de calidad en 50k con precgsf90.
+-->
+
+```{r}
+#| label: Número de Singletons
+
+# Se importa los datos con los nombres de los singletones y se extrae este nombre como un vector ----
+
+dat_sing <- read_delim(file = 'single_tags/Datos/datPuros/SNP_single_ANI.txt', col_names = FALSE, delim = ' ')
+
+# Se observa cuales Singletons aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
+
+marc_comun <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
+  inner_join(y = dat_sing, by = 'X1')
+
+# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
+
+dat_sing <- marc_comun |>
+  full_join(x = dat_sing, by = 'X1') |>
+  mutate(
+    X3 = case_when(
+      is.na(X2) ~ X1,
+      TRUE ~ X2
+      )
+    )
+
+# Se mira cuanto marcadores en el panel de 50k serían singletons, luego del control de calidad con precgs ----
+
+gen_real <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/imp_HD_50k_3.vcf', sep = "\t", skip = "#CHROM", header = TRUE) |>  # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+  select(-c(1:2, 4:9))
+
+SNP_rem <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Genotipos_2.txt_SNPs_removed', col_names = FALSE)
+
+SNP_rem <- SNP_rem |>
+  select(X1) |>
+  pull()
+
+gen_QC_precgs <- gen_real |>
+  slice(-SNP_rem)
+
+gen_real_2 <- gen_QC_precgs |>
+  filter(ID %in% dat_sing$X3) # Se extrae aquí los marcadores considerados singletons.
+
+dim_desc(gen_real_2) # Serían en total 7807 singletons en 50k luego del control de calidad.
+
+# Se importa los Singletons en 50k luego del control de calidad ----
+
+gen_real_2 |>
+  select(ID) |>
+  write_delim(file = 'single_tags/Datos/id_sing_precgs.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: A continuación, se observa la distribución de los Singletons luego del control de calidad en 50k a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
+-->
+
+```{r}
+#| label: Distribución de los Singletons luego del control de calidad
+
+# Función que permite ejecutar PLINK dentro de R ----
+plink <- function(PLINKopciones = '') system(paste('Plink/Datos/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+# Se usa PLINK para extraer solo los Singletons ----
+
+plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_14 --extract single_tags/Datos/id_sing_precgs.txt --make-bed --recode --out single_tags/Datos/paso_9')
+
+# Se realiza el gráfico donde se observará la distribucón de los Sigletons en cada uno de los 29 cromosomas ----
+
+dat_cromo <- read_table(file = 'Imputacion/Imp_HD/Datos/datPuros/HD_ARC_UCD12_Illumina.map', col_names = FALSE) |>
+  select(1, 4) |>
+  filter(X1 %in% c(1:29)) |>
+  slice_max(order_by = X4, by = X1) |>
+  rename(
+    Cromosoma = X1,
+    Tamaño = X4
+    ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
+
+dat_sing_precgs <- read_table(file = 'single_tags/Datos/paso_9.bim', col_names = FALSE) |>
+  select(1:2, 4) |>
+  rename(
+    Cromosoma = X1,
+    ID_tags = X2,
+    Posicion = X4
+    )
+
+etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = dat_sing_precgs,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0),
+    legend.position = 'none'
+    )
+```
