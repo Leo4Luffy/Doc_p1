@@ -3,7 +3,6 @@ title: "Parte 9: Consistencia de SNP-tag imputados formando cuatro grupos de val
 format: html
 ---
 
-
 <!--
 NOTA: Se observa a continuación el número de tag-SNPs luego del control de calidad en 50k con precgsf90.
 -->

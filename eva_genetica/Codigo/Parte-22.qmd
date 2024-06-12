@@ -6785,7 +6785,7 @@ ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Pa
   right_join(y = ind_renum_datP, by = 'ID_renum') |>
   select(ID_original, EBV_parcial)
 
-write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', col_names = TRUE) # NOTA: FALTA MODIFICAR ESTO CON EL GRUPO DE VALIDACIön BIEN.
+write_delim(x = ebv_EPP_datP, file = 'eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', col_names = TRUE)
 
 part <- read.table('eva_genetica/Datos/metodo_LR/EPP_IEP/dat_P_EPP_0k.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
 
@@ -6797,12 +6797,12 @@ LR_est_EPP$stats # Se ven los resultados.
 
 LR_est_EPP_0k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'Edad_primer_parto', '0k', 'level_bias', 0.747362, 1.162395,
-  'Edad_primer_parto', '0k', 'level_bias_in_GSD', 0.016712, 0.025993,
-  'Edad_primer_parto', '0k', 'dispersion_bias', 0.970165, 0.050135,
-  'Edad_primer_parto', '0k', 'accuracy_partial', 0.447000, 0.024199,
-  'Edad_primer_parto', '0k', 'rho', 0.780559, 0.034215,
-  'Edad_primer_parto', '0k', 'inc_acc', 1.281133, 0.057770
+  'Edad_primer_parto', '0k', 'level_bias', 4.926355, 1.221637,
+  'Edad_primer_parto', '0k', 'level_bias_in_GSD', 0.110162, 0.027318,
+  'Edad_primer_parto', '0k', 'dispersion_bias', 1.108797, 0.067384,
+  'Edad_primer_parto', '0k', 'accuracy_partial', 0.404616, 0.022379,
+  'Edad_primer_parto', '0k', 'rho', 0.755345, 0.037273,
+  'Edad_primer_parto', '0k', 'inc_acc', 1.323898, 0.067205
   )
 
 LR_est_EPP$plot # Se observa el gráfico.
@@ -7617,12 +7617,12 @@ LR_est_IEP$stats # Se ven los resultados.
 
 LR_est_IEP_0k <- tribble(
   ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
-  'intervalo_P1_P2', '0k', 'level_bias', 0.440444, 0.465362,
-  'intervalo_P1_P2', '0k', 'level_bias_in_GSD', 0.025689, 0.027142,
-  'intervalo_P1_P2', '0k', 'dispersion_bias', 1.544619, 0.089487,
-  'intervalo_P1_P2', '0k', 'accuracy_partial', 0.346814, 0.026979,
-  'intervalo_P1_P2', '0k', 'rho', 0.845701, 0.028112,
-  'intervalo_P1_P2', '0k', 'inc_acc', 1.182451, 0.040316
+  'intervalo_P1_P2', '0k', 'level_bias', 1.159934, 0.457021,
+  'intervalo_P1_P2', '0k', 'level_bias_in_GSD', 0.067652, 0.026655,
+  'intervalo_P1_P2', '0k', 'dispersion_bias', 1.562936, 0.086582,
+  'intervalo_P1_P2', '0k', 'accuracy_partial', 0.349212, 0.027513,
+  'intervalo_P1_P2', '0k', 'rho', 0.856583, 0.024867,
+  'intervalo_P1_P2', '0k', 'inc_acc', 1.167430, 0.034592
   )
 
 LR_est_IEP$plot # Se observa el gráfico.

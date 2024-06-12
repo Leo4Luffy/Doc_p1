@@ -32,7 +32,7 @@ NOTA: A continuación se seleccionan de los genotipos en 50K imputados, los marc
 res50K <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |> # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
   select(-c(1:2, 4:9))
 
-# Se importa los datos con los nombres de los SNP-tags y se extrae este nombre como un vector ----
+# Se importa los datos con los nombres de los SNP-tags ----
 
 dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
 
@@ -61,5 +61,136 @@ dim_desc(dat_tags) # Hay en total 103080 SNP-tags.
 SNP_tag <- res50K |>
   filter(ID %in% dat_tags$X3)
 
-dim_desc(SNP_tag) # En total, 55534 tag-SNPs en el genotipado de 50K. VOY AQUI
+dim_desc(SNP_tag) # En total, 5534 tag-SNPs en el genotipado de 50K.
+```
+
+<!--
+NOTA: A continuación se genera el conjunto de datos de SNP-tags editados.
+-->
+
+```{r}
+#| label: Edición de SNP-tags
+
+# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
+
+cod_geno <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
+  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna, ya que la primera corresponde a la ID de los individuos.
+    columna[[i]] <- case_when(
+      columna[[i]] == '0|0' ~ '0',
+      columna[[i]] == '0|1' ~ '1',
+      columna[[i]] == '1|0' ~ '1',
+      columna[[i]] == '1|1' ~ '2',
+      columna[[i]] == '.|.' ~ '5'
+      )
+    }
+  return(columna)
+  }
+
+# Se transpone el objeto "SNP_tag" ----
+
+SNP_tag_2 <- SNP_tag |>
+  pivot_longer(
+    cols = c(2:2971),
+    names_to = 'IID',
+    values_to = 'Gen_fase'
+    ) |>
+  pivot_wider(
+    names_from = ID,
+    values_from = Gen_fase
+    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
+  separate(
+    col = IID,
+    into =  c('ID', 'ID_2'),
+    sep  =  '_'
+    ) |>
+  select(-c(ID_2))
+
+dim_desc(SNP_tag_2)
+
+SNP_tag_2 |> select(1:4) |> slice_head(n = 8) # Los individuos quedaron en filas y los marcadores en columnas.
+
+# Se editan los SNP-tags y posteriormente se exporta dicha edición ----
+
+SNP_tag_3 <- cod_geno(SNP_tag_2) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los SNP-tags (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
+
+dim_desc(SNP_tag_3) # En los datos de SNP-tags hay 2970 indivdiuos y 5534 SNP-tags.
+
+SNP_tag_3 |> select(1:4) |> slice_head(n = 8) # Se observa aquí si se logro cambiar la codificación de los SNP-tags.
+
+SNP_tag_3 |>
+  unite(
+    col = 'Geno', 
+    2:ncol(SNP_tag_3),
+    sep = '',
+    remove = TRUE
+    ) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/resSNP_tags.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: A continuación, se observa la distribución de los tag-SNPs genotipados e imputados en 50k a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
+-->
+
+```{r}
+#| label: Distribución de los tag-SNPs genotipados e imputados en 50K
+
+# Se importa el nombre de los tag-SNPs ----
+
+SNP_tag |>
+  select(ID) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/id_tags.txt', col_names = FALSE)
+
+# Función que permite ejecutar PLINK dentro de R ----
+plink <- function(PLINKopciones = '') system(paste('Plink/Datos/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+# Se usa PLINK para extraer solo los Singletons ----
+
+plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_4 --extract eva_genetica/Datos/eva_genomica/SNP_tags_50K/id_tags.txt --make-bed --recode --out eva_genetica/Datos/eva_genomica/SNP_tags_50K/paso_1')
+
+# Se realiza el gráfico donde se observará la distribucón de los tag-SNPs en cada uno de los 29 cromosomas ----
+
+dat_cromo <- read_table(file = 'Imputacion/Imp_HD/Datos/datPuros/HD_ARC_UCD12_Illumina.map', col_names = FALSE) |>
+  select(1, 4) |>
+  filter(X1 %in% c(1:29)) |>
+  slice_max(order_by = X4, by = X1) |>
+  rename(
+    Cromosoma = X1,
+    Tamaño = X4
+    ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
+
+dat_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/paso_1.bim', col_names = FALSE) |>
+  select(1:2, 4) |>
+  rename(
+    Cromosoma = X1,
+    ID_tags = X2,
+    Posicion = X4
+    )
+
+etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = dat_tags,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold'),
+    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0),
+    legend.position = 'none'
+    )
 ```
