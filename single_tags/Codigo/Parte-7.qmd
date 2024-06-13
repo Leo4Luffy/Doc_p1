@@ -194,7 +194,7 @@ frq_2_tags <- frq_2 |>
 
 dim_desc(x = frq_2_tags) # 103080 - 102105 = 975 SNP-tags parecen que se eliminaron en el control de calidad.
 
-# Se cuenta continuación el número de SNP-tags que podrían considerarse variantes raras (MAF < 0.05) ----
+# Se cuenta a continuación el número de SNP-tags que podrían considerarse variantes raras (MAF < 0.05) ----
 
 frq_2_tags |>
   mutate(

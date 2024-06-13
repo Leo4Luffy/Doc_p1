@@ -1,5 +1,5 @@
 ---
-title: "Parte 23: Hola"
+title: "Hola"
 format: html
 ---
 
@@ -10,7 +10,77 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, patchwork)
+```
+
+<!--
+NOTA: Se carga el software PLINK dentro del ambiente R.
+-->
+
+```{r}
+#| label: Carga del software PLINK dentro del ambiente R
+
+# Función que permite ejecutar PLINK dentro de R:
+plink <- function(PLINKopciones = '') system(paste('Plink/plink', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+
+# Función que permite ejecutar PLINK2 dentro de R:
+plink2 <- function(PLINKopciones = '') system(paste('Plink/plink2', PLINKopciones))
+
+plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+```
+
+<!--
+NOTA: A continuación se obtiene, con ayuda de plink y plink2, las frecuencias (MAF) de los marcadores genotipados e imputados en media densidad (50K).
+-->
+
+```{r}
+#| label: MAF de marcadores imputados a 50K
+
+# Se importa el archivo vcf luego de la imputación con Beagle v. 5.4 y se extrae las columnas que corresponden al nombre del marcador (ID) y al alelo alternativo (ALT) ----
+
+vcf_data <- data.table::fread('Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
+
+vcf_data |>
+  select(ID, ALT) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_1/aleloALT.txt', col_names = FALSE, delim = ' ')
+
+# Usando PLINK, se pasa el archivo VCF anterior a datos PLINK binarios (.bed, .fam y .bim) ----
+
+plink('--cow --allow-extra-chr --vcf  Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_50K_1/Paso_1')
+
+# Se convierte los genotipos (0/0, 0/1, 1/1) del Beagle a (0, 1, 2), indicando el aleloB (1/1: 2) como el alelo alternativo, el cual se encuentra en el archivo /aleloALT.txt anteriormente exportado ----
+
+plink2('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_50K_1/Paso_1 --alt1-allele force eva_genetica/Datos/eva_genomica/Beagle_50K_1/aleloALT.txt --make-bed --out eva_genetica/Datos/eva_genomica/Beagle_50K_1/Paso_2')
+
+# NOTA: En PLINK, los genotipos homocigotos para el alelo 1 se representan como "A/A", los genotipos heterocigotos se representan como "A/B" y los genotipos homocigotos para el alelo 2 se representan como "B/B". En el caso de genotipos codificados como números, PLINK utiliza los siguientes códigos:
+#
+# Homocigoto para el alelo 1: 0
+# Heterocigoto: 1
+# Homocigoto para el alelo 2: 2
+
+# A continuación se obtiene la distribución y fercuencia de los marcadores por cromosoma ----
+
+plink('--cow --allow-extra-chr --bfile eva_genetica/Datos/eva_genomica/Beagle_50K_1/Paso_2 --freq --out eva_genetica/Datos/eva_genomica/Beagle_50K_1/Paso_3') # Este análisis proporcionará información sobre cómo están distribuidos los marcadores en términos de frecuencias alélicas por cromosoma.
+
+# Se importa las frecuencias alélicas anteriores ----
+
+frq <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Paso_3.frq', col_names = TRUE) |>
+  select(CHR, SNP, MAF)
+
+# Se importa el archivo Paso_2.bim anterior para obtener la posición de los marcadores ----
+
+bim <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Paso_2.bim', col_names = FALSE) |>
+  select(X2, X4) |>
+  rename(
+    SNP = X2,
+    POS = X4 # Este correspondería a la posición del marcador.
+    )
+
+# Se unen los dos objetos anteriores "frq" y "bim" ----
+
+snps <- inner_join(x = frq, y = bim, by = 'SNP')
 ```
 
 <!--
@@ -20,148 +90,415 @@ NOTA: Hola
 ```{r}
 #| label: Hola
 
-######################
-# Edad al primer parto
-######################
+#  ----
 
-EPP_acc <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP_blup/Completo/acc_bf90', col_names = FALSE) # Se importa este conjunto de datos que contiene la precisión basado en la varianza del error de predicción de un (G)EBV (PEV), calculada como 1-PEV/(σ2u(1+F)), donde F es la endogamia.
+n_snps <- snps |>
+  summarise(n = n(), .by = CHR) # Se obtiene un objeto que indica el número de marcadores en cada cromosoma.
 
-# Se calcula la confiabilidad ----
+info_chr <- snps |>
+  summarise(
+    Primer_SNP = min(POS),
+    Ultimo_SNP = max(POS),
+    .by = CHR
+    ) |> # Se obtiene un objeto que indica la posición del primer y último marcador en cada cromosoma
+  mutate(Tamaño_cromosoma = Ultimo_SNP - Primer_SNP) |> # Se calcula el tamaño de cada cromosoma.
+  inner_join(y = n_snps, by = 'CHR') # Se une con el objeto anterior "n_snps" para obtener un conjunto de datos ...
 
-EPP_acc_2 <- EPP_acc |>
-  filter(X1 == 1) |>
-  select(X3, X5) |>
-  rename(
-    ID_renum = X3,
-    acc = X5 # La quinta columna corresponde a la confiabilidad (accuracy).
+#  ----
+
+info_snps <- snps |>
+  select(SNP, CHR, POS)
+
+############
+# Densidad 1
+############
+
+#Calculate the available total length of the chromosomes 
+
+tamaño_total <- sum(info_chr$Tamaño_cromosoma)
+densidad_1 <- 5000 #change this number to the required number of SNPs in your low-density (LD) panel
+
+#Divide the desired number of SNPs you want to select (e.g. 300) in the LD panel with the total map length
+indicador <- densidad_1/tamaño_total
+
+#Multiply the length of each chr with the index above and round to get the number of SNPs that are going to be selected from each chromosome according to its relative length
+n_snps_por_cromo <- round(indicador*info_chr$Tamaño_cromosoma, 0)
+sum(n_snps_por_cromo)    #check the total number of SNPs selected, should sum up to the desired number of SNPs in the LD panel  
+print(n_snps_por_cromo) #prints the number of SNPs to be selected from each chromosome according to its length
+
+#Split the map file above to chromosomes
+cromo_list = split(info_snps, info_snps$CHR)
+
+#Take each chromosome and divide it's length into equally distanced parts (equidistant positions), according to the number of SNPs we want to select (snp_in_LD_panel)
+#These equidistant theoretical positions will be then used to find the nearest real position on the map  
+teor_pos <- list()
+for (i in 1:length(info_chr$CHR)) {
+  teor_pos[[i]] <- round(seq(info_chr$Primer_SNP[i], info_chr$Ultimo_SNP[i], length.out = n_snps_por_cromo[i]), digits = 0)
+  }
+
+#Check that the length of the list for each chromosome equals the number of SNPs we want to keep for this chromosome
+for (i in 1:length(info_chr$CHR)){
+  print(length(teor_pos[[i]]))
+  } 
+
+#Extract the POS and SNP columns from the dataframe list 
+#In this case, the function is [, which takes rows as its first argument (we leave it blank to indicate all rows), columns as its second argument 
+#It returns the results in a list
+cromo_bppos = lapply(cromo_list, "[", , "POS")
+cromo_snpid = lapply(cromo_list, "[", , "SNP")
+
+#Find the nearest row of the theoritical positions to the real positions on the map file
+#Create a table with the theoretical positions we want to keep for each chromosome
+Merge_real_theor<- list()
+for (i in 1:length(info_chr$CHR)) {
+  # Convertir listas en data.tables
+  a <- data.table::data.table(Value = as.numeric(unlist(cromo_bppos[[i]])))
+  b <- data.table::data.table(Value = as.numeric(unlist(teor_pos[[i]])))
+  
+  # Agregar columna merge para la fusión
+  a[, merge := Value]
+  b[, merge := Value]
+  
+  # Establecer claves para la fusión
+  data.table::setkeyv(a, 'merge')
+  data.table::setkeyv(b, 'merge')
+  
+  # Realizar la fusión
+  Merge_real_theor[[i]] <- a[b, roll = 'nearest']
+  
+  # Imprimir información sobre los datos fusionados
+  print(length(unique(Merge_real_theor[[i]]$Value))) 
+  print(length(unique(Merge_real_theor[[i]]$merge)))
+  }
+
+#Returns the row of the nearest neighbor position instead of the position and we end up having a list with the SNPs we want to keep for each chromosome
+s <- list()
+for (x in 1:length(info_chr$CHR)){
+  selec <- c()
+  for (i in 1:length(teor_pos[[x]])) {
+    selec[i]<- FNN::knnx.index(cromo_bppos[[x]], teor_pos[[x]][i], k=1)
+    cromo_bppos[[x]][selected[[i]]] <- 0
+    #selected<- sort(selected)
+    #print(length(unique(selected)))
+    s[[x]] <- selec
+    }
+  }
+
+#Check the total number of SNPs selected
+k <- c()
+for (i in 1:length(info_chr$CHR)){
+  k[i]<-length(unique(s[[i]]))
+  }
+
+print(sum(k))
+
+#Unlist the SNP position list of the SNPs chosen for the LD panel
+LD_pos <- unlist(teor_pos)
+#mysnps_ld<-snpmap[snpmap$BPPos %in%LD_pos,]
+#Create a list with the SNP IDs to keep within each chromosome 
+LD_snp_ids <- list()
+# Iterate through each chromosome
+for (i in 1:length(info_chr$CHR)) {
+  # Filter SNP IDs using the selected indices from s
+  LD_snp_ids[[i]] <- cromo_snpid[[i]][s[[i]]]
+  
+  # Further filter based on LD_pos if necessary
+  LD_snp_ids[[i]] <- LD_snp_ids[[i]][cromo_bppos[[i]] %in% LD_pos]
+}
+
+LD_ids <- unlist(LD_snp_ids)
+
+write.table(LD_ids, file = "eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Densidad_1.txt" , quote = FALSE, col.names = FALSE, row.names = FALSE)
+```
+
+<!--
+NOTA: Hola
+-->
+
+```{r}
+#| label: Hola
+
+pacman::p_load(selectSNPs)
+
+# ----
+
+snps_2 <- snps |>
+  relocate(
+    POS,
+    .after = CHR
     ) |>
-  mutate(acc = sqrt(acc)) # Se saca la raíz a la confiabilidad porque así es en bovinos de carne.
-
-# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
-
-ind_renum_EPP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP_blup/Completo/renadd11.ped', col_names = FALSE) |>
-  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  relocate(
+    MAF,
+    .before = SNP
+    ) |> # Se cambia la posición de algunas columnas ya que la función selectLocalOptimalSNPs() lo requiere así. Cuando se utiliza dicha función, esta interpretará automáticamente que cada SNP está asociado con su respectivo cromosoma según la información proporcionada en la columna CHR y seleccionará los SNPs óptimos dentro de cada cromosoma en base a las posiciones (POS) y cualquier otra información relevante como la MAF.
   rename(
-    ID_renum = X1,
-    ID_original = X10
+    Chromosome = CHR,
+    Position = POS,
+    Maf = MAF,
+    Name = SNP
     )
 
-# Se importa el pedigrí ----
+pos <- snps_2 |>
+  pull(Position)
 
-ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE) |>
+Maf <- snps_2 |>
+  pull(Maf)
+
+snps_3 <- as.Map(snps_2)
+
+#############################
+# Densidad 1: 4988 marcadores
+#############################
+
+den_1 <- selectSNPs::selectLocalOptimalSNPs(object = pos, f = Maf, n = 5000)
+```
+
+<!--
+NOTA: Se obtiene a continuación distintos conjuntos de datos con distintas densidades de marcadores, partiendo del genotipado en 50K. La selección de SNPs se intento realizar de tal forma en que se cumpliera un criterio de "SNPs distribuidos equitativamente a lo largo de los cromosomas".
+-->
+
+```{r}
+#| label: Selección de SNPs distribuidos equitativamente en cada densidad deseada
+
+# Se define a continuación proporciones para obtener densidades aproximadas de marcadores ----
+
+# NOTA: Las densidades deseadas de marcadores fueron 5000, 14000, 23000 y 32000, siendo 14000 una densidad similar a la aportada por los tag-SNPs + Singletons. Por lo tanto, se definieron las siguientes proporciones:
+#
+# 5000 / 43421 = 0.1152
+#
+# 14000 / 43421 = 0.3225
+#
+# 23000 / 43421 = 0.5294
+#
+# 32000 / 43421 = 0.7366
+
+n_snps <- nrow(snps)
+
+proporciones <- c(0.1152, 0.3225, 0.5294, 0.7366)
+
+# A continuación, se crea una función que permitirá la selección de SNPs distribuidos uniformemente o equitativamente (Evenly Distributed) a lo largo de cada cromosoma ----
+
+# NOTA: En el artículo "Prediction ability for growth ...", (https://link.springer.com/article/10.1007/s13353-022-00685-0#ref-CR32), uno de los críterios para la selección de SNPs dentro de una ventana cromosómica fue la selección de SNPs distribuidos uniformemente. Según los mismos autores, "para seleccionar SNP distribuidos uniformemente, se consideró la distancia promedio entre SNP adyacentes por cromosoma". Mediante comunicación personal con Juan Diego, me ha informado que en este críterio lo que se hizo fue dividir cada cromosoma en ventanas y en cada ventana se seleccionaba el SNP más cercano a la mitad.
+
+selec_ED_snps <- function(snps, proporcion) { # La función recibe dos argumentos: snps (representa el conjunto de datos que contiene información sobre los SNPs) y proporcion (representa la proporción de SNPs que se desean seleccionar en relación con el número total de SNPs disponibles en snps).
+  num_total <- round(nrow(snps) * proporcion) # Aquí se calcula el número total de SNPs que se deben seleccionar basado en la proporción deseada.
+  selec_snps <- data.frame() # Aquí se inicializa un conjunto de datos vacío donde se almacenarán los SNPs seleccionados.
+  croms <- unique(snps$CHR) # Aquí se obtiene una lista de cromosomas únicos presentes en el objeto "snps".
+  snps_por_crom <- round(num_total / length(croms))  # Aquí se calcula cuántos SNPs se desean seleccionar por cada cromosoma, dividiendo el número total de SNPs deseado entre el número total de cromosomas.
+  
+  # Se itera por cromosomas:
+  for (crom in croms) { # Mediante ete bucle for, se itera sobre cada cromosoma único en "croms".
+    
+    # Se filtra y ordena:
+    crom_snps <- snps |>
+      filter(CHR == crom) |>
+      arrange(POS) # Aquí se filtra los SNPs que pertenecen al cromosoma actual (CHR == crom) y los ordena por posición (POS).
+    
+    # Se seleccionan los SNPs:
+    num_markers <- nrow(crom_snps) # Aquí se calcula el número de SNPs en el cromosoma actual.
+    
+    if (num_markers == 0) next # Aquí se comprueba si hay SNPs en el cromosoma. Si no hay SNPs en el cromosoma, pasa al siguiente cromosoma.
+    
+    if (num_markers <= snps_por_crom) { # Aquí se indica si el número de SNPs es menor o igual al número deseado por cromosoma (snps_por_crom), selecciona todos los SNPs del cromosoma. De lo contrario, selecciona SNPs utilizando ventanas definidas por window_size.
+      selected_snps <- crom_snps
+      } else {
+      window_size <- floor(num_markers / snps_por_crom)
+      
+      selected_indices <- seq(1, num_markers, by = window_size)
+      if (length(selected_indices) > snps_por_crom) {
+        selected_indices <- selected_indices[1:snps_por_crom]
+        }
+      selected_snps <- crom_snps[selected_indices, ]
+      }
+    
+    # Se concantena los SNPs seleccionados:
+    selec_snps <- rbind(selec_snps, selected_snps) # Aquí los SNPs seleccionado se incluyen en el conjunto de datos vacío anterior "selec_snps".
+    }
+  
+  # Se recorta SNPs excedentes:
+  if (nrow(selec_snps) > num_total) {
+    selec_snps <- selec_snps[1:num_total, ]
+  } # Aquí se verifica si se han seleccionado más SNPs de los necesarios y se recorta el conjunto de datos "selec_snps" para asegurar que solo contenga el número deseado de SNPs (num_total).
+  
+  # Se devuelve el conjunto de datos "selec_snps" que contiene todos los SNPs seleccionados de acuerdo a la proporción dada:
+  return(selec_snps)
+  }
+
+# Se usa la función anterior y se importa los conjuntos de datos con las distintas densidades ----
+
+carpetas <- c('Densidad_1', 'Densidad_2', 'Densidad_3', 'Densidad_4')
+
+for (i in seq_along(proporciones)) { # Se genera una secuencia de números que van desde 1 hasta la longitud de proporciones. Esto permite iterar sobre cada elemento de proporciones.
+  proporcion <- proporciones[i] # Aquí se asigna el valor de proporciones correspondiente a la iteración actual del bucle a la variable proporcion.
+  ED_snps <- selec_ED_snps(snps, proporcion) # Se usa la función selec_ED_snps con los SNPs (snps) y la proporción actual (proporcion) para seleccionar los SNPs según la proporción especificada.
+  
+  carpeta <- carpetas[i]
+
+  write_delim(ED_snps, file.path('eva_genetica/Datos/eva_genomica/Beagle_50K_2', carpeta, paste0('Densidad_', i, '.txt')), delim = '\t', col_names = TRUE)
+  }
+```
+
+<!--
+NOTA: Hola
+-->
+
+```{r}
+#| label: Hola
+
+# Se realiza el gráfico donde se observará la distribucón de los SNPs en cada uno de los 29 cromosomas y en cada densidad ----
+
+dat_cromo <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Paso_2.bim', col_names = FALSE) |>
+  select(1, 4) |>
+  filter(X1 %in% c(1:29)) |>
+  slice_max(order_by = X4, by = X1) |>
   rename(
-    ID_original = X1,
-    ID_padre = X2,
-    ID_madre = X3
+    Cromosoma = X1,
+    Tamaño = X4
+    ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
+
+etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+
+#############################
+# Densidad 1: 4988 marcadores
+#############################
+
+den_1 <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Densidad_1.txt', delim = '\t', col_names = TRUE) |>
+  select(CHR, SNP, POS) |>
+  rename(
+    Cromosoma = CHR,
+    ID_SNP = SNP,
+    Posicion = POS
     )
 
-# ----
-
-ID_renum <- left_join(x = ped, y = ind_renum_EPP, by = 'ID_original')
-
-# ----
-
-Mad_renum <- ind_renum_EPP |>
-  rename(
-    ID_madre = ID_original,
-    Mad_renum = ID_renum
-    ) |>
-  right_join(y = ID_renum, by = 'ID_madre')
-
-# ----
-
-Pad_renum <- ind_renum_EPP |>
-  rename(
-    ID_padre = ID_original,
-    Pad_renum = ID_renum
-    ) |>
-  right_join(y = Mad_renum, by = 'ID_padre')
-
-# ----
-
-EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/EPP_IEP.txt', col_names = FALSE, col_select = c(1:2)) |>
-  rename(
-    ID_original = X1,
-    EPP = X2
-    ) |>
-  full_join(x = Pad_renum, by = 'ID_original')
-
-# ----
-
-ped_renum <- EPP |>
-  arrange(ID_renum)
-
-# ----
-
-ID_acc <- inner_join(x = ped_renum, y = EPP_acc_2, by = 'ID_renum') |> 
-  select(ID_original, ID_padre, ID_madre, EPP, acc)
-
-################
-# Madres (vacas)
-################
-
-# ----
-
-Mad <- ID_acc |>
-  distinct(ID_madre) |>
-  pull() # Se extraen las madres (vacas).
-
-Mad_acc <- ID_acc |>
-  filter(ID_original %in% Mad) #  En total hay 40294 madres (vacas) con medida de accuracy.
-
-# ----
-
-Mad_acc_noFeno <- Mad_acc |>
-  filter(is.na(EPP)) # En total hay 18717 madres (vacas) sin dato propio.
-
-summarise(
-  .data = Mad_acc_noFeno,
-  across(
-    .cols = acc,
-    .fns = mean
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = den_1,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(title = 'Distribución de SNPs en "Densidad 1"', x = NULL, y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
     )
-  ) # La media de la confiabilidad de las madres (vacas) sin datos propio es de 0.472.
 
-Mad_acc_Feno <- Mad_acc |>
-  filter(!is.na(EPP)) # En total hay 21577 madres (vacas) con dato propio.
+# NOTA: En la visualización puede observarse espacios vacíos o zonas donde al parece no se seleccionaron SNPs. Esto puede deberse a las siguientes razones:
+#
+# - Si el conjunto de datos original de SNPs tiene densidades irregulares a lo largo de los cromosomas, es decir, algunas regiones pueden tener muchos SNPs mientras que otras tienen pocos, esto puede afectar la uniformidad de la selección.
+#
+# - La función divide cada cromosoma en ventanas de tamaño calculado para seleccionar una cantidad aproximada de SNPs según la proporción deseada. Si el tamaño de la ventana es muy grande en regiones con pocos SNPs, es posible que no se seleccionen SNPs en esas regiones.
+#
+# - En algunas regiones del genoma, especialmente en regiones no codificantes o regiones con baja variabilidad genética, puede haber menos SNPs disponibles para seleccionar.
 
-summarise(
-  .data = Mad_acc_Feno,
-  across(
-    .cols = acc,
-    .fns = mean
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Densidad_1.pdf', width = 40, height = 20, units = 'cm')
+
+##############################
+# Densidad 2: 14003 marcadores
+##############################
+
+den_2 <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Densidad_2.txt', delim = '\t', col_names = TRUE) |>
+  select(CHR, SNP, POS) |>
+  rename(
+    Cromosoma = CHR,
+    ID_SNP = SNP,
+    Posicion = POS
     )
-  ) # La media de la confiabilidad de las madres (vacas) con datos propio es de 0.745.
 
-################
-# Padres (toros)
-################
-
-# ----
-
-Pad <- ID_acc |>
-  filter(ID_padre != 0) |>
-  distinct(ID_padre, .keep_all = TRUE) # Se extraen los padres (toros). Hay en total 2697 padres (toros) de dato. Es decir, con hijas con dato propio.
-
-Pad_acc_Feno <- ID_acc |>
-  filter(ID_original %in% Pad$ID_padre) # En total hay 2697 padres (toros) con hijas con dato propio.
-
-summarise(
-  .data = Pad_acc_Feno,
-  across(
-    .cols = acc,
-    .fns = mean
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = den_2,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(title = 'Distribución de SNPs en "Densidad 2"', x = NULL, y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
     )
-  ) # La media de la confiabilidad de los padres (toros) con datos propio es de 0.712.
 
-# ----
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Densidad_2.pdf', width = 40, height = 20, units = 'cm')
 
-Pad_acc_Feno <- ID_acc |>
-  filter(!ID_original %in% Pad$ID_padre) |>
-  filter(!ID_original %in% Mad) |> 
-  filter(is.na(EPP)) # Debo quitar de ID original los individuos que estan en las columnas 2 y 3 y que tienen registro de EEP.
+##############################
+# Densidad 3: 22982 marcadores
+##############################
 
+den_3 <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_3/Densidad_3.txt', delim = '\t', col_names = TRUE) |>
+  select(CHR, SNP, POS) |>
+  rename(
+    Cromosoma = CHR,
+    ID_SNP = SNP,
+    Posicion = POS
+    )
 
-# ----
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = den_3,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(title = 'Distribución de SNPs en "Densidad 3"', x = NULL, y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    )
 
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_3/Densidad_3.pdf', width = 40, height = 20, units = 'cm')
+
+##############################
+# Densidad 4: 30503 marcadores
+##############################
+
+den_4 <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_4/Densidad_4.txt', delim = '\t', col_names = TRUE) |>
+  select(CHR, SNP, POS) |>
+  rename(
+    Cromosoma = CHR,
+    ID_SNP = SNP,
+    Posicion = POS
+    )
+
+ggplot() +
+  geom_segment(
+    data = dat_cromo,
+    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
+    lineend = 'round', color = 'lightgrey', linewidth = 5
+    ) +
+  geom_segment(
+    data = den_4,
+    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
+    linewidth = 0.4, alpha = 1.4
+    ) +
+  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
+  labs(title = 'Distribución de SNPs en "Densidad 3"', x = NULL, y = 'Posición (en pares de bases)') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face = 'bold'),
+    )
+
+ggsave('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_4/Densidad_4.pdf', width = 40, height = 20, units = 'cm')
 ```
