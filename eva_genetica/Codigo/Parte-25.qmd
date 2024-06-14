@@ -110,7 +110,7 @@ NOTA: A continuación se genera el conjunto de datos de SNP-tags y Singletons ed
 -->
 
 ```{r}
-#| label: Edición de SNP-tags
+#| label: Edición de SNP-tags y Singletons
 
 # Se unen los marcadores considerados SNP-tags y singletones ----
 
@@ -158,7 +158,7 @@ SNP_tag_sing_2 |> select(1:4) |> slice_head(n = 8) # Los individuos quedaron en 
 
 # Se editan los SNP-tags y posteriormente se exporta dicha edición ----
 
-SNP_tag_sing_3 <- cod_geno(SNP_tag_sing_2) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los SNP-tags (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
+SNP_tag_sing_3 <- cod_geno(SNP_tag_sing_2) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los SNP-tags y Singletons (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
 
 dim_desc(SNP_tag_sing_3) # En los datos de SNP-tags hay 2970 indivdiuos y 13961 SNP-tags.
 

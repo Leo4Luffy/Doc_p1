@@ -1,0 +1,167 @@
+---
+title: "Parte 23: Hola"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Hola
+-->
+
+```{r}
+#| label: Hola
+
+######################
+# Edad al primer parto
+######################
+
+EPP_acc <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP_blup/Completo/acc_bf90', col_names = FALSE) # Se importa este conjunto de datos que contiene la precisión basado en la varianza del error de predicción de un (G)EBV (PEV), calculada como 1-PEV/(σ2u(1+F)), donde F es la endogamia.
+
+# Se calcula la confiabilidad ----
+
+EPP_acc_2 <- EPP_acc |>
+  filter(X1 == 1) |>
+  select(X3, X5) |>
+  rename(
+    ID_renum = X3,
+    acc = X5 # La quinta columna corresponde a la confiabilidad (accuracy).
+    ) |>
+  mutate(acc = sqrt(acc)) # Se saca la raíz a la confiabilidad porque así es en bovinos de carne.
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_EPP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP_blup/Completo/renadd11.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# Se importa el pedigrí ----
+
+ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE) |>
+  rename(
+    ID_original = X1,
+    ID_padre = X2,
+    ID_madre = X3
+    )
+
+# ----
+
+ID_renum <- left_join(x = ped, y = ind_renum_EPP, by = 'ID_original')
+
+# ----
+
+Mad_renum <- ind_renum_EPP |>
+  rename(
+    ID_madre = ID_original,
+    Mad_renum = ID_renum
+    ) |>
+  right_join(y = ID_renum, by = 'ID_madre')
+
+# ----
+
+Pad_renum <- ind_renum_EPP |>
+  rename(
+    ID_padre = ID_original,
+    Pad_renum = ID_renum
+    ) |>
+  right_join(y = Mad_renum, by = 'ID_padre')
+
+# ----
+
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/Completo/EPP_IEP.txt', col_names = FALSE, col_select = c(1:2)) |>
+  rename(
+    ID_original = X1,
+    EPP = X2
+    ) |>
+  full_join(x = Pad_renum, by = 'ID_original')
+
+# ----
+
+ped_renum <- EPP |>
+  arrange(ID_renum)
+
+# ----
+
+ID_acc <- inner_join(x = ped_renum, y = EPP_acc_2, by = 'ID_renum') |> 
+  select(ID_original, ID_padre, ID_madre, EPP, acc)
+
+################
+# Madres (vacas)
+################
+
+# ----
+
+Mad <- ID_acc |>
+  distinct(ID_madre) |>
+  pull() # Se extraen las madres (vacas).
+
+Mad_acc <- ID_acc |>
+  filter(ID_original %in% Mad) #  En total hay 40294 madres (vacas) con medida de accuracy.
+
+# ----
+
+Mad_acc_noFeno <- Mad_acc |>
+  filter(is.na(EPP)) # En total hay 18717 madres (vacas) sin dato propio.
+
+summarise(
+  .data = Mad_acc_noFeno,
+  across(
+    .cols = acc,
+    .fns = mean
+    )
+  ) # La media de la confiabilidad de las madres (vacas) sin datos propio es de 0.472.
+
+Mad_acc_Feno <- Mad_acc |>
+  filter(!is.na(EPP)) # En total hay 21577 madres (vacas) con dato propio.
+
+summarise(
+  .data = Mad_acc_Feno,
+  across(
+    .cols = acc,
+    .fns = mean
+    )
+  ) # La media de la confiabilidad de las madres (vacas) con datos propio es de 0.745.
+
+################
+# Padres (toros)
+################
+
+# ----
+
+Pad <- ID_acc |>
+  filter(ID_padre != 0) |>
+  distinct(ID_padre, .keep_all = TRUE) # Se extraen los padres (toros). Hay en total 2697 padres (toros) de dato. Es decir, con hijas con dato propio.
+
+Pad_acc_Feno <- ID_acc |>
+  filter(ID_original %in% Pad$ID_padre) # En total hay 2697 padres (toros) con hijas con dato propio.
+
+summarise(
+  .data = Pad_acc_Feno,
+  across(
+    .cols = acc,
+    .fns = mean
+    )
+  ) # La media de la confiabilidad de los padres (toros) con datos propio es de 0.712.
+
+# ----
+
+Pad_acc_Feno <- ID_acc |>
+  filter(!ID_original %in% Pad$ID_padre) |>
+  filter(!ID_original %in% Mad) |> 
+  filter(is.na(EPP)) # Debo quitar de ID original los individuos que estan en las columnas 2 y 3 y que tienen registro de EEP.
+
+
+# ----
+
+```
