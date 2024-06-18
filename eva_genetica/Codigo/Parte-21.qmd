@@ -13995,9 +13995,9 @@ LR_est_EPP_HD <- tribble(
 
 LR_est_EPP$plot # Se observa el gráfico.
 
-#################################
-# Densidad de marcador - SNP-tags
-#################################
+#######################################
+# Densidad de marcador - SNP-tags en HD
+#######################################
 
 f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto_blup/Completo/diag_nrm', col_names = FALSE)
 
@@ -16290,9 +16290,9 @@ LR_est_PD_HD_materno <- tribble(
   'peso_Dtte', 'HD_materno', 'inc_acc', 1.469605, 0.082719
   )
 
-#################################
-# Densidad de marcador - SNP-tags
-#################################
+#######################################
+# Densidad de marcador - SNP-tags en HD
+#######################################
 
 f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
 
@@ -16507,9 +16507,226 @@ LR_est_PD_SNP_tags_materno <- tribble(
   'peso_Dtte', 'SNP_tags_materno', 'inc_acc', 1.478166, 0.083491
   )
 
-###############################################
-# Densidad de marcador - SNP-tags y singletones
-###############################################
+########################################
+# Densidad de marcador - SNP-tags en 50K
+########################################
+
+f_SNP_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02337592.
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_2_directo.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 65.1
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_2_directo.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 218.43, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_SNP_tags_2_directo <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'SNP_tags_2_directo', 'level_bias', 0.725111, 0.375009,
+  'peso_Dtte', 'SNP_tags_2_directo', 'level_bias_in_GSD', 0.049062, 0.025374,
+  'peso_Dtte', 'SNP_tags_2_directo', 'dispersion_bias', 0.992952, 0.069613,
+  'peso_Dtte', 'SNP_tags_2_directo', 'accuracy_partial', 0.377874, 0.020302,
+  'peso_Dtte', 'SNP_tags_2_directo', 'average_F', -0.033127, 0.005081,
+  'peso_Dtte', 'SNP_tags_2_directo', 'rho', 0.713309, 0.035594,
+  'peso_Dtte', 'SNP_tags_2_directo', 'inc_acc', 1.401917, 0.071988
+  )
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_2_materno.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 23.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_2_materno.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.35, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_SNP_tags_2_materno <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'SNP_tags_2_materno', 'level_bias', -0.419255, 0.226053,
+  'peso_Dtte', 'SNP_tags_2_materno', 'level_bias_in_GSD', -0.039731, 0.021422,
+  'peso_Dtte', 'SNP_tags_2_materno', 'dispersion_bias', 0.919153, 0.051548,
+  'peso_Dtte', 'SNP_tags_2_materno', 'accuracy_partial', 0.379092, 0.020427,
+  'peso_Dtte', 'SNP_tags_2_materno', 'average_F', -0.033127, 0.005139,
+  'peso_Dtte', 'SNP_tags_2_materno', 'rho', 0.760849, 0.028694,
+  'peso_Dtte', 'SNP_tags_2_materno', 'inc_acc', 1.314322, 0.050587
+  )
+
+#####################################################
+# Densidad de marcador - SNP-tags y singletones en HD
+#####################################################
 
 f_SNP_tags_sing <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
 
@@ -16722,6 +16939,223 @@ LR_est_PD_SNP_tags_sing_materno <- tribble(
   'peso_Dtte', 'SNP_tags_sing_materno', 'average_F', -0.041380, 0.005828,
   'peso_Dtte', 'SNP_tags_sing_materno', 'rho', 0.677105, 0.036246,
   'peso_Dtte', 'SNP_tags_sing_materno', 'inc_acc', 1.476877, 0.080923
+  )
+
+######################################################
+# Densidad de marcador - SNP-tags y singletones en 50K
+######################################################
+
+f_SNP_tags_sing <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_SNP_tags_sing |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02313399.
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_sing_2_directo.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_sing_2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 64.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_sing_2_directo.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_sing_2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_SNP_tags_sing_2_directo <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'level_bias', 0.794460, 0.381305,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'level_bias_in_GSD', 0.053892, 0.025866,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'dispersion_bias', 0.922238, 0.067527,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'accuracy_partial', 0.397745, 0.021354,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'average_F', -0.033553, 0.005107,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'rho', 0.712339, 0.035584,
+  'peso_Dtte', 'SNP_tags_sing_2_directo', 'inc_acc', 1.403825, 0.071933
+  )
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_sing_2_materno.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_SNP_tags_sing_2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 23.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_sing_2_materno.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_SNP_tags_2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_2 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 111.35, inbreeding = inb_2, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_SNP_tags_sing_2_materno <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'level_bias', -0.244088, 0.257550,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'level_bias_in_GSD', -0.023131, 0.024407,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'dispersion_bias', 0.828564, 0.056165,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'accuracy_partial', 0.359853, 0.019861,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'average_F', -0.033553, 0.005250,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'rho', 0.679286, 0.033953,
+  'peso_Dtte', 'SNP_tags_sing_2_materno', 'inc_acc', 1.472135, 0.075382
   )
 
 ################################################
@@ -17156,9 +17590,443 @@ LR_est_PD_SNP_tags_val2_materno <- tribble(
   'peso_Dtte', 'SNP_tags_val2_materno', 'inc_acc', 1.368051, 0.060885
   )
 
+##################################################
+# Densidad de marcador - ~ 5 mil marcadores en 50K
+##################################################
+
+f_den_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_den_1 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02460597.
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den1_directo.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den1_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 64.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den1_directo.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den1_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_den_1_directo <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'den_1_directo', 'level_bias', 1.030334, 0.391445,
+  'peso_Dtte', 'den_1_directo', 'level_bias_in_GSD', 0.069892, 0.026553,
+  'peso_Dtte', 'den_1_directo', 'dispersion_bias', 0.870085, 0.071804,
+  'peso_Dtte', 'den_1_directo', 'accuracy_partial', 0.389708, 0.021411,
+  'peso_Dtte', 'den_1_directo', 'average_F', -0.035184, 0.005223,
+  'peso_Dtte', 'den_1_directo', 'rho', 0.689212, 0.037261,
+  'peso_Dtte', 'den_1_directo', 'inc_acc', 1.450933, 0.080451
+  )
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den1_materno.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den1_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 64.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den1_materno.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den1_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_den_1_materno <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'den_1_materno', 'level_bias', -0.413260, 0.231870,
+  'peso_Dtte', 'den_1_materno', 'level_bias_in_GSD', -0.028033, 0.015729,
+  'peso_Dtte', 'den_1_materno', 'dispersion_bias', 0.851745, 0.061366,
+  'peso_Dtte', 'den_1_materno', 'accuracy_partial', 0.250481, 0.014472,
+  'peso_Dtte', 'den_1_materno', 'average_F', -0.035184, 0.005123,
+  'peso_Dtte', 'den_1_materno', 'rho', 0.714959, 0.036148,
+  'peso_Dtte', 'den_1_materno', 'inc_acc', 1.398681, 0.072682
+  )
+
+###################################################
+# Densidad de marcador - ~ 14 mil marcadores en 50K
+###################################################
+
+f_den_2 <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte_blup/Completo/diag_nrm', col_names = FALSE)
+
+f_den_2 |>
+  mutate(consanguinidad = 1 - X2) |>
+  select(consanguinidad) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/consanguinidad.txt', col_names = FALSE) # Se importa la consanguinidad para este escenario de densidad de marcador.
+
+inb <- read.table('eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/consanguinidad.txt', header = FALSE) |> # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+  mutate(ID_renum = row_number())
+
+summarise(
+  .data = inb, across(
+    .cols = V1,
+    .fns = \(x) mean(x, na.rm = TRUE)
+    )
+  ) # El resultado es -0.02389408.
+
+#########################
+# Efecto genético directo
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den2_directo.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 64.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 5) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den2_directo.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den2_directo.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_den_2_directo <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'den_2_directo', 'level_bias', 0.847634, 0.386620,
+  'peso_Dtte', 'den_2_directo', 'level_bias_in_GSD', 0.057499, 0.026226,
+  'peso_Dtte', 'den_2_directo', 'dispersion_bias', 0.909034, 0.073547,
+  'peso_Dtte', 'den_2_directo', 'accuracy_partial', 0.380660, 0.020763,
+  'peso_Dtte', 'den_2_directo', 'average_F', -0.034252, 0.005064,
+  'peso_Dtte', 'den_2_directo', 'rho', 0.687984, 0.037078,
+  'peso_Dtte', 'den_2_directo', 'inc_acc', 1.453523, 0.080618
+  )
+
+#########################
+# Efecto genético materno
+#########################
+
+#################
+# Datos completos
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los individuos focales en el conjunto de datos completo ----
+
+ebv_PD_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Completo/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_completo = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, EBV_completo)
+
+write_delim(x = ebv_PD_datC, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den2_materno.txt', col_names = TRUE)
+
+whole <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_W_den2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se calcula la varianza genética aditiva de los individuos focales (o de validación) ----
+
+EBV_focal <- ebv_PD_datC |>
+  filter(ID_original %in% ind_PD_LR$ID_original)
+
+varA <- summarise(
+  .data = EBV_focal, across(
+    .cols = EBV_completo,
+    .fns = \(x) var(x, na.rm = TRUE)
+    )
+  ) # El resultado es 64.2
+
+#################
+# Datos parciales
+#################
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90"----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    )
+
+# A continuación, se obtiene los valores genéticos de los indivdiuos focales en el conjunto de datos parcial ----
+
+ebv_PD_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/peso_Dtte/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.
+  rename(
+    `trait/effect` = X2,
+    ID_renum = X3,
+    EBV_parcial = X4,
+    SD = X5
+    ) |>
+  filter(`trait/effect` == 6) |> # Se deja solo el efecto que corresponde a los valores genéticos (EBV) de los individuos.
+  right_join(y = ind_renum_datP, by = 'ID_renum') |>
+  select(ID_original, EBV_parcial)
+
+write_delim(x = ebv_PD_datP, file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den2_materno.txt', col_names = TRUE)
+
+part <- read.table('eva_genetica/Datos/metodo_LR/peso_Dtte/dat_P_den2_materno.txt', header = TRUE) # Lo anterior se importa como un como un "data.frame" con la función read.table() ya que al parecer así lo requiere la función compute_LR_stats() que se usara más adelante.
+
+# Se seleccionan las columnas de interes del archivo de consanguinidad ----
+
+inb_1 <- left_join(x = inb, y = ind_renum_datC, by = 'ID_renum') |>
+  select(ID_original, V1)
+
+# Se calculan los estadísticos del método LR con la función compute_LR_stats() ----
+
+LR_est_PD <- compute_LR_stats(EBV_partial = part, EBV_whole = whole, val_groupIDs = val_group, VAR_A = 217.32, inbreeding = inb_1, plot = TRUE, plot_verbose = TRUE, bootstrap = TRUE, boot_samples = 10000, parallel = 'multicore', ncpus = 2)
+
+LR_est_PD$stats # Se ven los resultados.
+
+LR_est_PD_den_2_materno <- tribble(
+  ~'Caracter', ~'Densidad_marcador', ~'Estadistico', ~'Valor', ~'Error_estandar',
+  'peso_Dtte', 'den_2_materno', 'level_bias', -0.373905, 0.239338,
+  'peso_Dtte', 'den_2_materno', 'level_bias_in_GSD', -0.025364, 0.016235,
+  'peso_Dtte', 'den_2_materno', 'dispersion_bias', 0.879862, 0.062918,
+  'peso_Dtte', 'den_2_materno', 'accuracy_partial', 0.238927, 0.013927,
+  'peso_Dtte', 'den_2_materno', 'average_F', -0.034252, 0.005051,
+  'peso_Dtte', 'den_2_materno', 'rho', 0.689077, 0.037498,
+  'peso_Dtte', 'den_2_materno', 'inc_acc', 1.451216, 0.081051
+  )
+
 # Se une los objetos donde se indica las estimas del método LR para las distintas densidades de marcadores ----
 
-LR_est_PD <- bind_rows(LR_est_PD_0k_directo, LR_est_PD_0k_materno, LR_est_PD_50k_directo, LR_est_PD_50k_materno, LR_est_PD_HD_directo, LR_est_PD_HD_materno, LR_est_PD_SNP_tags_directo, LR_est_PD_SNP_tags_materno, LR_est_PD_SNP_tags_sing_directo, LR_est_PD_SNP_tags_sing_materno, LR_est_PD_SNP_tags_val1_directo, LR_est_PD_SNP_tags_val1_materno, LR_est_PD_SNP_tags_val2_directo, LR_est_PD_SNP_tags_val2_materno)
+LR_est_PD <- bind_rows(LR_est_PD_0k_directo, LR_est_PD_0k_materno, LR_est_PD_50k_directo, LR_est_PD_50k_materno, LR_est_PD_HD_directo, LR_est_PD_HD_materno, LR_est_PD_SNP_tags_directo, LR_est_PD_SNP_tags_materno, LR_est_PD_SNP_tags_sing_directo, LR_est_PD_SNP_tags_sing_materno, LR_est_PD_SNP_tags_2_directo, LR_est_PD_SNP_tags_2_materno, LR_est_PD_SNP_tags_sing_2_directo, LR_est_PD_SNP_tags_sing_2_materno, LR_est_PD_SNP_tags_val1_directo, LR_est_PD_SNP_tags_val1_materno, LR_est_PD_SNP_tags_val2_directo, LR_est_PD_SNP_tags_val2_materno, LR_est_PD_den_1_directo, LR_est_PD_den_1_materno, LR_est_PD_den_2_directo, LR_est_PD_den_2_materno)
 
 LR_est_PD |>
   write_delim(file = 'eva_genetica/Datos/metodo_LR/peso_Dtte/Estadisticos_LR_PD_uni.txt', col_names = TRUE)

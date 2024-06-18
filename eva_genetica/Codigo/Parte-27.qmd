@@ -1,5 +1,5 @@
 ---
-title: "Parte 27: Selección de marcadores de disntia densidad y edición de los mismos en los datos de genotipos imputados a 50k con Beagle v. 5.4"
+title: "Parte 27: Selección de marcadores de distinta densidad y edición de los mismos en los datos de genotipos imputados a 50k con Beagle v. 5.4"
 format: html
 ---
 

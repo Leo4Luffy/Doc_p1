@@ -42,3 +42,606 @@ datProd <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Fenotipos.txt', co
     GC_pdtte = X18
     )
 ```
+
+<!--
+NOTA: Se crea el conjunto de datos de genotipos para cada caracter.
+-->
+
+```{r}
+#| label: Genotipos para cada caracter
+
+# Se importa el conjunto de datos de genotipos editado como resultado de la imputación a densidad alta y que corresponden a genotipos con una densidad de 5 mil marcadores ----
+
+datGeno <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/res_den1.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    ID_ofi = X1,
+    Geno = X2
+    )
+
+datGeno |> slice_head(n = 4)
+
+dim_desc(datGeno) # Existen 2970 individuos genotipados.
+
+# Se importa el conjunto de datos con la información del pedigrí ----
+
+Ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE, delim = ' ', col_selec = c(X1)) |>
+  rename(ID = X1) # Se importa el conjunto de datos de pedigrí
+
+#################
+# Peso al destete
+#################
+
+pDtte <- datProd |>
+  filter(Pdtte != 0) |> # Se quitan los pesos al destete con valores de 0. En total hay 64519 individuos con registro de peso al destete.
+  select(ID)
+
+# Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----
+
+ID_ind <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) 
+
+ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(y = pDtte, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
+
+# Se obtiene el conjunto de datos de genotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 2174 con genotipo e información de peso al destete de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+#datGeno_2 |>
+  #write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/genoPdtte.txt', col_names = FALSE)
+
+# Se observa el número de pesos al destete registado en cada año de nacimiento ----
+
+ID_ind_3 <- ID_ind |> # Del conjunto de datos anterior del libro genealogíco se extrae la fecha de nacimiento para así obtener el año de nacimiento de los individuos.
+  rename(
+    ID = Animal,
+    fec_Nac = Fnac
+    ) |>
+  right_join(y = Ped, by = 'ID') |>
+  mutate(año_Nac = year(fec_Nac)) # Se extrae el año de nacimiento.
+
+ID_ind_3 |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datGeno_3 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  summarise(n = n(), .by = 'año_Nac') |>
+  arrange(año_Nac) #|>
+  #slice_tail(n = 4)
+
+summarise(
+  .data = datGeno_3,
+  across(
+    .cols = n,
+    .fns = sum,
+    na.rm = TRUE
+    )
+  ) # Hay 2174 individuos con datos de peso al destete y genotipados, divididos en años de nacimiento.
+
+datGeno_3 |> slice_tail(n = 10) # Se eligen los individuos nacidos en los años 2017, 2018 y 2019 como a los individuos genotipados a los que su fenotipo se les enmascarará. Suman en total 62+ 126 + 32 = 220 individuos.
+
+datGeno_4 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017, 2018, 2019)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo.
+
+datProd_2 <- pDtte |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 11434 individuos, en los que se incluyen los 220 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los los años 2017 a 2023, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 220 individuos con genotipo y fenotipo.
+
+######################
+# Edad al primer parto
+######################
+
+EPP <- datProd |>
+  filter(EPP != 0) |> # Se quitan las edades al primer parto con valores de 0. En total hay 34512 individuos con registro de peso al destete.
+  select(ID)
+
+# Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----
+
+ID_ind <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) 
+
+ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(y = EPP, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
+
+# Se obtiene el conjunto de datos de genotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 1972 con genotipo e información de edad al primer parto de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+#datGeno_2 |>
+  #write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/genoEPP.txt', col_names = FALSE)
+
+# Se observa el número de edades al primer parto registado en cada año de nacimiento ----
+
+ID_ind_3 <- ID_ind |> # Del conjunto de datos anterior del libro genealogíco se extrae la fecha de nacimiento para así obtener el año de nacimiento de los individuos.
+  rename(
+    ID = Animal,
+    fec_Nac = Fnac
+    ) |>
+  right_join(y = Ped, by = 'ID') |>
+  mutate(año_Nac = year(fec_Nac)) # Se extrae el año de nacimiento.
+
+ID_ind_3 |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datGeno_3 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  summarise(n = n(), .by = 'año_Nac') |>
+  arrange(año_Nac) #|>
+  #slice_tail(n = 4)
+
+summarise(
+  .data = datGeno_3,
+  across(
+    .cols = n,
+    .fns = sum,
+    na.rm = TRUE
+    )
+  ) # Hay 1972 individuos con datos de edad al primer parto y genotipados, divididos en años de nacimiento.
+
+datGeno_3 |> slice_tail(n = 10) # Se eligen los individuos nacidos en los años 2017, 2018 y 2019 como a los individuos genotipados a los que su fenotipo se les enmascarará. Suman en total 61+ 97 + 31 = 189 individuos.
+
+datGeno_4 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017, 2018, 2019)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo.
+
+datProd_2 <- EPP |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 3776 individuos, en los que se incluyen los 189 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los años 2017 a 2023, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 189 individuos con genotipo y fenotipo.
+
+###########################################
+# Intervalo entre el primer y segundo parto
+###########################################
+
+IEP <- datProd |>
+  filter(IEP != 0) |> # Se quitan los pesos al destete con valores de 0. En total hay 16726 individuos con registro de intervalo entre el primer y segundo parto.
+  select(ID)
+
+# Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----
+
+ID_ind <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) 
+
+ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(y = IEP, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
+
+# Se obtiene el conjunto de datos de genotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 1333 con genotipo e información de intervalor parto uno y dos de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+#datGeno_2 |>
+  #write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/intervalo_P1_P2/genoIEP.txt', col_names = FALSE)
+
+# Se observa el número de intervalos entre el primer y segundo parto registado en cada año de nacimiento ----
+
+ID_ind_3 <- ID_ind |> # Del conjunto de datos anterior del libro genealogíco se extrae la fecha de nacimiento para así obtener el año de nacimiento de los individuos.
+  rename(
+    ID = Animal,
+    fec_Nac = Fnac
+    ) |>
+  right_join(y = Ped, by = 'ID') |>
+  mutate(año_Nac = year(fec_Nac)) # Se extrae el año de nacimiento.
+
+ID_ind_3 |>
+  summarise(n = n(), .by = ID) |>
+  filter(n > 1) # Se comprueba y aquí la ID del individuo no se repite.
+
+datGeno_3 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  summarise(n = n(), .by = 'año_Nac') |>
+  arrange(año_Nac) #|>
+  #slice_tail(n = 4)
+
+summarise(
+  .data = datGeno_3,
+  across(
+    .cols = n,
+    .fns = sum,
+    na.rm = TRUE
+    )
+  ) # Hay 1333 individuos con datos de inetervalo entre el primer y segundo parto y genotipados, divididos en años de nacimiento.
+
+datGeno_3 |> slice_tail(n = 10) # Se eligen los individuos nacidos en los años 2017, 2018 y 2019 como a los individuos genotipados a los que su fenotipo se les enmascarará. Suman en total 43+ 68 + 20 = 131 individuos.
+
+datGeno_4 <- datGeno_2 |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017, 2018, 2019)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo.
+
+datProd_2 <- IEP |>
+  right_join(x = ID_ind_3, by = 'ID') |>
+  filter(año_Nac %in% c(2017:2023)) |>
+  pull(ID) # Se extrae la ID de los individuos a los que se enmascarará su fenotipo. Son en total 1414 individuos, en los que se incluyen los 131 individuos con genotipo. Se enmascará el fenotipo de todos los individuos para los años 2017 a 2023, debido a que el método LR requiere, en el conjunto de datos parcial, que no se use información de los individuos contemporaneos a los 131 individuos con genotipo y fenotipo.
+
+####################################################################
+# Bi-carácter entre edad al primer parto e intervalo parto uno y dos
+####################################################################
+
+EPP_IEP <- datProd |>
+  filter(EPP != 0 | IEP != 0)
+
+EPP_IEP |> select(ID, EPP, IEP) |> filter(ID %in% c('AB-11038', 'AB-11039', 'AB-12006', 'AB-12008')) # Se observan estos individuos para ver si se dejaron individuos con registro en un carácter pero en el otro no.
+
+EPP_IEP <- EPP_IEP |>
+  select(ID)
+
+# Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----
+
+ID_ind <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE) 
+
+ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(y = EPP_IEP, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
+
+# Se obtiene el conjunto de datos de genotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 1973 con genotipo e información de edad al primer parto e intervalo parto uno y dos de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+#datGeno_2 |>
+  #write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/genoEPP_IEP.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: Para cada caracter se generan los conjunto de datos completo y parcial.
+-->
+
+```{r}
+#| label: Conjunto de datos completo y parcial para cada caracter
+
+# Se importa el conjunto de datos de pedigrí ----
+
+Ped <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Pedigri.txt', col_names = FALSE, delim = ' ', col_selec = c(X1)) |>
+  rename(ID = X1)
+
+# A los individuos del archivo de pedigrí anterior se les coloca su fecha de nacimiento y se extrae su año de nacimiento ----
+
+ID_ind <- read_delim(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE, col_selec = c(Animal, Fnac)) |> # Se importa el conjunto de datos del libro genealogíco donde se extraera la fecha de nacimiento de los individuos.
+  rename(
+    ID = Animal,
+    fec_Nac = Fnac
+    ) |>
+  right_join(y = Ped, by = 'ID') |>
+  mutate(año_Nac = year(fec_Nac)) # Se extrae el año de nacimiento.
+
+#################
+# Peso al destete
+#################
+
+pDtte <- datProd |> 
+  select(ID, contains('pdtte')) |>
+  filter(Pdtte != 0) # Se quitan los pesos al destete con valores de 0. En total hay 64519 individuos con registro de peso al destete.
+
+pDtte_2 <- pDtte |>
+  mutate(
+    Pdtte_NA = case_when(
+        ID %in% datProd_2 ~ 0
+        )
+    ) |> # Se enmascara el peso al destete de los individuos en el objeto "datGeno_4".
+  relocate(
+    Pdtte_NA,
+    .after = Pdtte
+    )
+
+pDtte_2 |> count(Pdtte_NA) # Hay 11434 individuos con valores de 0 para el peso al destete, que corresponde a los años de nacimiento 2017 a 2023.
+
+pDtte_3 <- pDtte_2 |>
+  mutate(
+    Pdtte_NA = case_when(
+        is.na(Pdtte_NA) ~ Pdtte,
+        TRUE ~ Pdtte_NA
+        )
+    ) # Se obtiene el conjunto de datos de peso al destete con datos completos (Pdtte) y parciales (Pdtte_NA) para este caracter.
+
+pDtte_3 |>
+  filter(Pdtte_NA != 0) |>
+  summarise(Mínimo = min(Pdtte_NA), Máximo = max(Pdtte_NA)) # Hay pesos al destete bajos y altos. El mínimo permitido por los ganaderos de Avileña es de 89.
+
+pDtte_3 |>
+  select(ID, Pdtte, ends_with('_pdtte')) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Completo/pDtte.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos completo.
+
+pDtte_3 |>
+  select(ID, Pdtte_NA, ends_with('_pdtte')) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/peso_Dtte/Parcial/pDtte.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+
+######################
+# Edad al primer parto
+######################
+
+EPP <- datProd |>
+  select(ID, Sexo_P1, Edad_toro_P1, contains('EPP'), -EPP_IEP) |>
+  filter(EPP != 0) # Se quitan las edades al primer parto con valores de 0. En total hay 34512 individuos con registro de edad al primer parto.
+
+EPP_2 <- EPP |>
+  mutate(
+    EPP_NA = case_when(
+        ID %in% datProd_2 ~ 0
+        )
+    ) |> # Se enmascara la edad al primer parto de los individuos en el objeto "datGeno_4".
+  relocate(
+    EPP_NA,
+    .after = EPP
+    )
+
+EPP_2 |> count(EPP_NA) # Hay 3776 individuos con valores de 0 para la edad al primer parto, que corresponde a los años de nacimiento 2017 a 2023.
+
+EPP_3 <- EPP_2 |>
+  mutate(
+    EPP_NA = case_when(
+        is.na(EPP_NA) ~ EPP,
+        TRUE ~ EPP_NA
+        )
+    ) # Se obtiene el conjunto de datos edad al primer parto con datos completos y parciales para este caracter.
+
+EPP_3 |>
+  filter(EPP_NA != 0) |>
+  summarise(Mínimo = min(EPP_NA), Máximo = max(EPP_NA))
+
+EPP_3 |>
+  select(ID, EPP, ends_with(c('_EPP', 'P1'))) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/Completo/EPP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos completo.
+
+EPP_3 |>
+  select(ID, EPP_NA, ends_with(c('_EPP', 'P1'))) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/Parcial/EPP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+
+###########################################
+# Intervalo entre el primer y segundo parto
+###########################################
+
+IEP <- datProd |>
+  select(ID, Sexo_P2, Edad_toro_P2, Raza_toro, contains('IEP')) |>
+  filter(IEP != 0) # Se quitan los intervalos parto uno y parto dos con valores de 0. En total hay 16726 individuos con registro de intervalor entre el primer y segundo parto.
+
+IEP_2 <- IEP |>
+  mutate(
+    IEP_NA = case_when(
+        ID %in% datProd_2 ~ 0
+        )
+    ) |> # Se enmascara el peso al destete de los individuos en el objeto "datGeno_4".
+  relocate(
+    IEP_NA,
+    .after = IEP
+    )
+
+IEP_2 |> count(IEP_NA) # Hay 1414 individuos con valores de 0 para el intervalo entre el primer y segundo parto, que corresponde a los años de nacimiento 2017 a 2023.
+
+IEP_3 <- IEP_2 |>
+  mutate(
+    IEP_NA = case_when(
+        is.na(IEP_NA) ~ IEP,
+        TRUE ~ IEP_NA
+        )
+    ) # Se obtiene el conjunto de datos de intervalor parto uno y dos con datos completos y parciales para este caracter.
+
+IEP_3 |>
+  filter(IEP_NA != 0) |>
+  summarise(Mínimo = min(IEP_NA), Máximo = max(IEP_NA))
+
+IEP_3 |>
+  select(ID, IEP, ends_with(c('_IEP', 'P2')), Raza_toro) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/Completo/IEP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos completo.
+
+IEP_3 |>
+  select(ID, IEP_NA, ends_with(c('_IEP', 'P2')), Raza_toro) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/Parcial/IEP.txt', delim = ' ', col_names = FALSE) # Se importa el conjunto de datos parcial, a los que se les enmascaro el fenotipo.
+
+####################################################################
+# Bi-carácter entre edad al primer parto e intervalo parto uno y dos
+####################################################################
+
+##########
+# Completo
+##########
+
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/Completo/EPP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos completo para la edad al primer parto.
+  rename(
+    ID = X1,
+    EPP = X2,
+    GC_EPP = X3,
+    ID_toro_EPP = X4,
+    Sexo_P1 = X5,
+    Edad_toro_P1 = X6    
+    )
+
+IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/Completo/IEP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos completo para el intervalo entre el primer y segundo parto.
+  rename(
+    ID = X1,
+    IEP = X2,
+    EPP_IEP = X3,
+    GC_IEP = X4,
+    ID_toro_IEP = X5,
+    Sexo_P2 = X6,
+    Edad_toro_P2 = X7,
+    Raza_toro = X8
+    )
+
+EPP_IEP <- full_join(x = EPP, y = IEP, by = 'ID') |>
+  mutate_all(~replace(., is.na(.), 0)) |> # Con mutate_all() se aplica la función replace() a todas las columnas, de esta forma se reemplazan los valores NA en todas las columnas por 0.
+  select(ID, EPP, ends_with(c('_EPP', 'P1')), -EPP_IEP, IEP, ends_with(c('_IEP', 'P2')), Raza_toro)
+
+EPP_IEP |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/EPP_IEP/Completo/EPP_IEP.txt', col_names = FALSE)
+
+#########
+# Parcial
+#########
+
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/Parcial/EPP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para la edad al primer parto.
+  rename(
+    ID = X1,
+    EPP_NA = X2,
+    GC_EPP = X3,
+    ID_toro_EPP = X4,
+    Sexo_P1 = X5,
+    Edad_toro_P1 = X6    
+    )
+
+IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/Parcial/IEP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para el intervalo entre el primer y segundo parto.
+  rename(
+    ID = X1,
+    IEP_NA = X2,
+    EPP_IEP = X3,
+    GC_IEP = X4,
+    ID_toro_IEP = X5,
+    Sexo_P2 = X6,
+    Edad_toro_P2 = X7,
+    Raza_toro = X8
+    )
+
+EPP_IEP <- full_join(x = EPP, y = IEP, by = 'ID') |>
+  mutate_all(~replace(., is.na(.), 0)) |> # Con mutate_all() se aplica la función replace() a todas las columnas, de esta forma se reemplazan los valores NA en todas las columnas por 0.
+  select(ID, EPP_NA, ends_with(c('_EPP', 'P1')), -EPP_IEP, IEP_NA, ends_with(c('_IEP', 'P2')), Raza_toro)
+  
+EPP_IEP |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/EPP_IEP/Parcial/EPP_IEP.txt', col_names = FALSE)
+```
+
+<!--
+NOTA: A continuación se genera el conjunto de datos de genotipos para los tres caracteres anteriores.
+-->
+
+```{r}
+#| label: Conjunto de datos de genotipos para los tres caracteres
+
+# Se importa el conjunto de datos con la información de los fenotipos peso al destete, edad al primer parto e intervalo entre el primer y segundo parto ----
+
+datProd <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Fenotipos.txt', col_names = FALSE, delim = ' ') |>
+  rename(
+    ID = X1,
+    EPP = X2,
+    IEP = X3,
+    Sexo_P1 = X4,
+    Edad_toro_P1 = X5,
+    GC_EPP = X6,
+    ID_toro_EPP = X7,
+    Sexo_P2 = X8,
+    EPP_IEP = X9,
+    Edad_toro_P2 = X10,
+    Raza_toro = X11,
+    GC_IEP = X12,
+    ID_toro_IEP = X13,
+    Pdtte = X14,
+    Edad_pdtte = X15,
+    Sexo_pdtte = X16,
+    Edad_madre_pdtte = X17,
+    GC_pdtte = X18
+    ) |>
+  select(ID)
+
+# Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----
+
+ID_ind <- read_csv2(file = 'eva_genetica/Datos/datPuros/genSEP23cIoficial.csv', col_names = TRUE)
+
+ID_ind_2 <- ID_ind |> # Este conjunto de datos contiene la ID de los individuos y la ID oficial.
+  select(1, 6) |>
+  rename(
+    ID = Animal,
+    ID_ofi = Ioficial
+    ) |>
+  right_join(y = datProd, by = 'ID') # Se unen los objetos con el fin de obtener un conjunto de datos con las dos identificaciones: ID | | ID_ofi.
+
+############
+# Densidad 1
+############
+
+# Se importa el conjunto de datos de genotipos editado como resultado de la imputación a densidad media con Beagle v. 5.4 ----
+
+datGeno <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/res_den1.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    ID_ofi = X1,
+    Geno = X2
+    )
+
+# Se exporta el conjunto de datos de genotipos con la ID no oficial y como se encuentra en los datos de fenotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 2401 indivdiuos con genotipo e información de los fenotipos peso al destete, edad al primer parto e intervalor entre los partos uno y dos de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+datGeno_2 |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Genotipos.txt', col_names = FALSE)
+
+# NOTA: Según el manual del programa blupf0 "los dos campos (ID de animal y SNP) deben estar separados por al menos un espacio, y el campo 2 debe tener un formato fijo (es decir, todas las filas de genotipos deben comenzar en el mismo número o posición de columna)". Por esta razón, en la terminal de linux se coloco este codigo: awk '{printf "%-10s%s\n", $1, $2}' Genotipos.txt > Genotipos_2.txt. Este comando formateará los datos en el archivo de tal manera que la primera columna tenga un ancho fijo de 10 caracteres y la segunda columna comience inmediatamente después de la primera columna, asegurando que todas las filas comiencen en la misma posición.
+
+############
+# Densidad 2
+############
+
+# Se importa el conjunto de datos de genotipos editado como resultado de la imputación a densidad media con Beagle v. 5.4 ----
+
+datGeno <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/res_den2.txt', delim = ' ', col_names = FALSE) |>
+  rename(
+    ID_ofi = X1,
+    Geno = X2
+    )
+
+# Se exporta el conjunto de datos de genotipos con la ID no oficial y como se encuentra en los datos de fenotipos ----
+
+datGeno_2 <- datGeno |>
+  inner_join(y = ID_ind_2, by = 'ID_ofi') |>
+  relocate(
+    ID,
+    .before = Geno
+    ) |>
+  #distinct(ID) |> summarise(n = n()) # Hay 2401 indivdiuos con genotipo e información de los fenotipos peso al destete, edad al primer parto e intervalor entre los partos uno y dos de los 2970 individuos genotipados.
+  select(-ID_ofi)
+
+datGeno_2 |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Genotipos.txt', col_names = FALSE)
+```
