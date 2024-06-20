@@ -1082,7 +1082,7 @@ HDInterval::hdi(object = HPD_result$corr_directo_materno, credMass = 0.95) # El 
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
@@ -1681,7 +1681,7 @@ ggsave('eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Completo/Imagenes/burni
 # Con burn-in igual a cero
 ##########################
 
-burnin_1 <- read_table(file = 'Datos/eva_genomica/SNP_tags/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
 # Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 

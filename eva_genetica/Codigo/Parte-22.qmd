@@ -9736,7 +9736,7 @@ graf_sesgo_PD_materno <- (sesgo_PD_IC_materno / sesgo_PD_materno) +
 
 (graf_sesgo_PD_directo | graf_sesgo_PD_materno)
 
-ggsave('eva_genetica/Datos/metodo_LR/EPP_IEP/sesgo_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/sesgo_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
 
 ############
 # Dispersion
@@ -9832,7 +9832,7 @@ graf_dispersion_PD_materno <- (dispersion_PD_IC_materno / dispersion_PD_materno)
 
 (graf_dispersion_PD_directo | graf_dispersion_PD_materno)
 
-ggsave('eva_genetica/Datos/metodo_LR/EPP_IEP/dispersion_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/dispersion_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
 
 ###########
 # Precisión
@@ -9867,7 +9867,7 @@ precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
 
 precision_PD_IC_directo <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(title = 'Efecto directo', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9881,6 +9881,8 @@ precision_PD_IC_directo <- ggplot(data = precision |> filter(!is.na(Escenarios))
 
 graf_precision_PD_directo <- (precision_PD_IC_directo / precision_PD_directo) +
   plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/precision_PD_uni_bi_dir.pdf', width = 30, height = 20, units = 'cm')
 
 ###################
 # 2. Efecto materno
@@ -9911,7 +9913,7 @@ precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
 
 precision_PD_IC_materno <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(title = 'Efecto materno', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9926,7 +9928,23 @@ precision_PD_IC_materno <- ggplot(data = precision |> filter(!is.na(Escenarios))
 graf_precision_PD_materno <- (precision_PD_IC_materno / precision_PD_materno) +
   plot_layout(widths = c(1, 1), heights = c(0.34, 1))
 
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/precision_PD_uni_bi_mat.pdf', width = 30, height = 20, units = 'cm')
+
 (graf_precision_PD_directo | graf_precision_PD_materno)
 
-ggsave('eva_genetica/Datos/metodo_LR/EPP_IEP/precision_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+ggsave('eva_genetica/Datos/metodo_LR/peso_Dtte/precision_PD_uni_bi.pdf', width = 40, height = 20, units = 'cm')
+```
+
+<!--
+NOTA: Se obtiene a continuación una estima para poder calcular el incremento en precisión al incluir información genómica.
+-->
+
+```{r}
+#| label: Incremento de precisión de pedigrí a genotipos
+
+######################
+# 1. Edad primer parto
+######################
+
+# NOTA: VOY AQUÍ.
 ```
