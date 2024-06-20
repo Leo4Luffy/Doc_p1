@@ -1,5 +1,5 @@
 ---
-title: "Parte 13: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags y singletones"
+title: "Parte 13: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags y singletones en HD"
 format: html
 ---
 

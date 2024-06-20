@@ -1,5 +1,5 @@
 ---
-title: "Parte 23: Edición en los datos de genotipos imputados a 50k con Beagle v. 5.4 y que corresponden a SNP-tags"
+title: "Parte 21: Visualización de resultados del gibbs en datos completos y parciales en el genotipado proporcionado por SNP-tags en 50K"
 format: html
 ---
 
@@ -10,187 +10,1180 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse, conflicted)
-conflicts_prefer(dplyr::filter) # Aquí se le da prioridad a la función filter() del paquete dplyr. Esto debido al conflicto generado con el paquete stats:
-# Error:
-# ! [conflicted] filter found in 2 packages.
-# Either pick the one you want with `::`:
-# dplyr::filter
-# stats::filter
-conflicts_prefer(dplyr::select)
+pacman::p_load(tidyverse, patchwork)
 ```
 
 <!--
-NOTA: A continuación se seleccionan de los genotipos en 50K imputados, los marcadores que corresponden a SNP-tags.
+NOTA: Para el caracter "peso al destete" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y 
 -->
 
 ```{r}
-#| label: Selección de tags en los datos de genotipos en 50K
+#| label: Resultados del postgibbs para el peso al destete
 
-# Se importa los datos de genotipos imputados en HD ----
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
 
-res50K <- data.table::fread(file = 'Imputacion/Imp_HD/Datos/Beagle/Precision_origen/Res_imputacion_3.vcf', sep = '\t', skip = '#CHROM', header = TRUE) |> # Con skip = "#CHROM" se indica iniciar en la fila donde estan los nombres de las columnas.
-  select(-c(1:2, 4:9))
-
-# Se importa los datos con los nombres de los SNP-tags ----
-
-dat_tags <- read_delim(file = 'single_tags/Datos/datPuros/SNP_only_tags_ANI.txt', col_names = FALSE, delim = ' ')
-
-# Se observa cuales SNP-tags aparecen adentro del conjunto de datos "nomb_marc_comun.txt" ----
-
-marc_comun <- read_delim(file = 'Imputacion/Imp_HD/Datos/datQC_2/nomb_marc_comun.txt', col_names = FALSE, delim = ' ') |>
-  inner_join(y = dat_tags, by = 'X1')
-
-# Se genera la columna X3 con el nombre de los SNP-tags de acuerdo al genotipado en 50k y HD ----
-
-dat_tags <- marc_comun |>
-  full_join(x = dat_tags, by = 'X1') |>
-  mutate(
-    X3 = case_when(
-      is.na(X2) ~ X1,
-      TRUE ~ X2
-      )
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del individuo' = X4,
+      'Covarianza entre efecto directo y materno' = X5,
+      'Varianza para el efecto materno' = X6,
+      'Varianza para el efecto permanente materno' = X7,
+      'Residuo' = X8
+      ) |>
+    pivot_longer(
+      cols = c(2:6),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
     )
-
-dat_tags |> slice(1021:1024) # Se observa para ver si la columna X3 generó el nombre de los SNP-tags como se quería.
-
-dim_desc(dat_tags) # Hay en total 103080 SNP-tags.
-
-# Se dejan los marcadores considerados tags ----
-
-SNP_tag <- res50K |>
-  filter(ID %in% dat_tags$X3)
-
-dim_desc(SNP_tag) # En total, 5534 tag-SNPs en el genotipado de 50K.
-```
-
-<!--
-NOTA: A continuación se genera el conjunto de datos de SNP-tags editados.
--->
-
-```{r}
-#| label: Edición de SNP-tags
-
-# La función a continuación permite cambiar los genotipos a como lo requiere el conjunto de programas del blupf90 ----
-
-cod_geno <- function(columna) { # Esta función permite cambiar la codificación de los genotipos.
-  for (i in 2:ncol(columna)) { # Se indica aquí iniciar los cambios a partir de la segunda columna, ya que la primera corresponde a la ID de los individuos.
-    columna[[i]] <- case_when(
-      columna[[i]] == '0|0' ~ '0',
-      columna[[i]] == '0|1' ~ '1',
-      columna[[i]] == '1|0' ~ '1',
-      columna[[i]] == '1|1' ~ '2',
-      columna[[i]] == '.|.' ~ '5'
-      )
-    }
-  return(columna)
   }
 
-# Se transpone el objeto "SNP_tag" ----
+###############################
+# 1. Conjunto de datos completo
+###############################
 
-SNP_tag_2 <- SNP_tag |>
-  pivot_longer(
-    cols = c(2:2971),
-    names_to = 'IID',
-    values_to = 'Gen_fase'
+##########################
+# Con burn-in igual a cero
+##########################
+
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
+
+# Se aplica la función al inicio de este fragmento para crear cada visualización de acuerdo al efecto considerado ----
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo', 'cyan')
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varG.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza entre efecto directo y materno', 'orange')
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_cero/covarDM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto materno', 'black')
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto permanente materno', 'green')
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varPM.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo', 'red')
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_cero/varR.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
+
+heredabilidad <- burnin_1 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
     ) |>
-  pivot_wider(
-    names_from = ID,
-    values_from = Gen_fase
-    ) |> # Al pasar a formato largo y de nuevo a formato ancho, se logra transponer quedando la identificación de los individuos (ID) en filas y los nombres de los marcadores (o SNPs) en columnas.
-  separate(
-    col = IID,
-    into =  c('ID', 'ID_2'),
-    sep  =  '_'
+  mutate(
+    heredabilidad_total = (`Varianza para el efecto del individuo` + ((0.5) * (`Varianza para el efecto materno`)) + ((1.5) * (`Covarianza entre efecto directo y materno`))) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_materna = `Varianza para el efecto materno` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    corr_directo_materno = `Covarianza entre efecto directo y materno` / (sqrt(`Varianza para el efecto del individuo`) * sqrt(`Varianza para el efecto materno`)),
+    proporcion_var_ambiental_materna = (`Varianza para el efecto permanente materno`) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo)
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 270, y = 0.015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varM <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 140, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varPM <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto permanente materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto permanente materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_covarDM <- heredabilidad |>
+  ggplot(aes(x = `Covarianza entre efecto directo y materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = -80, y = 0.025,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Covarianza entre efecto directo y materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Covarianza entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_directa <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_directa)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.34, y = 13,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_directa), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad directa') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_materna <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.19, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad materna') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_total <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_total)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.165, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_total), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad total') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_directo_materno <- heredabilidad |>
+  ggplot(aes(x = corr_directo_materno)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2)  +
+  annotate(
+    'text', x = -0.65, y = 9,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_directo_materno), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_ambiente_materno <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_ambiental_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = 0.10, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_ambiental_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza ambiental materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG | graf_varM) / (graf_varPM | graf_varE) / (graf_covarDM | graf_vacio)) | ((graf_her_directa | graf_her_materna) / (graf_her_total | graf_corr_directo_materno) / (graf_prop_ambiente_materno | graf_vacio)))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el peso al destete') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Completo/Imagenes/burnin_diezmil/Heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+
+HPD_result <- burnin_1 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
     ) |>
-  select(-c(ID_2))
+  mutate(
+    heredabilidad_total = (`Varianza para el efecto del individuo` + ((0.5) * (`Varianza para el efecto materno`)) + ((1.5) * (`Covarianza entre efecto directo y materno`))) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_materna = `Varianza para el efecto materno` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    corr_directo_materno = `Covarianza entre efecto directo y materno` / (sqrt(`Varianza para el efecto del individuo`) * sqrt(`Varianza para el efecto materno`)),
+    proporcion_var_ambiental_materna = (`Varianza para el efecto permanente materno`) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo)
+    )
 
-dim_desc(SNP_tag_2)
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
-SNP_tag_2 |> select(1:4) |> slice_head(n = 8) # Los individuos quedaron en filas y los marcadores en columnas.
+HDInterval::hdi(object = HPD_result$heredabilidad_directa, credMass = 0.95) # El intervalo es de [0.238, 0.328]
+HDInterval::hdi(object = HPD_result$heredabilidad_materna, credMass = 0.95) # El intervalo es de [0.120, 0.176]
+HDInterval::hdi(object = HPD_result$corr_directo_materno, credMass = 0.95) # El intervalo es de [-0.774, -0.648]
 
-# Se editan los SNP-tags y posteriormente se exporta dicha edición ----
+##############################
+# 2. Conjunto de datos parcial
+##############################
 
-SNP_tag_3 <- cod_geno(SNP_tag_2) # Se usa la función al inicio de este fragmento de código para cambiar los valores de los SNP-tags (en fase) del Beagle v. 5.4 a como lo requiere el programa blupf90.
+##########################
+# Con burn-in igual a cero
+##########################
 
-dim_desc(SNP_tag_3) # En los datos de SNP-tags hay 2970 indivdiuos y 5534 SNP-tags.
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/peso_Dtte/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
-SNP_tag_3 |> select(1:4) |> slice_head(n = 8) # Se observa aquí si se logro cambiar la codificación de los SNP-tags.
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
 
-SNP_tag_3 |>
-  unite(
-    col = 'Geno', 
-    2:ncol(SNP_tag_3),
-    sep = '',
-    remove = TRUE
+heredabilidad <- burnin_1 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
     ) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/resSNP_tags.txt', col_names = FALSE)
+  mutate(
+    heredabilidad_total = (`Varianza para el efecto del individuo` + ((0.5) * (`Varianza para el efecto materno`)) + ((1.5) * (`Covarianza entre efecto directo y materno`))) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_materna = `Varianza para el efecto materno` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    corr_directo_materno = `Covarianza entre efecto directo y materno` / (sqrt(`Varianza para el efecto del individuo`) * sqrt(`Varianza para el efecto materno`)),
+    proporcion_var_ambiental_materna = (`Varianza para el efecto permanente materno`) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo)
+    )
+
+graf_varG <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 270, y = 0.015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$Residuo), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varM <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 140, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varPM <- heredabilidad |>
+  ggplot(aes(x = Residuo)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 500, y = 0.03,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto permanente materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto permanente materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_covarDM <- heredabilidad |>
+  ggplot(aes(x = `Covarianza entre efecto directo y materno`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = -80, y = 0.025,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Covarianza entre efecto directo y materno`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Covarianza entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_directa <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_directa)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.34, y = 13,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_directa), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad directa') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_materna <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.19, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad materna') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_her_total <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_total)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.165, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_total), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad total') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_directo_materno <- heredabilidad |>
+  ggplot(aes(x = corr_directo_materno)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2)  +
+  annotate(
+    'text', x = -0.65, y = 9,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_directo_materno), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación entre los efectos directos y maternos') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_ambiente_materno <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_ambiental_materna)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2) +
+  annotate(
+    'text', x = 0.10, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_ambiental_materna), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza ambiental materno') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG | graf_varM) / (graf_varPM | graf_varE) / (graf_covarDM | graf_vacio)) | ((graf_her_directa | graf_her_materna) / (graf_her_total | graf_corr_directo_materno) / (graf_prop_ambiente_materno | graf_vacio)))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el peso al destete') & 
+  theme(plot.title = element_text(size = 9.4, face = 'bold'))
+
+HPD_result <- burnin_1 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del individuo' = X4,
+    'Covarianza entre efecto directo y materno' = X5,
+    'Varianza para el efecto materno' = X6,
+    'Varianza para el efecto permanente materno' = X7,
+    'Residuo' = X8
+    ) |>
+  mutate(
+    heredabilidad_total = (`Varianza para el efecto del individuo` + ((0.5) * (`Varianza para el efecto materno`)) + ((1.5) * (`Covarianza entre efecto directo y materno`))) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_directa = `Varianza para el efecto del individuo` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    heredabilidad_materna = `Varianza para el efecto materno` / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo),
+    corr_directo_materno = `Covarianza entre efecto directo y materno` / (sqrt(`Varianza para el efecto del individuo`) * sqrt(`Varianza para el efecto materno`)),
+    proporcion_var_ambiental_materna = (`Varianza para el efecto permanente materno`) / (`Varianza para el efecto del individuo` + `Varianza para el efecto materno` + `Varianza para el efecto permanente materno` + `Covarianza entre efecto directo y materno` + Residuo)
+    )
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = HPD_result$heredabilidad_directa, credMass = 0.95) # El intervalo es de [0.219, 0.315]
+HDInterval::hdi(object = HPD_result$heredabilidad_materna, credMass = 0.95) # El intervalo es de [0.109, 0.168]
+HDInterval::hdi(object = HPD_result$corr_directo_materno, credMass = 0.95) # El intervalo es de [-0.750, -0.593]
 ```
 
 <!--
-NOTA: A continuación, se observa la distribución de los tag-SNPs genotipados e imputados en 50k a lo largo del genoma bovino (en cada uno de los 29 cromosomas).
+NOTA: Para el bi-caracter "edad al primer parto" e "intervalo entre el primer y segundo parto" se realiza la visualización de las trazas de convergencia, los parámetros genéticos (varianzas y heredabilidad) y 
 -->
 
 ```{r}
-#| label: Distribución de los tag-SNPs genotipados e imputados en 50K
+#| label: Resultados del postgibbs para el bi-carácter edad al primer parto e intervalo entre el primer y segundo parto
 
-# Se importa el nombre de los tag-SNPs ----
+# Con la siguiente función se creara la visualización de las trazas para mirar la convergencia según el burn-in indicado al hacer el postgibbs ----
 
-SNP_tag |>
-  select(ID) |>
-  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/id_tags.txt', col_names = FALSE)
+create_plot <- function(data, componente, color) {
+  data |>
+    select(-c(1, 3)) |>
+    rename(
+      'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación - EPP' = X4,
+      'Varianza para el efecto del toro - EPP' = X5,
+      'Varianza para el efecto del grupo de comparación - I_P1-P2' = X6,
+      'Varianza para el efecto del toro - I_P1-P2' = X7,
+      'Varianza para el efecto del individuo - EPP' = X8,
+      'Covarianza entre efectos geneticos - EPP e I_P1-P2' = X9,
+      'Varianza para el efecto del individuo - I_P1-P2' = X10,
+      'Residuo - EPP' = X11,
+      'Covarianza residual - EPP e I_P1-P2' = X12,
+      'Residuo - I_P1-P2' = X13
+      ) |>
+    pivot_longer(
+      cols = c(2:11),
+      names_to = 'Componentes de varianza',
+      values_to = 'Estima'
+      ) |>
+    filter(`Componentes de varianza` == componente) |>
+    ggplot(aes(x = Muestra, y = Estima)) +
+    geom_line(alpha = 0.4, linewidth = 0.4, colour = color) +
+    labs(x = 'Número de iteraciones', y = '', title = componente) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 10, face = 'bold'),
+      axis.text = element_text(size = 10, face = 'bold'),
+      axis.title = element_text(size = 10, face = 'bold'),
+      legend.position = 'none'
+    )
+  }
 
-# Función que permite ejecutar PLINK dentro de R ----
-plink <- function(PLINKopciones = '') system(paste('Plink/Datos/plink', PLINKopciones))
+###############################
+# 1. Conjunto de datos completo
+###############################
 
-plink() # Al correr esta línea de código aparecen las opciones de PLINK, la versión, entre otros, lo que indica que si se cargo bien este software dentro del ambiente R.
+##########################
+# Con burn-in igual a cero
+##########################
 
-# Se usa PLINK para extraer solo los Singletons ----
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/postgibbs_1/postgibbs_samples', col_names = FALSE)
 
-plink('--cow --allow-extra-chr --bfile Imputacion/Imp_HD/Datos/datQC_2/Paso_4 --extract eva_genetica/Datos/eva_genomica/SNP_tags_50K/id_tags.txt --make-bed --recode --out eva_genetica/Datos/eva_genomica/SNP_tags_50K/paso_1')
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - EPP', 'cyan')
 
-# Se realiza el gráfico donde se observará la distribucón de los tag-SNPs en cada uno de los 29 cromosomas ----
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_EPP.pdf', width = 40, height = 20, units = 'cm')
 
-dat_cromo <- read_table(file = 'Imputacion/Imp_HD/Datos/datPuros/HD_ARC_UCD12_Illumina.map', col_names = FALSE) |>
-  select(1, 4) |>
-  filter(X1 %in% c(1:29)) |>
-  slice_max(order_by = X4, by = X1) |>
+create_plot(burnin_1, 'Varianza para el efecto del toro - EPP', 'orange')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del grupo de comparación - I_P1-P2', 'cyan')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varGC_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del toro - I_P1-P2', 'orange')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varT_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo - EPP', 'green')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza entre efectos geneticos - EPP e I_P1-P2', 'black')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covG__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Varianza para el efecto del individuo - I_P1-P2', 'green')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varG_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo - EPP', 'green')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_EPP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Covarianza residual - EPP e I_P1-P2', 'black')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/covR__EPP_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+create_plot(burnin_1, 'Residuo - I_P1-P2', 'green')
+
+ggsave('Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_cero/varR_IEP.pdf', width = 40, height = 20, units = 'cm')
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
+
+heredabilidad <- burnin_1 |>
+  select(-c(1, 3)) |>
   rename(
-    Cromosoma = X1,
-    Tamaño = X4
-    ) # Se indica aquí los 29 cromosomas con sus respectivos tamaños (en pares de bases).
-
-dat_tags <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/paso_1.bim', col_names = FALSE) |>
-  select(1:2, 4) |>
-  rename(
-    Cromosoma = X1,
-    ID_tags = X2,
-    Posicion = X4
+    'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación - EPP' = X4,
+      'Varianza para el efecto del toro - EPP' = X5,
+      'Varianza para el efecto del grupo de comparación - I_P1-P2' = X6,
+      'Varianza para el efecto del toro - I_P1-P2' = X7,
+      'Varianza para el efecto del individuo - EPP' = X8,
+      'Covarianza entre efectos geneticos - EPP e I_P1-P2' = X9,
+      'Varianza para el efecto del individuo - I_P1-P2' = X10,
+      'Residuo - EPP' = X11,
+      'Covarianza residual - EPP e I_P1-P2' = X12,
+      'Residuo - I_P1-P2' = X13
+    ) |>
+  mutate(
+    heredabilidad_EPP = `Varianza para el efecto del individuo - EPP` / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    heredabilidad_IEP = `Varianza para el efecto del individuo - I_P1-P2` / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`),
+    corr_gen_EPP_IEP = `Covarianza entre efectos geneticos - EPP e I_P1-P2` / (sqrt(`Varianza para el efecto del individuo - EPP`) * sqrt(`Varianza para el efecto del individuo - I_P1-P2`)),
+    proporcion_var_grup_comp_EPP = (`Varianza para el efecto del grupo de comparación - EPP`) / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    proporcion_var_toro_EPP = (`Varianza para el efecto del toro - EPP`) / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    proporcion_var_grup_comp_IEP = (`Varianza para el efecto del grupo de comparación - I_P1-P2`) / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`),
+    proporcion_var_toro_IEP = (`Varianza para el efecto del toro - I_P1-P2`) / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`)
     )
 
-etiquetas_x <- c('Chr 01', 'Chr 02', 'Chr 03', 'Chr 04', 'Chr 05', 'Chr 06', 'Chr 07', 'Chr 08', 'Chr 09', 'Chr 10', 'Chr 11', 'Chr 12', 'Chr 13', 'Chr 14', 'Chr 15', 'Chr 16', 'Chr 17', 'Chr 18', 'Chr 19', 'Chr 20', 'Chr 21', 'Chr 22', 'Chr 23', 'Chr 24', 'Chr 25', 'Chr 26', 'Chr 27', 'Chr 28', 'Chr 29') # Se agrega aquí las etiquetas que desean mostrar en el eje x.
+HDInterval::hdi(object = heredabilidad$heredabilidad_EPP, credMass = 0.95) # El intervalo es de [0.074, 0.105]
+HDInterval::hdi(object = heredabilidad$heredabilidad_IEP, credMass = 0.95) # El intervalo es de [0.035, 0.078]
+HDInterval::hdi(object = heredabilidad$corr_gen_EPP_IEP, credMass = 0.95) # El intervalo es de [0.033, 0.039]
 
-ggplot() +
-  geom_segment(
-    data = dat_cromo,
-    aes(x = Cromosoma, xend = Cromosoma, y = 0, yend = Tamaño),
-    lineend = 'round', color = 'lightgrey', linewidth = 5
+graf_varG_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 2400, y = 0.0015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
     ) +
-  geom_segment(
-    data = dat_tags,
-    aes(x = as.integer(Cromosoma) - 0.05, xend = as.integer(Cromosoma) + 0.05, y = Posicion, yend = Posicion),
-    linewidth = 0.4, alpha = 1.4
-    ) +
-  scale_x_continuous(breaks = 1:29, labels = etiquetas_x) +
-  labs(y = 'Posición (en pares de bases)') +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva EPP') +
   theme_bw() +
   theme(
-    plot.title = element_text(size = 12),
-    axis.text = element_text(size = 10),
-    axis.title = element_text(size = 12, face = 'bold'),
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
     legend.text = element_text(size = 10),
-    legend.title = element_text(size = 12, face = 'bold'),
-    plot.caption = element_text(color = 'black', face = 'italic', hjust = 0),
-    legend.position = 'none'
+    legend.title = element_text(size = 12, face = 'bold')
     )
+
+graf_varG_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 400, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_EPP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 11250, y = 0.0020,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_IEP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3050, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 5810, y = 0.0017,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1250, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 4500, y = 0.00125,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1300, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_EPP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.11, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_IEP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_gen_EPP_IEP <- heredabilidad |>
+  ggplot(aes(x = corr_gen_EPP_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 3,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_gen_EPP_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación genética entre EPP e IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_grup_comp_EPP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_grup_comp_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 0.225, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_grup_comp_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del grupo de comparación EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_grup_comp_IEP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_grup_comp_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 0.22, y = 30,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_grup_comp_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del grupo de comparación IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_toro_EPP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_toro_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'gray', fill = 'gray', alpha = 0.2) +
+  annotate(
+    'text', x = 0.20, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_toro_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del toro EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_toro_IEP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_toro_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'gray', fill = 'gray', alpha = 0.2) +
+  annotate(
+    'text', x = 0.24, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_toro_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del toro IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG_EPP | graf_varE_EPP) / (graf_varGC_EPP | graf_varT_EPP) / (graf_heredabilidad_EPP | graf_prop_grup_comp_EPP) / (graf_prop_toro_EPP | graf_vacio)) | ((graf_varG_IEP | graf_varE_IEP) / (graf_varGC_IEP | graf_varT_IEP) / (graf_heredabilidad_IEP | graf_prop_grup_comp_IEP) / (graf_prop_toro_IEP | graf_vacio)) | (graf_corr_gen_EPP_IEP))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el bi-carácter entre edad al primer parto e intervalo entre el primer y segundo parto') & 
+  theme(plot.title = element_text(size = 8.4, face = 'bold'))
+
+ggsave('eva_genetica/Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Completo/Imagenes/burnin_diezmil/heredabilidad.pdf', width = 40, height = 20, units = 'cm')
+
+##############################
+# 2. Conjunto de datos parcial
+##############################
+
+##########################
+# Con burn-in igual a cero
+##########################
+
+burnin_1 <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/EPP_IEP/Parcial/postgibbs_1/postgibbs_samples', col_names = FALSE)
+
+# Se realiza una gráfica para visualizar las varianzas y la heredabilidad, a partir del postgibbs con burn-in de cero (burnin_1) ---- ----
+
+heredabilidad <- burnin_1 |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+      'Varianza para el efecto del grupo de comparación - EPP' = X4,
+      'Varianza para el efecto del toro - EPP' = X5,
+      'Varianza para el efecto del grupo de comparación - I_P1-P2' = X6,
+      'Varianza para el efecto del toro - I_P1-P2' = X7,
+      'Varianza para el efecto del individuo - EPP' = X8,
+      'Covarianza entre efectos geneticos - EPP e I_P1-P2' = X9,
+      'Varianza para el efecto del individuo - I_P1-P2' = X10,
+      'Residuo - EPP' = X11,
+      'Covarianza residual - EPP e I_P1-P2' = X12,
+      'Residuo - I_P1-P2' = X13
+    ) |>
+  mutate(
+    heredabilidad_EPP = `Varianza para el efecto del individuo - EPP` / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    heredabilidad_IEP = `Varianza para el efecto del individuo - I_P1-P2` / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`),
+    corr_gen_EPP_IEP = `Covarianza entre efectos geneticos - EPP e I_P1-P2` / (sqrt(`Varianza para el efecto del individuo - EPP`) * sqrt(`Varianza para el efecto del individuo - I_P1-P2`)),
+    proporcion_var_grup_comp_EPP = (`Varianza para el efecto del grupo de comparación - EPP`) / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    proporcion_var_toro_EPP = (`Varianza para el efecto del toro - EPP`) / (`Varianza para el efecto del grupo de comparación - EPP` + `Varianza para el efecto del toro - EPP` + `Varianza para el efecto del individuo - EPP` + `Residuo - EPP`),
+    proporcion_var_grup_comp_IEP = (`Varianza para el efecto del grupo de comparación - I_P1-P2`) / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`),
+    proporcion_var_toro_IEP = (`Varianza para el efecto del toro - I_P1-P2`) / (`Varianza para el efecto del grupo de comparación - I_P1-P2` + `Varianza para el efecto del toro - I_P1-P2` + `Varianza para el efecto del individuo - I_P1-P2` + `Residuo - I_P1-P2`)
+    )
+
+HDInterval::hdi(object = heredabilidad$heredabilidad_EPP, credMass = 0.95) # El intervalo es de [0.071, 0.102]
+HDInterval::hdi(object = heredabilidad$heredabilidad_IEP, credMass = 0.95) # El intervalo es de [0.038, 0.069]
+HDInterval::hdi(object = heredabilidad$corr_gen_EPP_IEP, credMass = 0.95) # El intervalo es de [0.057, 0.45]
+
+graf_varG_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 2400, y = 0.0015,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varG_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del individuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'green', fill = 'green', alpha = 0.2) +
+  annotate(
+    'text', x = 400, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del individuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza genética aditiva IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_EPP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 11250, y = 0.0020,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varE_IEP <- heredabilidad |>
+  ggplot(aes(x = `Residuo - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'red', fill = 'red', alpha = 0.2) +
+  annotate(
+    'text', x = 3050, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Residuo - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza residual IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 5810, y = 0.0017,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varGC_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del grupo de comparación - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'cyan', fill = 'cyan', alpha = 0.2) +
+  annotate(
+    'text', x = 1250, y = 0.005,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del grupo de comparación - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del grupo de comparación IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_EPP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - EPP`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 4500, y = 0.00125,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - EPP`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_varT_IEP <- heredabilidad |>
+  ggplot(aes(x = `Varianza para el efecto del toro - I_P1-P2`)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'orange', fill = 'orange', alpha = 0.2) +
+  annotate(
+    'text', x = 1300, y = 0.004,
+    label = paste('Valor medio = ', round(mean(heredabilidad$`Varianza para el efecto del toro - I_P1-P2`), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Varianza para el efecto del toro IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_EPP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.11, y = 40,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_heredabilidad_IEP <- heredabilidad |>
+  ggplot(aes(x = heredabilidad_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'black', fill = 'black', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$heredabilidad_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Heredabilidad IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 7, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_corr_gen_EPP_IEP <- heredabilidad |>
+  ggplot(aes(x = corr_gen_EPP_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2)  +
+  annotate(
+    'text', x = 0.08, y = 3,
+    label = paste('Valor medio = ', round(mean(heredabilidad$corr_gen_EPP_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Correlación genética entre EPP e IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_grup_comp_EPP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_grup_comp_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 0.225, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_grup_comp_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del grupo de comparación EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_grup_comp_IEP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_grup_comp_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'yellow', fill = 'yellow', alpha = 0.2) +
+  annotate(
+    'text', x = 0.22, y = 30,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_grup_comp_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del grupo de comparación IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_toro_EPP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_toro_EPP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'gray', fill = 'gray', alpha = 0.2) +
+  annotate(
+    'text', x = 0.20, y = 25,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_toro_EPP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del toro EPP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_prop_toro_IEP <- heredabilidad |>
+  ggplot(aes(x = proporcion_var_toro_IEP)) +
+  geom_histogram(aes(y = ..density..), bins = 20, colour = 'gray', fill = 'gray', alpha = 0.2) +
+  annotate(
+    'text', x = 0.24, y = 20,
+    label = paste('Valor medio = ', round(mean(heredabilidad$proporcion_var_toro_IEP), digits = 2)), size = 2.4, fontface = 'bold'
+    ) +
+  labs(x = '', y = 'Frecuencia', title = 'Proporción de la varianza del toro IEP') +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10, face = 'bold'),
+    axis.title = element_text(size = 10, face = 'bold'),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = 'bold')
+    )
+
+graf_vacio <- ggplot(NULL)+
+  geom_blank() +
+  theme_minimal()
+
+(guide_area()/(((graf_varG_EPP | graf_varE_EPP) / (graf_varGC_EPP | graf_varT_EPP) / (graf_heredabilidad_EPP | graf_prop_grup_comp_EPP) / (graf_prop_toro_EPP | graf_vacio)) | ((graf_varG_IEP | graf_varE_IEP) / (graf_varGC_IEP | graf_varT_IEP) / (graf_heredabilidad_IEP | graf_prop_grup_comp_IEP) / (graf_prop_toro_IEP | graf_vacio)) | (graf_corr_gen_EPP_IEP))) +
+  plot_layout(guides = "collect", heights = unit(c(0.1, 0.1), c('cm', 'null'))) + 
+  plot_annotation(title = 'Parámetros para el bi-carácter entre edad al primer parto e intervalo entre el primer y segundo parto') & 
+  theme(plot.title = element_text(size = 8.4, face = 'bold'))
 ```
