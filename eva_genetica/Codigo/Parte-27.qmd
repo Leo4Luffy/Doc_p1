@@ -84,11 +84,19 @@ snps <- inner_join(x = frq, y = bim, by = 'SNP')
 ```
 
 <!--
-NOTA: Se obtiene a continuación distintos conjuntos de datos con distintas densidades de marcadores, partiendo del genotipado en 50K. La selección de SNPs se realizó cumpliendo con el criterio de "SNPs distribuidos equitativamente a lo largo de los cromosomas".
+NOTA: Se obtiene a continuación distintos conjuntos de datos con distintas densidades de marcadores, partiendo del genotipado en 50K. La selección de SNPs se realizó cumpliendo con el criterio de "SNPs distribuidos uniformemente a lo largo de los cromosomas e informativos". Lo anterior es "la selección de SNPs óptimos localmente".
+
+La selección de SNPs óptimos localmente tiene como objetivo encontrar un equilibrio entre la uniformidad de la distribución de SNPs a lo largo del genoma y la informatización de estos SNPs, que se mide mediante la frecuencia alélica menor (MAF). Esta selección se realiza ponderando las puntuaciones U (uniformidad) y E (informatividad) usando los pesos w1 y w2. Dependiendo de cómo se establezcan estos pesos, el algoritmo puede seleccionar SNPs que están bien distribuidos a lo largo del genoma y también son informativos en términos de su MAF. Por ejemplo:
+
+w1 = 0.5 y w2 = 0.5: Selección equilibrada, donde se consideran tanto la uniformidad como la informatividad. Esta es la que tiene la función selectLocalOptimalSNPs() por defecto y la que use para seleccionar los SNPs.
+
+w1 = 1 y w2 = 0: Selección basada únicamente en la informatividad (SNPs con la mayor MAF).
+
+w1 = 0 y w2 = 1: Selección basada únicamente en la uniformidad (SNPs uniformemente distribuidos).
 -->
 
 ```{r}
-#| label: Selección de SNPs distribuidos equitativamente en cada densidad deseada
+#| label: Selección de SNPs distribuidos uniformemente en cada densidad deseada
 
 # Del objeto "snps" anterior se organiza el conjunto de datos como se requiere para usar la unción selectLocalOptimalSNPs() y posteriormente se convierte a un objeto de clase "Map" ----
 
