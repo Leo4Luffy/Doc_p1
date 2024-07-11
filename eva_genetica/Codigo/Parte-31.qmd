@@ -9311,14 +9311,14 @@ LR_est_PD_2 <- bind_cols(LR_est_PD, intervalos_confianza) |>
       Densidad_marcador == '50k_materno' ~ 'E1_M',
       Densidad_marcador == 'HD_directo' ~ 'E2_D',
       Densidad_marcador == 'HD_materno' ~ 'E2_M',
-      Densidad_marcador == 'SNP_tags_directo' ~ 'E3_D',
-      Densidad_marcador == 'SNP_tags_materno' ~ 'E3_M',
-      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4_D',
-      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4_M',
-      Densidad_marcador == 'SNP_tags_2_directo' ~ 'E5_D',
-      Densidad_marcador == 'SNP_tags_2_materno' ~ 'E5_M',
-      Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E6_D',
-      Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E6_M',
+      Densidad_marcador == 'SNP_tags_directo' ~ 'E4_D',
+      Densidad_marcador == 'SNP_tags_materno' ~ 'E4_M',
+      Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6_D',
+      Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6_M',
+      Densidad_marcador == 'SNP_tags_2_directo' ~ 'E3_D',
+      Densidad_marcador == 'SNP_tags_2_materno' ~ 'E3_M',
+      Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E5_D',
+      Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E5_M',
       Densidad_marcador == 'den_1_directo' ~ 'E7_D',
       Densidad_marcador == 'den_1_materno' ~ 'E7_M',
       Densidad_marcador == 'den_2_directo' ~ 'E8_D',
@@ -9358,10 +9358,10 @@ LR_est_EPP_IEP_2 <- bind_cols(LR_est_EPP_IEP, intervalos_confianza) |>
       Densidad_marcador == '0k' ~ 'E0',
       Densidad_marcador == '50k' ~ 'E1',
       Densidad_marcador == 'HD' ~ 'E2',
-      Densidad_marcador == 'SNP_tags' ~ 'E3',
-      Densidad_marcador == 'SNP_tags_sing' ~ 'E4',
-      Densidad_marcador == 'SNP_tags_50K' ~ 'E5',      
-      Densidad_marcador == 'SNP_tags_sing_50K' ~ 'E6',      
+      Densidad_marcador == 'SNP_tags' ~ 'E4',
+      Densidad_marcador == 'SNP_tags_sing' ~ 'E6',
+      Densidad_marcador == 'SNP_tags_50K' ~ 'E3',      
+      Densidad_marcador == 'SNP_tags_sing_50K' ~ 'E5',      
       Densidad_marcador == 'den_1' ~ 'E7',      
       Densidad_marcador == 'den_2' ~ 'E8'
       )
@@ -9850,7 +9850,7 @@ precision <- LR_est |>
 
 precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E6', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
-  ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
+  ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 4.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
   labs(y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9867,7 +9867,7 @@ precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
 
 precision_PD_IC_directo <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(title = 'Efecto directo', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9896,7 +9896,7 @@ precision <- LR_est_PD_2 |>
 
 precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E6', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
-  ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
+  ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 4.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
   labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9906,14 +9906,14 @@ precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
     axis.text.y = element_text(size = 13, face = 'bold'),
-    legend.position = 'right',
+    legend.position = 'bottom',
     legend.title = element_text(size = 14, face = 'bold'),
     legend.text = element_text(size = 13)
     )
 
 precision_PD_IC_materno <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.4, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(title = 'Efecto materno', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -12486,11 +12486,11 @@ inc_AG <- correlacion_AG |>
 ```
 
 <!--
-NOTA: Hola
+NOTA: También se estima el incremento en precisión al usar información genómica a partir del estimador propuesto por Bermann et al. (2020).
 -->
 
 ```{r}
-#| label: Hola
+#| label: Incremento en precisión según Bermann et al. (2020)
 
 ######################
 # 1. Edad primer parto
@@ -15222,10 +15222,7 @@ print(inc_G_A_den_2)
 inc_A_G_PD_mat <- bind_rows(inc_G_A_50k, inc_G_A_HD, inc_G_A_SNP_tags_HD, inc_G_A_SNP_tags_50K, inc_G_A_SNP_tags_sing_HD, inc_G_A_SNP_tags_sing_50K, inc_G_A_den_1, inc_G_A_den_2) |>
   mutate(Carácter = 'Peso al destete - materno')
 
-# ----
+# Se une los objetos para ver el incremento en precisión debido a la información genómica ----
 
 inc_A_G <- bind_rows(inc_A_G_EPP, inc_A_G_IEP, inc_A_G_PD_dir, inc_A_G_PD_mat)
-
-
-# Voy aquí.
 ```
