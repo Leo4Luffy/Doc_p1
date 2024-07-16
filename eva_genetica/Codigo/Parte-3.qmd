@@ -151,7 +151,7 @@ datProd_2 <- pDtte |>
 ######################
 
 EPP <- datProd |>
-  filter(EPP != 0) |> # Se quitan las edades al primer parto con valores de 0. En total hay 34512 individuos con registro de peso al destete.
+  filter(EPP != 0) |> # Se quitan las edades al primer parto con valores de 0. En total hay 34512 individuos con registro de edad al primer parto.
   select(ID)
 
 # Se importa el conjunto de datos con el libro genealogíco para así obtener un conjunto de datos con las dos identificaciones (ID | ID_ofi) ----

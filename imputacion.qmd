@@ -3725,7 +3725,7 @@ Venn <- tibble(
 # Marcadores en común ----
 
 marc_comun <- tibble(
-  marcadores = c(621994, 33378, 43421)
+  marcadores = c(576977, 30931, 33378)
     ) %>%
   mutate(
     x = c(1.5, 0, -1.5),
@@ -3735,50 +3735,50 @@ marc_comun <- tibble(
 p_marc_comun <- ggplot(data = Venn) +
   ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) + # Con el parámetro r(= 1.5) se define el radio del círculo.
   coord_fixed() +
-  scale_colour_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
-  scale_fill_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
-  labs(x = ' ', y = ' ') +
+  scale_colour_manual(values = c('gray48', 'yellow'), name = 'Density') +
+  scale_fill_manual(values = c('gray48', 'yellow'), name = 'Density') +
+  labs(title = 'A', x = ' ', y = ' ') +
   theme_bw() +
   theme(
-    plot.title = element_text(size = 10, face = 'bold'),
-    legend.text = element_text(size = 10),
-    legend.title = element_text(size = 10, face = 'bold'),
+    plot.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 16),
+    legend.title = element_text(size = 18, face = 'bold'),
     axis.line = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank()
     ) +
-  annotate("text", x = marc_comun$x, y = marc_comun$y, label = marc_comun$marcadores, size = 4.5)
+  annotate("text", x = marc_comun$x, y = marc_comun$y, label = marc_comun$marcadores, size = 7.5)
 
 # Individuos en común ----
 
-#ind_comun <- tibble(
-  #marcadores = c(284, 208, 2896)
-    #) %>%
-  #mutate(
-    #x = c(1.5, 0, -1.5),
-    #y = c(-0.5, -0.5, -0.5)
-    #)
+ind_comun <- tibble(
+  marcadores = c(284, 208, 2894)
+    ) %>%
+  mutate(
+    x = c(1.5, 0, -1.5),
+    y = c(-0.5, -0.5, -0.5)
+    )
 
-#p_ind_comun <- ggplot(data = Venn) +
-  #ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) +
-  #coord_fixed() +
-  #scale_colour_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
-  #scale_fill_manual(values = c('gray48', 'yellow'), name = 'Densidad de marcador') +
-  #labs(title = 'B', x = ' ', y = ' ') +
-  #theme_bw() +
-  #theme(
-    #plot.title = element_text(size = 10, face = 'bold'),
-    #legend.text = element_text(size = 10),
-    #legend.title = element_text(size = 10, face = 'bold'),
-    #axis.line = element_blank(),
-    #axis.text = element_blank(),
-    #axis.ticks = element_blank()
-    #) +
-  #annotate("text", x = ind_comun$x, y = ind_comun$y, label = ind_comun$marcadores, size = 4.5)
+p_ind_comun <- ggplot(data = Venn) +
+  ggforce::geom_circle(aes(x0 = x, y0 = y, r = 1.5, fill = Densidades, colour = Densidades), alpha = 0.2, size = 1.0) +
+  coord_fixed() +
+  scale_colour_manual(values = c('gray48', 'yellow'), name = 'Density') +
+  scale_fill_manual(values = c('gray48', 'yellow'), name = 'Density') +
+  labs(title = 'B', x = ' ', y = ' ') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 18, face = 'bold'),
+    legend.text = element_text(size = 16),
+    legend.title = element_text(size = 18, face = 'bold'),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    ) +
+  annotate("text", x = ind_comun$x, y = ind_comun$y, label = ind_comun$marcadores, size = 7.5)
 
-#(p_marc_comun / p_ind_comun) + plot_layout(guides = 'collect')
+(p_marc_comun / p_ind_comun) + plot_layout(guides = 'collect')
 
-p_marc_comun
+ggsave('Imputacion/Imp_HD/Imagenes/mar_ind.pdf', width = 40, height = 20, units = 'cm')
 ```
 
 Al unir los conjuntos de datos de media y de alta densidad, se generó un conjunto de datos de densidades combinadas. Esto a partir del siguiente código de PLINK.

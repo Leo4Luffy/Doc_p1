@@ -9476,7 +9476,7 @@ precision <- LR_est |>
 precision_EPP <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_parto') |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'Edad_primer_parto') |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
-  labs(y = 'Precisión', x = NULL) +
+  labs(y = 'Accuracy', x = NULL, colour = 'Scenarios', fill = 'Scenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
@@ -9492,7 +9492,7 @@ precision_EPP <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_part
 
 precision_EPP_IC <- ggplot(data = precision |> filter(Caracter == 'Edad_primer_parto') |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(ICS, 2)), '\nLCI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9606,7 +9606,7 @@ precision <- LR_est |>
 precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2') |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = precision |> filter(Caracter == 'intervalo_P1_P2') |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
-  labs(y = 'Precisión', x = NULL) +
+  labs(y = 'Accuracy', x = NULL, colour = 'Scenarios', fill = 'Scenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
@@ -9622,7 +9622,7 @@ precision_IEP <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2'
 
 precision_IEP_IC <- ggplot(data = precision |> filter(Caracter == 'intervalo_P1_P2') |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(ICS, 2)), '\nLCI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -9656,7 +9656,7 @@ sesgo <- LR_est |>
     str_detect(Densidad_marcador, '_directo')
     )
 
-sesgo_PD_directo <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E6', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+sesgo_PD_directo <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E5', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = sesgo |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.0001, fill = 'white', colour = 'black') +
   labs(y = 'Sesgo', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
@@ -9700,7 +9700,7 @@ sesgo <- LR_est |>
     str_detect(Densidad_marcador, '_materno')
     )
 
-sesgo_PD_materno <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E6', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+sesgo_PD_materno <- ggplot(data = sesgo |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E5', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = sesgo |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.0001, fill = 'white', colour = 'black') +
   labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
@@ -9752,7 +9752,7 @@ dispersion <- LR_est |>
     str_detect(Densidad_marcador, '_directo')
     )
 
-dispersion_PD_directo <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E6', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+dispersion_PD_directo <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E5', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = dispersion |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
   labs(y = 'Dispersion', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
@@ -9796,7 +9796,7 @@ dispersion <- LR_est_PD_2 |>
     str_detect(Densidad_marcador, '_materno')
     )
 
-dispersion_PD_materno <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E6', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+dispersion_PD_materno <- ggplot(data = dispersion |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E5', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = dispersion |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
   labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
@@ -9848,10 +9848,10 @@ precision <- LR_est |>
     str_detect(Densidad_marcador, '_directo')
     )
 
-precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E6', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_directo' ~ 'E0', Densidad_marcador == '50k_directo' ~ 'E1', Densidad_marcador == 'HD_directo' ~ 'E2', Densidad_marcador == 'SNP_tags_directo' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_directo' ~ 'E6', Densidad_marcador == 'SNP_tags_2_directo' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_directo' ~ 'E5', Densidad_marcador == 'den_1_directo' ~ 'E7', Densidad_marcador == 'den_2_directo' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 4.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
-  labs(y = 'Precisión', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  labs(y = 'Accuracy', x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
@@ -9867,8 +9867,8 @@ precision_PD_directo <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
 
 precision_PD_IC_directo <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
-  labs(title = 'Efecto directo', x = NULL, y = NULL) +
+  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(ICS, 2)), '\nLCI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Direct effect', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
@@ -9894,10 +9894,10 @@ precision <- LR_est_PD_2 |>
     str_detect(Densidad_marcador, '_materno')
     )
 
-precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E5', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E6', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
+precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = case_when(Densidad_marcador == '0k_materno' ~ 'E0', Densidad_marcador == '50k_materno' ~ 'E1', Densidad_marcador == 'HD_materno' ~ 'E2', Densidad_marcador == 'SNP_tags_materno' ~ 'E4', Densidad_marcador == 'SNP_tags_sing_materno' ~ 'E6', Densidad_marcador == 'SNP_tags_2_materno' ~ 'E3', Densidad_marcador == 'SNP_tags_sing_2_materno' ~ 'E5', Densidad_marcador == 'den_1_materno' ~ 'E7', Densidad_marcador == 'den_2_materno' ~ 'E8')) |> filter(!is.na(Escenarios)), aes(x = Escenarios, y = Valor, fill = Densidad_marcador_2, colour = Densidad_marcador_2)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
   ggrepel::geom_label_repel(data = precision |> filter(!is.na(Escenarios)), aes(label = paste(round(Valor, digits = 5))), size = 4.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
-  labs(y = NULL, x = NULL, fill = 'Escenarios', colour = 'Escenarios') +
+  labs(y = NULL, x = NULL, fill = 'Scenarios', colour = 'Scenarios') +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
@@ -9913,8 +9913,8 @@ precision_PD_materno <- ggplot(data = precision |> mutate(Densidad_marcador_2 = 
 
 precision_PD_IC_materno <- ggplot(data = precision |> filter(!is.na(Escenarios)), aes(x = Escenarios, ymin = ICI, ymax = ICS, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('ICS:', sprintf('%.2f', round(ICS, 2)), '\nICI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
-  labs(title = 'Efecto materno', x = NULL, y = NULL) +
+  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(ICS, 2)), '\nLCI:', sprintf('%.2f', round(ICI, 2))), y = (ICI + ICS)/2), size = 2.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  labs(title = 'Maternal effect', x = NULL, y = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   theme_bw() +
