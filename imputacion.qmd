@@ -3725,7 +3725,7 @@ Venn <- tibble(
 # Marcadores en común ----
 
 marc_comun <- tibble(
-  marcadores = c(576977, 30931, 33378)
+  marcadores = c('576,977', '30,931', '33,378')
     ) %>%
   mutate(
     x = c(1.5, 0, -1.5),
@@ -3752,7 +3752,7 @@ p_marc_comun <- ggplot(data = Venn) +
 # Individuos en común ----
 
 ind_comun <- tibble(
-  marcadores = c(284, 208, 2894)
+  marcadores = c('284', '208', '2,894')
     ) %>%
   mutate(
     x = c(1.5, 0, -1.5),
