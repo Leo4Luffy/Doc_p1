@@ -556,7 +556,7 @@ precision_EPP <- ggplot(data = LR_est_EPP |> filter(Estima == 'Ratio of accuraci
 
 precision_EPP_IC <- ggplot(data = LR_est_EPP |> filter(Estima == 'Ratio of accuracies'), aes(x = Escenarios, ymin = `l_95%_CI`, ymax = `h_95%_CI`, fill = Escenarios, colour = Escenarios)) +
   geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
-  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(`h_95%_CI`, 2)), '\nLCI:', sprintf('%.2f', round(`l_95%_CI`, 2))), y = (`l_95%_CI` + `h_95%_CI`)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  geom_text(aes(label = paste('UCI:', sprintf('%.3f', round(`h_95%_CI`, 3)), '\nLCI:', sprintf('%.3f', round(`l_95%_CI`, 3))), y = (`l_95%_CI` + `h_95%_CI`)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
   labs(y = NULL, x = NULL) +
   scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
   scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
@@ -580,6 +580,58 @@ ggsave('eva_genetica/Datos/eva_genomica/precision_EPP_uni.pdf', width = 40, heig
 
 ind_IEP_val <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 131 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+###########################
+# Densidad de marcador - 0K
+###########################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/validationf90/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/validationf90/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_IEP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_IEP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_IEP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_tradicional/intervalo_P1_P2/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_IEP_0k <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 1.190, 0.488, 0.229, 2.154,
+  'Bias in genetic sd', 1.190, 0.488, 0.229, 2.154,
+  'Dispersion', 1.559, 0.075, 1.421, 1.716,
+  'Ratio of accuracies', 0.852, 0.028, 0.788, 0.897,
+  'Reliability', 41.113, 7.198, 27.201, 55.246
+  ) |>
+  mutate(Densidad = '0K')
 
 ############################
 # Densidad de marcador - 50K
@@ -632,7 +684,42 @@ Estima_IEP_50k <- tribble(
   'Dispersion', 1.502, 0.071, 1.373, 1.654,
   'Ratio of accuracies', 0.867, 0.020, 0.823, 0.899,
   'Reliability', 57.910, 8.383, 41.741, 74.456
-  )
+  ) |>
+  mutate(Densidad = '50K')
+
+###########################
+# Densidad de marcador - HD
+###########################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/validationf90/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/intervalo_P1_P2/validationf90/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original') # FALTA AQuí.
+
+###################################
+# Densidad de marcador - tags en HD
+###################################
+
+# VOY AQUí
 
 ####################
 # 3. Peso al destete
@@ -652,13 +739,13 @@ NOTA: Se obtienen las estimas de los componentes de varianza y de heredabilidad 
 # 1. Edad primer parto
 ######################
 
-############################
-# Densidad de marcador - 50K
-############################
+###########################
+# Densidad de marcador - 0K
+###########################
 
 # 1. Datos completos:
 
-postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
 #
 # Columna 1: Indica el orden secuencial en el que la muestra se guardo luego del proceso de quema (burn-in) y adelgazamiento (thinning).
 #
@@ -711,6 +798,325 @@ postgibbs |>
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
 HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+############################
+# Densidad de marcador - 50K
+############################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+###########################
+# Densidad de marcador - HD
+###########################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+###################################
+# Densidad de marcador - tags en HD
+###################################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+####################################
+# Densidad de marcador - tags en 50K
+####################################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+##########################################
+# Densidad de marcador - tags y sing en HD
+##########################################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+###########################################
+# Densidad de marcador - tags y sing en 50K
+###########################################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+#####################################################################
+# Densidad de marcador - 5,000 marcadores seleccionados uniformemente
+#####################################################################
+######################################################################
+# Densidad de marcador - 13,999 marcadores seleccionados uniformemente
+######################################################################
 
 ##########################
 # 2. Intervalo parto 1 y 2
@@ -765,4 +1171,6 @@ postgibbs |>
 # Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
 
 HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+
 ```
