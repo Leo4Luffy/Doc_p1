@@ -1,0 +1,272 @@
+---
+title: "Parte 33: en distintas densidades de imputación"
+format: html
+---
+
+<!--
+NOTA: Se cargan los paquetes de R.
+-->
+
+```{r}
+#| label: Carga de paquetes R
+
+pacman::p_load(tidyverse)
+```
+
+<!--
+NOTA: Se genera a continuación el archivo con identificaciones renumeradas para cada caracter para correr el programa validationf90. Se corre mediante el bash "val.sh" dicho programa, y a continuación se crea un tibble con las estimas resultantes.
+-->
+
+```{r}
+#| label: Archivos con identificaciones renumeradas y estimas de validación resultantes.
+
+######################
+# 1. Edad primer parto
+######################
+
+# Se importa el conjunto de datos con la ID original de los individuos focales ----
+
+ind_EPP_val <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
+  rename(ID_original = X1)
+
+############################
+# Densidad de marcador - 50K
+############################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_50k <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.888, 1.283, 2.420, 7.425,
+  'Bias in genetic sd', 4.888, 1.283, 2.420, 7.425,
+  'Dispersion', 1.035, 0.060, 0.914, 1.150,
+  'Ratio of accuracies', 0.776, 0.034, 0.702, 0.834,
+  'Reliability', 475.413, 59.334, 362.678, 593.667
+  )
+
+##########################
+# 2. Intervalo parto 1 y 2
+##########################
+
+# Se importa el conjunto de datos con la ID original de los individuos focales ----
+
+ind_IEP_val <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 131 individuos con información de fenotipo (edad al primer parto) y de genotipo.
+  rename(ID_original = X1)
+
+############################
+# Densidad de marcador - 50K
+############################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_IEP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_IEP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_IEP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_IEP_50k <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 1.610, 0.532, 0.563, 2.658,
+  'Bias in genetic sd', 1.610, 0.532, 0.563, 2.658,
+  'Dispersion', 1.502, 0.071, 1.373, 1.654,
+  'Ratio of accuracies', 0.867, 0.020, 0.823, 0.899,
+  'Reliability', 57.910, 8.383, 41.741, 74.456
+  )
+```
+
+<!--
+NOTA: Se obtienen las estimas de los componentes de varianza y de heredabilidad para cada caracter.
+-->
+
+```{r}
+#| label: Estimas de componentes de varianza y de heredabilidad.
+
+######################
+# 1. Edad primer parto
+######################
+
+############################
+# Densidad de marcador - 50K
+############################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/postgibbs_samples', col_names = FALSE) # Se importa el archivo "postgibbs_samples", el cual es un archivo de texto que contiene las muestras del muesreo de Gibbs hecho con gibbsf90+. Cada columna representa lo siguiente:
+#
+# Columna 1: Indica el orden secuencial en el que la muestra se guardo luego del proceso de quema (burn-in) y adelgazamiento (thinning).
+#
+# Columna 2: Indica el número de la muestra en la cadena (en este caso, de 50 mil en adelante, después del burn-in, guarda una de cada 50 veces).
+#
+# Columna 3: Especifica la cantidad de parámetros para los cuales se guardó la muestra. En este caso 4, lo que sugiere que se estan estimando cuatro parámetros en el modelo (varianzas para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente).
+#
+# Columnas 4, 5, 6 y 7: Indican los componentes de varianza para los efectos del grupo de comparación, del toro, del individuo y el residuo, respectivamente. Esto se puede observar también en el archivo "postind".
+
+# Se obtiene un objeto con el calculo de los componentes de varianza ----
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+
+##########################
+# 2. Intervalo parto 1 y 2
+##########################
+
+############################
+# Densidad de marcador - 50K
+############################
+
+# 1. Datos completos:
+
+postgibbs <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Completo/postgibbs_samples', col_names = FALSE)
+
+postgibbs <- postgibbs |>
+  select(-c(1, 3)) |>
+  rename(
+    'Muestra' = X2,
+    'Varianza para el efecto del grupo de comparación' = X4,
+    'Varianza para el efecto del toro' = X5,
+    'Varianza para el efecto del individuo' = X6,
+    'Residuo' = X7
+    ) |>
+  mutate(
+    heredabilidad = `Varianza para el efecto del individuo` / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_grup_comp = (`Varianza para el efecto del grupo de comparación`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo),
+    proporcion_var_toro = (`Varianza para el efecto del toro`) / (`Varianza para el efecto del grupo de comparación` + `Varianza para el efecto del toro` + `Varianza para el efecto del individuo` + Residuo)
+    )
+
+# Se obtiene la media de los componentes de varianza ----
+
+postgibbs |>
+  summarise(var_gc = round(mean(`Varianza para el efecto del grupo de comparación`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_t = round(mean(`Varianza para el efecto del toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_g = round(mean(`Varianza para el efecto del individuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(var_e = round(mean(`Residuo`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_gc = round(mean(`proporcion_var_grup_comp`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(c2_t = round(mean(`proporcion_var_toro`, na.rm = TRUE), digits = 2))
+
+postgibbs |>
+  summarise(h2 = round(mean(`heredabilidad`, na.rm = TRUE), digits = 2))
+
+# Se calcula el intervalo de densidad posterior más alto al 95% (HPD95%) ----
+
+HDInterval::hdi(object = postgibbs$heredabilidad, credMass = 0.95)
+```

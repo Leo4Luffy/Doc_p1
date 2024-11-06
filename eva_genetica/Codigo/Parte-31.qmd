@@ -74,6 +74,10 @@ ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/
     ) |>
   right_join(y = ind_EPP_LR, by = 'ID_original')
 
+ind_renum_datP |>
+  select(ID_renum) |>
+  write_delim(file = '/home/leonardo/Escritorio/Doc_p1/eva_genetica/Datos/eva_tradicional/EPP_IEP/validationf90/EPP/ind_Val_renum.txt', col_names = FALSE)
+
 # A continuación, se obtiene los valores genéticos de los indivdiuos 189 individuos focales en el conjunto de datos parcial ----
 
 ebv_EPP_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/EPP_IEP/Parcial/final_solutions', col_names = FALSE, skip = 1) |> # Se importa obviando el encabezado, ya que son más el número de columnas que de nombres de estas.

@@ -1,5 +1,5 @@
 ---
-title: "Parte 18: Generación de archivos de genotipos y de fenotipos (datos completos y parciales) en SNP-tags imputados correctamente a partir de los grupos de validación formados mediante agrupción aleatoria"
+title: "Parte 18: Generación de archivos de genotipos y de fenotipos (datos completos y parciales) en SNP-tags imputados correctamente a partir de los grupos de validación formados mediante parentesco basado en segmentos"
 format: html
 ---
 
