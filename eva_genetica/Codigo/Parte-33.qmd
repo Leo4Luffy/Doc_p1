@@ -10,7 +10,7 @@ NOTA: Se cargan los paquetes de R.
 ```{r}
 #| label: Carga de paquetes R
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, patchwork)
 ```
 
 <!--
@@ -28,6 +28,60 @@ NOTA: Se genera a continuación el archivo con identificaciones renumeradas para
 
 ind_EPP_val <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/ind_geno_feno.txt', col_names = FALSE, delim = ' ') |> # Se importa la identificación de los 189 individuos con información de fenotipo (edad al primer parto) y de genotipo.
   rename(ID_original = X1)
+
+###########################
+# Densidad de marcador - 0K
+###########################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_tradicional/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_0k <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 5.392, 1.232, 3.014, 7.819,
+  'Bias in genetic sd', 5.392, 1.232, 3.014, 7.819,
+  'Dispersion', 1.057, 0.065, 0.930, 1.183,
+  'Ratio of accuracies', 0.747, 0.037, 0.669, 0.813,
+  'Reliability', 357.991, 40.226, 280.117, 437.087
+  ) |>
+  mutate(Densidad = '0K')
 
 ############################
 # Densidad de marcador - 50K
@@ -80,7 +134,443 @@ Estima_EPP_50k <- tribble(
   'Dispersion', 1.035, 0.060, 0.914, 1.150,
   'Ratio of accuracies', 0.776, 0.034, 0.702, 0.834,
   'Reliability', 475.413, 59.334, 362.678, 593.667
-  )
+  ) |>
+  mutate(Densidad = '50K')
+
+###########################
+# Densidad de marcador - HD
+###########################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_HD/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_HD <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 5.083, 1.291, 2.592, 7.628,
+  'Bias in genetic sd', 5.083, 1.291, 2.592, 7.628,
+  'Dispersion', 1.089, 0.064, 0.959, 1.212,
+  'Ratio of accuracies', 0.773, 0.035, 0.697, 0.833,
+  'Reliability', 444.581, 58.949, 330.457, 561.622
+  ) |>
+  mutate(Densidad = 'HD')
+
+###################################
+# Densidad de marcador - tags en HD
+###################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_tags_HD <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.961, 1.290, 2.476, 7.516,
+  'Bias in genetic sd', 4.961, 1.290, 2.476, 7.516,
+  'Dispersion', 1.083, 0.062, 0.958, 1.201,
+  'Ratio of accuracies', 0.773, 0.035, 0.697, 0.833,
+  'Reliability', 449.643, 59.123, 333.524, 566.022
+  ) |>
+  mutate(Densidad = 'tags_HD')
+
+####################################
+# Densidad de marcador - tags en 50K
+####################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_50K/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_tags_50K <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.464, 1.250, 2.046, 6.952,
+  'Bias in genetic sd', 4.464, 1.250, 2.046, 6.952,
+  'Dispersion', 0.999, 0.054, 0.891, 1.104,
+  'Ratio of accuracies', 0.782, 0.033, 0.710, 0.839,
+  'Reliability', 488.080, 62.786, 368.439, 613.214
+  ) |>
+  mutate(Densidad = 'tags_50K')
+
+##########################################
+# Densidad de marcador - tags y sing en HD
+##########################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+# Se crea un tibble con las estimas resultantes al correr el programa validationf90 ----
+
+Estima_EPP_tags_sing_HD <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 5.073, 1.291, 2.585, 7.634,
+  'Bias in genetic sd', 5.073, 1.291, 2.585, 7.634,
+  'Dispersion', 1.099, 0.062, 0.971, 1.218,
+  'Ratio of accuracies', 0.772, 0.035, 0.697, 0.832,
+  'Reliability', 438.282, 57.440, 326.263, 550.402
+  ) |>
+  mutate(Densidad = 'tags_sing_HD')
+
+##########################################
+# Densidad de marcador - tags y sing en HD
+##########################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/SNP_tags_sing_50K/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_EPP_tags_sing_50K <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.872, 1.265, 2.434, 7.385,
+  'Bias in genetic sd', 4.872, 1.265, 2.434, 7.385,
+  'Dispersion', 1.044, 0.060, 0.926, 1.160,
+  'Ratio of accuracies', 0.775, 0.033, 0.703, 0.833,
+  'Reliability', 455.947, 56.273, 347.902, 566.882
+  ) |>
+  mutate(Densidad = 'tags_sing_50K')
+
+#####################################################################
+# Densidad de marcador - 5,000 marcadores seleccionados uniformemente
+#####################################################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_EPP_den1 <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.428, 1.288, 1.955, 6.988,
+  'Bias in genetic sd', 4.428, 1.288, 1.955, 6.988,
+  'Dispersion', 0.987, 0.056, 0.874, 1.092,
+  'Ratio of accuracies', 0.774, 0.033, 0.702, 0.831,
+  'Reliability', 499.266, 61.824, 380.304, 621.994
+  ) |>
+  mutate(Densidad = 'Den1')
+
+######################################################################
+# Densidad de marcador - 13,999 marcadores seleccionados uniformemente
+######################################################################
+
+# 1. Datos completos:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Edad_Primer_Parto/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Edad_Primer_Parto/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_EPP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_EPP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_EPP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_EPP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/Edad_Primer_Parto/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_EPP_den2 <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 4.598, 1.284, 2.125, 7.164,
+  'Bias in genetic sd', 4.598, 1.284, 2.125, 7.164,
+  'Dispersion', 1.017, 0.060, 0.896, 1.131,
+  'Ratio of accuracies', 0.771, 0.034, 0.696, 0.830,
+  'Reliability', 472.059, 61.340, 353.977, 593.737
+  ) |>
+  mutate(Densidad = 'Den2')
+
+#####################################################################
+# Unión de datos con de edad al primer parto con distintas densidades
+#####################################################################
+
+Estima_EPP <- bind_rows(Estima_EPP_0k, Estima_EPP_50k, Estima_EPP_HD, Estima_EPP_tags_HD, Estima_EPP_tags_50K, Estima_EPP_tags_sing_HD, Estima_EPP_tags_sing_50K, Estima_EPP_den1, Estima_EPP_den2)
+
+LR_est_EPP <- Estima_EPP |>
+  mutate(
+    Escenarios = case_when(
+      Densidad == '0K' ~ 'E0',
+      Densidad == '50K' ~ 'E1',
+      Densidad == 'HD' ~ 'E2',
+      Densidad == 'tags_HD' ~ 'E4',
+      Densidad == 'tags_sing_HD' ~ 'E6',
+      Densidad == 'tags_50K' ~ 'E3',      
+      Densidad == 'tags_sing_50K' ~ 'E5',      
+      Densidad == 'Den1' ~ 'E7',      
+      Densidad == 'Den2' ~ 'E8'
+      )
+    )
+
+# Se visualizan los resultados ----
+
+orden_escenarios <- c('E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8') # Se define el orden deseado de las variables en el eje x.
+
+LR_est_EPP <- LR_est_EPP |>
+  mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
+
+precision_EPP <- ggplot(data = LR_est_EPP |> filter(Estima == 'Ratio of accuracies'), aes(x = Escenarios, y = Valor, fill = Escenarios, colour = Escenarios)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.2) +
+  ggrepel::geom_label_repel(data = LR_est_EPP |> filter(Estima == 'Ratio of accuracies'), aes(label = paste(round(Valor, digits = 5))), size = 5.4, direction = 'both', nudge_y = 0.01, fill = 'white', colour = 'black') +
+  labs(y = 'Accuracy', x = NULL, colour = 'Scenarios', fill = 'Scenarios') +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 16, face = 'bold'),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 15, face = 'bold'),
+    legend.position = 'right',
+    legend.title = element_text(size = 16, face = 'bold'),
+    legend.text = element_text(size = 15)
+    )
+
+precision_EPP_IC <- ggplot(data = LR_est_EPP |> filter(Estima == 'Ratio of accuracies'), aes(x = Escenarios, ymin = `l_95%_CI`, ymax = `h_95%_CI`, fill = Escenarios, colour = Escenarios)) +
+  geom_errorbar(position = position_dodge(width = 0.7), width = 0.05) +
+  geom_text(aes(label = paste('UCI:', sprintf('%.2f', round(`h_95%_CI`, 2)), '\nLCI:', sprintf('%.2f', round(`l_95%_CI`, 2))), y = (`l_95%_CI` + `h_95%_CI`)/2), size = 3.8, nudge_x = 0.29, nudge_y = 0.0, colour = 'black') +
+  labs(y = NULL, x = NULL) +
+  scale_colour_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
+  scale_fill_manual(values = c('brown', 'orange', 'yellow', 'cyan', 'red', 'black', 'green', 'azure4', 'deeppink2')) +
+  theme_bw() +
+  theme(
+    legend.position = 'none',
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+    )
+
+graf_precision_EPP <- (precision_EPP_IC / precision_EPP) +
+  plot_layout(widths = c(1, 1), heights = c(0.34, 1))
+
+ggsave('eva_genetica/Datos/eva_genomica/precision_EPP_uni.pdf', width = 40, height = 20, units = 'cm')
 
 ##########################
 # 2. Intervalo parto 1 y 2
@@ -143,6 +633,12 @@ Estima_IEP_50k <- tribble(
   'Ratio of accuracies', 0.867, 0.020, 0.823, 0.899,
   'Reliability', 57.910, 8.383, 41.741, 74.456
   )
+
+####################
+# 3. Peso al destete
+####################
+
+# TUVE UN ERROR, CORRI DE NUEVO.
 ```
 
 <!--
