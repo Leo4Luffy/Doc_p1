@@ -503,3 +503,81 @@ IEP_P |>
   filter(X2 == 0) |>
   count() # Se observa y si hay 1414 individuos con valores de 0 para el peso al destete, que corresponde a los años de nacimiento 2017 a 2023.
 ```
+
+<!--
+NOTA: Se generan los conjunto de datos completo y parcial para el análisis bi-carácter.
+-->
+
+```{r}
+#| label: Conjunto de datos completo y parcial para el análisis bi-carácter
+
+####################################################################
+# Bi-carácter entre edad al primer parto e intervalo parto uno y dos
+####################################################################
+
+##########
+# Completo
+##########
+
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Completo/EPP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos completo para la edad al primer parto.
+  rename(
+    ID = X1,
+    EPP = X2,
+    GC_EPP = X3,
+    ID_toro_EPP = X4,
+    Sexo_P1 = X5,
+    Edad_toro_P1 = X6    
+    )
+
+IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Completo/IEP.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos completo para el intervalo entre el primer y segundo parto.
+  rename(
+    ID = X1,
+    IEP = X2,
+    EPP_IEP = X3,
+    GC_IEP = X4,
+    ID_toro_IEP = X5,
+    Sexo_P2 = X6,
+    Edad_toro_P2 = X7,
+    Raza_toro = X8
+    )
+
+EPP_IEP <- full_join(x = EPP, y = IEP, by = 'ID') |>
+  mutate_all(~replace(., is.na(.), 0)) |> # Con mutate_all() se aplica la función replace() a todas las columnas, de esta forma se reemplazan los valores NA en todas las columnas por 0.
+  select(ID, EPP, ends_with(c('_EPP', 'P1')), -EPP_IEP, IEP, ends_with(c('_IEP', 'P2')), Raza_toro)
+
+EPP_IEP |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/validationf90/Completo/EPP_IEP.txt', col_names = FALSE)
+
+#########
+# Parcial
+#########
+
+EPP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/Edad_Primer_Parto/validationf90/Parcial/EPP_2.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para la edad al primer parto.
+  rename(
+    ID = X1,
+    EPP = X2,
+    GC_EPP = X3,
+    ID_toro_EPP = X4,
+    Sexo_P1 = X5,
+    Edad_toro_P1 = X6    
+    )
+
+IEP <- read_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/intervalo_P1_P2/validationf90/Parcial/IEP_2.txt', delim = ' ', col_names = FALSE) |> # Se importa el conjunto de datos parcial para el intervalo entre el primer y segundo parto.
+  rename(
+    ID = X1,
+    IEP = X2,
+    EPP_IEP = X3,
+    GC_IEP = X4,
+    ID_toro_IEP = X5,
+    Sexo_P2 = X6,
+    Edad_toro_P2 = X7,
+    Raza_toro = X8
+    )
+
+EPP_IEP <- full_join(x = EPP, y = IEP, by = 'ID') |>
+  mutate_all(~replace(., is.na(.), 0)) |> # Con mutate_all() se aplica la función replace() a todas las columnas, de esta forma se reemplazan los valores NA en todas las columnas por 0.
+  select(ID, EPP, ends_with(c('_EPP', 'P1')), -EPP_IEP, IEP, ends_with(c('_IEP', 'P2')), Raza_toro)
+
+EPP_IEP |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K/EPP_IEP/validationf90/Parcial/EPP_IEP_2.txt', col_names = FALSE)
+```
