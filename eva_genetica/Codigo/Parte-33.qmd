@@ -963,7 +963,7 @@ Estima_IEP_tags_sing_50K <- tribble(
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
 
-ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/validationf90/Completo/renadd05.ped', col_names = FALSE) |>
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/validationf90/Completo/renadd07.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -975,7 +975,7 @@ ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_
 
 # A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
 
-ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/validationf90/Parcial/renadd05.ped', col_names = FALSE) |>
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/validationf90/Parcial/renadd07.ped', col_names = FALSE) |>
   select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
   rename(
     ID_renum = X1,
@@ -983,19 +983,87 @@ ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_
     ) |>
   right_join(y = ind_IEP_val, by = 'ID_original')
 
-# VOY AQUí. Tuve un error con los datos parciales.
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_IEP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_IEP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_IEP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_1/intervalo_P1_P2/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_IEP_den1 <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 1.552, 0.545, 0.483, 2.632,
+  'Bias in genetic sd', 1.552, 0.545, 0.483, 2.632,
+  'Dispersion', 1.464, 0.068, 1.330, 1.597,
+  'Ratio of accuracies', 0.871, 0.021, 0.823, 0.905,
+  'Reliability', 65.909, 9.241, 47.668, 83.842
+  ) |>
+  mutate(Densidad = 'Den1')
 
 ######################################################################
 # Densidad de marcador - 13,999 marcadores seleccionados uniformemente
 ######################################################################
 
+# 1. Datos completos:
 
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datC <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/intervalo_P1_P2/validationf90/Completo/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# 2. Datos parciales:
+
+# A continuación, se obtiene la ID renumerada al usar el "renumf90" ----
+
+ind_renum_datP <- read_table(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/intervalo_P1_P2/validationf90/Parcial/renadd07.ped', col_names = FALSE) |>
+  select(1, 10) |> # Se seleccionan las columnas que corresponden a la ID original del individuos y su renumeración de acuerdo a "renumf90".
+  rename(
+    ID_renum = X1,
+    ID_original = X10
+    ) |>
+  right_join(y = ind_IEP_val, by = 'ID_original')
+
+# Se comprueba que la renumeración haya sido la misma en los datos completos y parciales ----
+
+ind_renum_IEP <- ind_renum_datC |>
+  inner_join(ind_renum_datP, by = 'ID_original', suffix = c('_C', '_P')) |>
+  mutate(same_id_renum = ID_renum_C == ID_renum_P) # Se comparan las columnas ID_renum de ambos objetos.
+
+ind_renum_IEP |> filter(!same_id_renum) # Se indica que no hay filas en las que las identificaciones renumeradas (ID_renum_C y ID_renum_P) sean diferentes para el mismo ID_original. Esto significa que todas las identificaciones originales en ambos conjuntos de datos tienen la misma identificación renumerada, por lo que los IDs renumerados son consistentes entre los conjuntos ind_renum_datC e ind_renum_datP.
+
+# Se importa las identificaciones renumeradas ----
+
+ind_renum_IEP |>
+  select(ID_renum_C) |>
+  write_delim(file = 'eva_genetica/Datos/eva_genomica/Beagle_50K_2/Densidad_2/intervalo_P1_P2/validationf90/Completo/ids', col_names = FALSE)
+
+Estima_IEP_den2 <- tribble(
+  ~'Estima', ~'Valor', ~'SD', ~'l_95%_CI', ~'h_95%_CI',
+  'Absolute bias', 1.615, 0.524, 0.585, 2.652,
+  'Bias in genetic sd', 1.615, 0.524, 0.585, 2.652,
+  'Dispersion', 1.482, 0.072, 1.351, 1.639,
+  'Ratio of accuracies', 0.866, 0.021, 0.818, 0.899,
+  'Reliability', 57.147, 8.664, 40.542, 74.312
+  ) |>
+  mutate(Densidad = 'Den2')
 
 #####################################################################
 # Unión de datos con de edad al primer parto con distintas densidades
 #####################################################################
 
-Estima_IEP <- bind_rows(Estima_IEP_0k, Estima_IEP_50k, Estima_IEP_HD, Estima_IEP_tags_HD, Estima_IEP_tags_50K, Estima_IEP_tags_sing_HD, Estima_IEP_tags_sing_50K) # VOY AQUí. Faltan las dos densidades.
+Estima_IEP <- bind_rows(Estima_IEP_0k, Estima_IEP_50k, Estima_IEP_HD, Estima_IEP_tags_HD, Estima_IEP_tags_50K, Estima_IEP_tags_sing_HD, Estima_IEP_tags_sing_50K, Estima_IEP_den1, Estima_IEP_den2)
 
 LR_est_IEP <- Estima_IEP |>
   mutate(
@@ -1006,13 +1074,15 @@ LR_est_IEP <- Estima_IEP |>
       Densidad == 'tags_HD' ~ 'E4',
       Densidad == 'tags_sing_HD' ~ 'E6',
       Densidad == 'tags_50K' ~ 'E3',      
-      Densidad == 'tags_sing_50K' ~ 'E5'
+      Densidad == 'tags_sing_50K' ~ 'E5',      
+      Densidad == 'Den1' ~ 'E7',      
+      Densidad == 'Den2' ~ 'E8'
       )
     )
 
 # Se visualizan los resultados ----
 
-orden_escenarios <- c('E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6') # Se define el orden deseado de las variables en el eje x.
+orden_escenarios <- c('E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8') # Se define el orden deseado de las variables en el eje x.
 
 LR_est_IEP <- LR_est_IEP |>
   mutate(Escenarios = factor(Escenarios, levels = orden_escenarios)) # Se convierte la variable densidad_marcador en factor con el orden deseado.
